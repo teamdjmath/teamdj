@@ -1,9 +1,9 @@
 import { type ReactNode } from 'react'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { LogoutButton } from '@/components/ui/logout-button'
 import { MobileNav } from './_components/mobile-nav'
+import { SidebarNav } from './_components/sidebar-nav'
 
 const NAV_ITEMS = [
   {
@@ -129,19 +129,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           </span>
         </div>
 
-        {/* 네비게이션 */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          {NAV_ITEMS.map(({ href, label, icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
-            >
-              {icon}
-              {label}
-            </Link>
-          ))}
-        </nav>
+        {/* 네비게이션 (클라이언트 — usePathname으로 활성 상태 처리) */}
+        <SidebarNav items={NAV_ITEMS} />
 
         {/* 하단 유저 정보 */}
         <div className="border-t border-zinc-100 px-4 py-4 space-y-2">

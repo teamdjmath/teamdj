@@ -1,0 +1,46 @@
+import { type InputHTMLAttributes, type SelectHTMLAttributes } from 'react'
+
+interface FieldProps {
+  label: string
+  error?: string
+  required?: boolean
+}
+
+const inputCls = 'w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-white focus:outline-none transition-colors disabled:opacity-50'
+
+export function InputField({
+  label,
+  error,
+  required,
+  ...props
+}: FieldProps & InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-xs font-medium text-zinc-600">
+        {label}{required && <span className="ml-0.5 text-red-500">*</span>}
+      </label>
+      <input required={required} className={inputCls} {...props} />
+      {error && <p className="text-[11px] text-red-500">{error}</p>}
+    </div>
+  )
+}
+
+export function SelectField({
+  label,
+  error,
+  required,
+  children,
+  ...props
+}: FieldProps & SelectHTMLAttributes<HTMLSelectElement> & { children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-xs font-medium text-zinc-600">
+        {label}{required && <span className="ml-0.5 text-red-500">*</span>}
+      </label>
+      <select required={required} className={inputCls} {...props}>
+        {children}
+      </select>
+      {error && <p className="text-[11px] text-red-500">{error}</p>}
+    </div>
+  )
+}
