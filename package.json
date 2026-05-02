@@ -1,0 +1,9 @@
+{
+  "name": "teamdj",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:app": "pnpm --filter app start"
+  },
+  "packageManager": "pnpm@10.33.2"
+}
