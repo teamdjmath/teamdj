@@ -25,9 +25,22 @@ export function StudentsClient({
   students: StudentRow[]
   classOptions: ClassOption[]
 }) {
-  const [createOpen, setCreateOpen]     = useState(false)
-  const [excelOpen, setExcelOpen]       = useState(false)
-  const [query, setQuery]               = useState('')
+  const [createOpen, setCreateOpen] = useState(false)
+  const [excelOpen, setExcelOpen]   = useState(false)
+  const [query, setQuery]           = useState('')
+
+  async function handleSampleDownload() {
+    const XLSX = await import('xlsx')
+    const data = [
+      { 이름: '홍길동', 전화번호: '01012345678', 초기비밀번호: 'pass1234', 분반명: '수학A반' },
+      { 이름: '김철수', 전화번호: '01087654321', 초기비밀번호: 'pass1234', 분반명: '수학A반' },
+      { 이름: '이영희', 전화번호: '01055556666', 초기비밀번호: 'pass5678', 분반명: '영어B반' },
+    ]
+    const ws = XLSX.utils.json_to_sheet(data)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, '학생목록')
+    XLSX.writeFile(wb, '학생_일괄등록_샘플.xlsx')
+  }
 
   const filtered = students.filter(
     (s) =>
@@ -45,6 +58,13 @@ export function StudentsClient({
           <p className="mt-0.5 text-sm text-zinc-400">총 {students.length}명</p>
         </div>
         <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleSampleDownload}
+            className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
+          >
+            샘플 다운로드
+          </button>
           <button
             type="button"
             onClick={() => setExcelOpen(true)}

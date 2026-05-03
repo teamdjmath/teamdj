@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Modal } from '@/components/ui/modal'
 import { InputField } from '@/components/ui/form-field'
-import { createClass, updateClass, deleteClass } from '@/lib/actions/classes'
+import { createClass, updateClass, deleteClass, hardDeleteClass } from '@/lib/actions/classes'
 
 type ClassRow = {
   id: string
@@ -21,6 +21,7 @@ export function ClassesClient({ classes }: { classes: ClassRow[] }) {
   const router = useRouter()
   const [createOpen, setCreateOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<ClassRow | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<ClassRow | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -48,12 +49,23 @@ export function ClassesClient({ classes }: { classes: ClassRow[] }) {
     })
   }
 
-  function handleDelete(classId: string, name: string) {
-    if (!confirm(`"${name}" 분반을 비활성화하시겠습니까?`)) return
+  function handleSoftDelete() {
+    if (!deleteTarget) return
     startTransition(async () => {
-      const res = await deleteClass(classId)
-      if (!res.success) alert(res.error)
-      else router.refresh()
+      const res = await deleteClass(deleteTarget.id)
+      if (!res.success) { alert(res.error); return }
+      setDeleteTarget(null)
+      router.refresh()
+    })
+  }
+
+  function handleHardDelete() {
+    if (!deleteTarget) return
+    startTransition(async () => {
+      const res = await hardDeleteClass(deleteTarget.id)
+      if (!res.success) { alert(res.error); return }
+      setDeleteTarget(null)
+      router.refresh()
     })
   }
 
@@ -126,7 +138,7 @@ export function ClassesClient({ classes }: { classes: ClassRow[] }) {
                       <span className="text-zinc-200">|</span>
                       <button
                         type="button"
-                        onClick={() => handleDelete(c.id, c.name)}
+                        onClick={() => setDeleteTarget(c)}
                         disabled={isPending}
                         className="text-xs text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
                       >
@@ -158,6 +170,51 @@ export function ClassesClient({ classes }: { classes: ClassRow[] }) {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* 삭제 확인 모달 */}
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="분반 삭제" size="sm">
+        {deleteTarget && (
+          <div className="space-y-4">
+            <p className="text-sm text-zinc-700">
+              <span className="font-semibold">{deleteTarget.name}</span> 분반을 어떻게 처리하시겠습니까?
+            </p>
+
+            {deleteTarget.studentCount > 0 && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+                이 분반에 학생 {deleteTarget.studentCount}명이 있습니다.
+                완전 삭제하려면 먼저 모든 학생을 제거해주세요.
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleSoftDelete}
+                disabled={isPending}
+                className="w-full rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 transition-colors"
+              >
+                비활성화 (숨김 처리)
+              </button>
+              <button
+                type="button"
+                onClick={handleHardDelete}
+                disabled={isPending || deleteTarget.studentCount > 0}
+                title={deleteTarget.studentCount > 0 ? '학생이 있는 분반은 완전 삭제 불가' : undefined}
+                className="w-full rounded-lg bg-red-500 py-2.5 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                완전 삭제 (복구 불가)
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="w-full rounded-lg py-2 text-sm text-zinc-400 hover:text-zinc-600 transition-colors"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* 수정 모달 */}

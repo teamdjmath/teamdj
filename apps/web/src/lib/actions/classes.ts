@@ -67,7 +67,7 @@ export async function updateClass(formData: FormData): Promise<ActionResult> {
   return { success: true }
 }
 
-// ── 분반 삭제 (soft delete)
+// ── 분반 비활성화 (soft delete)
 export async function deleteClass(classId: string): Promise<ActionResult> {
   const supabase      = await createClient()
   const adminSupabase = createAdminClient()
@@ -81,6 +81,37 @@ export async function deleteClass(classId: string): Promise<ActionResult> {
   const { error } = await adminSupabase
     .from('class_groups')
     .update({ is_active: false })
+    .eq('id', classId)
+
+  if (error) return { success: false, error: `분반 비활성화 실패: ${error.message}` }
+
+  revalidatePath('/admin/classes')
+  return { success: true }
+}
+
+// ── 분반 완전 삭제 (hard delete — class_members 없는 경우만 허용)
+export async function hardDeleteClass(classId: string): Promise<ActionResult> {
+  const supabase      = await createClient()
+  const adminSupabase = createAdminClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: '인증이 필요합니다.' }
+
+  const role = user.user_metadata?.role as string | undefined
+  if (role !== 'teacher') return { success: false, error: '선생님만 분반을 삭제할 수 있습니다.' }
+
+  const { count } = await adminSupabase
+    .from('class_members')
+    .select('*', { count: 'exact', head: true })
+    .eq('class_id', classId)
+
+  if ((count ?? 0) > 0) {
+    return { success: false, error: '학생이 있는 분반은 완전 삭제할 수 없습니다. 학생을 모두 제거한 후 다시 시도해주세요.' }
+  }
+
+  const { error } = await adminSupabase
+    .from('class_groups')
+    .delete()
     .eq('id', classId)
 
   if (error) return { success: false, error: `분반 삭제 실패: ${error.message}` }
