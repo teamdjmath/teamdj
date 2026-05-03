@@ -1,15 +1,29 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 
+const LS_KEY = 'teamdj_dday_target'
+
 interface DdayCardProps {
-  defaultDate: string // YYYY-MM-DD
+  defaultDate: string
 }
 
 export function DdayCard({ defaultDate }: DdayCardProps) {
   const [targetDate, setTargetDate] = useState(defaultDate)
   const [editing, setEditing] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem(LS_KEY)
+    if (saved) setTargetDate(saved)
+    setMounted(true)
+  }, [])
+
+  function handleChange(date: string) {
+    setTargetDate(date)
+    localStorage.setItem(LS_KEY, date)
+  }
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -17,18 +31,15 @@ export function DdayCard({ defaultDate }: DdayCardProps) {
   target.setHours(0, 0, 0, 0)
   const diff = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 
-  const label =
-    diff > 0 ? `D-${diff}` : diff === 0 ? 'D-DAY' : `D+${Math.abs(diff)}`
+  const label = diff > 0 ? `D-${diff}` : diff === 0 ? 'D-DAY' : `D+${Math.abs(diff)}`
+  const targetStr = target.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
 
-  const targetStr = target.toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  if (!mounted) return (
+    <div className="h-[100px] rounded-2xl border border-zinc-200 bg-white animate-pulse" />
+  )
 
   return (
     <Card className="relative overflow-hidden">
-      {/* 배경 장식 */}
       <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-zinc-100 opacity-60" />
       <div className="absolute -right-2 -top-2 h-16 w-16 rounded-full bg-zinc-200 opacity-40" />
 
@@ -47,14 +58,13 @@ export function DdayCard({ defaultDate }: DdayCardProps) {
             {editing ? '닫기' : '날짜 변경'}
           </button>
         </div>
-
         {editing && (
           <div className="mt-4">
             <input
               type="date"
               value={targetDate}
-              onChange={(e) => setTargetDate(e.target.value)}
-              className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none w-full"
+              onChange={(e) => handleChange(e.target.value)}
+              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
             />
           </div>
         )}
