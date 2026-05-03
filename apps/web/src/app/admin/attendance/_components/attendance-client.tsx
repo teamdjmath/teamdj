@@ -120,7 +120,7 @@ export function AttendanceClient({
 
     startTransition(async () => {
       const res = await saveAttendance(selectedClassId, selectedDate, entries)
-      if (res.error) {
+      if (!res.success) {
         setSaveResult(`오류: ${res.error}`)
       } else {
         setSaveResult(`✓ ${res.savedCount}명 저장 완료`)

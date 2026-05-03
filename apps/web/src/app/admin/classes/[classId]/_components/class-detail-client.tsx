@@ -33,7 +33,7 @@ export function ClassDetailClient({
     if (!confirm(`"${name}" 학생을 이 반에서 제거하시겠습니까?`)) return
     startTransition(async () => {
       const res = await removeStudentFromClass(classId, studentId)
-      if (res.error) alert(res.error)
+      if (!res.success) alert(res.error)
       else router.refresh()
     })
   }

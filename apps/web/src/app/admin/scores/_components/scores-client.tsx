@@ -93,7 +93,7 @@ export function ScoresClient({ classOptions, classStudentsMap, selectedClassId, 
         subjQ: createForm.subjQ ? parseInt(createForm.subjQ) : undefined,
         difficulty: createForm.difficulty || undefined,
       })
-      if (result.error) { setCreateErr(result.error); return }
+      if (!result.success) { setCreateErr(result.error); return }
       setCreateOpen(false)
       router.refresh()
     })

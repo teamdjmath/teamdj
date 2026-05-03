@@ -30,7 +30,7 @@ export function ClassesClient({ classes }: { classes: ClassRow[] }) {
     const fd = new FormData(e.currentTarget)
     startTransition(async () => {
       const res = await createClass(fd)
-      if (res.error) { setError(res.error); return }
+      if (!res.success) { setError(res.error); return }
       setCreateOpen(false)
       router.refresh()
     })
@@ -42,7 +42,7 @@ export function ClassesClient({ classes }: { classes: ClassRow[] }) {
     const fd = new FormData(e.currentTarget)
     startTransition(async () => {
       const res = await updateClass(fd)
-      if (res.error) { setError(res.error); return }
+      if (!res.success) { setError(res.error); return }
       setEditTarget(null)
       router.refresh()
     })
@@ -52,7 +52,7 @@ export function ClassesClient({ classes }: { classes: ClassRow[] }) {
     if (!confirm(`"${name}" 분반을 비활성화하시겠습니까?`)) return
     startTransition(async () => {
       const res = await deleteClass(classId)
-      if (res.error) alert(res.error)
+      if (!res.success) alert(res.error)
       else router.refresh()
     })
   }

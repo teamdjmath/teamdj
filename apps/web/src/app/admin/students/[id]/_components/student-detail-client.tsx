@@ -53,7 +53,7 @@ export function StudentDetailClient({
     const fd = new FormData(e.currentTarget)
     startTransition(async () => {
       const res = await updateStudent(fd)
-      if (res.error) setInfoError(res.error)
+      if (!res.success) setInfoError(res.error)
       else router.refresh()
     })
   }
@@ -72,7 +72,7 @@ export function StudentDetailClient({
         currentClass?.classId ?? null,
         newClassId,
       )
-      if (res.error) setClassError(res.error)
+      if (!res.success) setClassError(res.error)
       else router.refresh()
     })
   }
@@ -87,7 +87,7 @@ export function StudentDetailClient({
     const fd = new FormData(e.currentTarget)
     startTransition(async () => {
       const res = await linkParent(fd)
-      if (res.error) { setParentError(res.error); return }
+      if (!res.success) { setParentError(res.error); return }
       setParentOpen(false)
       router.refresh()
     })
@@ -97,7 +97,7 @@ export function StudentDetailClient({
     if (!confirm(`${name} 학부모 연결을 해제하시겠습니까?`)) return
     startTransition(async () => {
       const res = await unlinkParent(linkId, student.id)
-      if (res.error) alert(res.error)
+      if (!res.success) alert(res.error)
       else router.refresh()
     })
   }

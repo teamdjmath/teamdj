@@ -82,7 +82,7 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
         modal?.type === 'edit'
           ? await updateNotice(modal.notice.id, data)
           : await createNotice(data)
-      if (result?.error) { setErr(result.error); return }
+      if (!result.success) { setErr(result.error); return }
       setModal(null)
       router.refresh()
     })

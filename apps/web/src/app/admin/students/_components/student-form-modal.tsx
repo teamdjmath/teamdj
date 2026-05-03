@@ -27,7 +27,7 @@ export function StudentFormModal({
     const fd = new FormData(e.currentTarget)
     startTransition(async () => {
       const res = await createStudent(fd)
-      if (res.error) { setError(res.error); return }
+      if (!res.success) { setError(res.error); return }
       onClose()
       router.refresh()
     })

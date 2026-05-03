@@ -87,7 +87,7 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments }
         modal?.type === 'edit'
           ? await updateAssignment(modal.assignment.id, data)
           : await createAssignment(data)
-      if (result?.error) { setErr(result.error); return }
+      if (!result.success) { setErr(result.error); return }
       setModal(null)
       router.refresh()
     })

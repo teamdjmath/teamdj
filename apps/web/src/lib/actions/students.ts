@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
-export type ActionResult = { error?: string }
+export type ActionResult = { success: true } | { success: false; error: string }
 
 export type StudentBulkRow = {
   name: string
@@ -18,7 +18,6 @@ export type BulkResult = {
   failed: Array<{ name: string; phone: string; reason: string }>
 }
 
-// 전화번호 → Supabase Auth 이메일 포맷
 function toAuthEmail(phone: string) {
   return `${phone.replace(/\D/g, '')}@teamdj.com`
 }
@@ -29,47 +28,44 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
   const adminSupabase = createAdminClient()
 
   const { data: { user: caller } } = await supabase.auth.getUser()
-  if (!caller) return { error: '인증이 필요합니다.' }
+  if (!caller) return { success: false, error: '인증이 필요합니다.' }
 
   const name     = (formData.get('name')     as string).trim()
   const phone    = (formData.get('phone')    as string).trim()
   const password = formData.get('password') as string
   const classId  = formData.get('classId')  as string | null
 
-  if (!name || !phone || !password) return { error: '필수 항목을 입력해주세요.' }
+  if (!name || !phone || !password) return { success: false, error: '필수 항목을 입력해주세요.' }
 
   const email = toAuthEmail(phone)
 
-  // 1. Supabase Auth 계정 생성
+  // 1. Supabase Auth 계정 생성 (phone을 metadata에 포함해야 트리거가 phone을 올바르게 INSERT)
   const { data: authData, error: authErr } = await adminSupabase.auth.admin.createUser({
     email,
     password,
-    email_confirm: true,         // 이메일 확인 생략
-    user_metadata: { name, role: 'student' },
+    email_confirm: true,
+    user_metadata: { name, role: 'student', phone },
   })
 
   if (authErr) {
     if (authErr.message.includes('already been registered')) {
-      return { error: '이미 등록된 전화번호입니다.' }
+      return { success: false, error: '이미 등록된 전화번호입니다.' }
     }
-    return { error: `계정 생성 실패: ${authErr.message}` }
+    return { success: false, error: `계정 생성 실패: ${authErr.message}` }
   }
 
   const userId = authData.user.id
 
-  // 2. public.users insert (RLS bypass — admin client 사용)
-  const { error: userErr } = await adminSupabase.from('users').insert({
-    id:   userId,
-    phone,
-    name,
-    role: 'student',
-    password_hash: 'managed_by_supabase_auth',
-  })
+  // 2. public.users upsert
+  //    트리거가 auth.users INSERT 직후 public.users에 먼저 INSERT하므로 upsert로 처리
+  const { error: userErr } = await adminSupabase.from('users').upsert(
+    { id: userId, phone, name, role: 'student' },
+    { onConflict: 'id' },
+  )
 
   if (userErr) {
-    // 롤백: auth 유저 삭제
     await adminSupabase.auth.admin.deleteUser(userId)
-    return { error: '학생 정보 저장에 실패했습니다.' }
+    return { success: false, error: `학생 정보 저장 실패: ${userErr.message}` }
   }
 
   // 3. class_members insert
@@ -79,13 +75,12 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
       student_id: userId,
     })
     if (memberErr) {
-      // 반 배정 실패는 치명적이지 않으므로 경고만 (계정은 이미 생성됨)
-      console.error('class_members insert error:', memberErr)
+      console.error('class_members insert error:', memberErr.message)
     }
   }
 
   revalidatePath('/admin/students')
-  return {}
+  return { success: true }
 }
 
 // ── 학생 일괄 등록 (엑셀)
@@ -96,9 +91,10 @@ export async function bulkCreateStudents(
   const adminSupabase = createAdminClient()
 
   const { data: { user: caller } } = await supabase.auth.getUser()
-  if (!caller) return { succeeded: 0, failed: rows.map((r) => ({ name: r.name, phone: r.phone, reason: '인증 필요' })) }
+  if (!caller) {
+    return { succeeded: 0, failed: rows.map((r) => ({ name: r.name, phone: r.phone, reason: '인증 필요' })) }
+  }
 
-  // 분반 이름 → ID 매핑 (한 번만 조회)
   const classNames = [...new Set(rows.map((r) => r.className).filter(Boolean))]
   const { data: classes } = await adminSupabase
     .from('class_groups')
@@ -121,7 +117,7 @@ export async function bulkCreateStudents(
           email,
           password: row.password,
           email_confirm: true,
-          user_metadata: { name: row.name, role: 'student' },
+          user_metadata: { name: row.name, role: 'student', phone: row.phone },
         })
 
       if (authErr) {
@@ -131,17 +127,14 @@ export async function bulkCreateStudents(
 
       const userId = authData.user.id
 
-      const { error: userErr } = await adminSupabase.from('users').insert({
-        id:   userId,
-        phone: row.phone,
-        name: row.name,
-        role: 'student',
-        password_hash: 'managed_by_supabase_auth',
-      })
+      const { error: userErr } = await adminSupabase.from('users').upsert(
+        { id: userId, phone: row.phone, name: row.name, role: 'student' },
+        { onConflict: 'id' },
+      )
 
       if (userErr) {
         await adminSupabase.auth.admin.deleteUser(userId)
-        failed.push({ name: row.name, phone: row.phone, reason: '정보 저장 실패' })
+        failed.push({ name: row.name, phone: row.phone, reason: `정보 저장 실패: ${userErr.message}` })
         continue
       }
 
@@ -169,27 +162,27 @@ export async function updateStudent(formData: FormData): Promise<ActionResult> {
   const adminSupabase = createAdminClient()
 
   const { data: { user: caller } } = await supabase.auth.getUser()
-  if (!caller) return { error: '인증이 필요합니다.' }
+  if (!caller) return { success: false, error: '인증이 필요합니다.' }
 
   const studentId = formData.get('studentId') as string
   const name      = (formData.get('name')  as string).trim()
   const phone     = (formData.get('phone') as string).trim()
 
-  if (!studentId || !name || !phone) return { error: '필수 항목을 입력해주세요.' }
+  if (!studentId || !name || !phone) return { success: false, error: '필수 항목을 입력해주세요.' }
 
   const { error } = await adminSupabase
     .from('users')
     .update({ name, phone })
     .eq('id', studentId)
 
-  if (error) return { error: '학생 정보 수정에 실패했습니다.' }
+  if (error) return { success: false, error: `학생 정보 수정 실패: ${error.message}` }
 
   revalidatePath('/admin/students')
   revalidatePath(`/admin/students/${studentId}`)
-  return {}
+  return { success: true }
 }
 
-// ── 분반 변경 (기존 비활성화 → 새 반 추가)
+// ── 분반 변경
 export async function changeStudentClass(
   studentId: string,
   oldClassId: string | null,
@@ -199,9 +192,8 @@ export async function changeStudentClass(
   const adminSupabase = createAdminClient()
 
   const { data: { user: caller } } = await supabase.auth.getUser()
-  if (!caller) return { error: '인증이 필요합니다.' }
+  if (!caller) return { success: false, error: '인증이 필요합니다.' }
 
-  // 기존 반 비활성화
   if (oldClassId) {
     await adminSupabase
       .from('class_members')
@@ -210,7 +202,6 @@ export async function changeStudentClass(
       .eq('class_id', oldClassId)
   }
 
-  // 새 반 추가 (이미 있으면 재활성화)
   const { data: existing } = await adminSupabase
     .from('class_members')
     .select('id')
@@ -219,19 +210,21 @@ export async function changeStudentClass(
     .single()
 
   if (existing) {
-    await adminSupabase
+    const { error } = await adminSupabase
       .from('class_members')
       .update({ is_active: true })
       .eq('id', existing.id)
+    if (error) return { success: false, error: `분반 변경 실패: ${error.message}` }
   } else {
-    await adminSupabase.from('class_members').insert({
+    const { error } = await adminSupabase.from('class_members').insert({
       class_id:   newClassId,
       student_id: studentId,
     })
+    if (error) return { success: false, error: `분반 배정 실패: ${error.message}` }
   }
 
   revalidatePath(`/admin/students/${studentId}`)
-  return {}
+  return { success: true }
 }
 
 // ── 학부모 연결
@@ -240,14 +233,13 @@ export async function linkParent(formData: FormData): Promise<ActionResult> {
   const adminSupabase = createAdminClient()
 
   const { data: { user: caller } } = await supabase.auth.getUser()
-  if (!caller) return { error: '인증이 필요합니다.' }
+  if (!caller) return { success: false, error: '인증이 필요합니다.' }
 
   const studentId   = formData.get('studentId')   as string
   const parentPhone = (formData.get('parentPhone') as string).trim()
 
-  if (!studentId || !parentPhone) return { error: '필수 항목을 입력해주세요.' }
+  if (!studentId || !parentPhone) return { success: false, error: '필수 항목을 입력해주세요.' }
 
-  // 전화번호로 학부모 유저 조회
   const { data: parent } = await adminSupabase
     .from('users')
     .select('id')
@@ -255,7 +247,7 @@ export async function linkParent(formData: FormData): Promise<ActionResult> {
     .eq('role', 'parent')
     .single()
 
-  if (!parent) return { error: '등록된 학부모 계정을 찾을 수 없습니다.' }
+  if (!parent) return { success: false, error: '등록된 학부모 계정을 찾을 수 없습니다.' }
 
   const { error } = await adminSupabase.from('parent_links').insert({
     parent_id:  parent.id,
@@ -263,12 +255,12 @@ export async function linkParent(formData: FormData): Promise<ActionResult> {
   })
 
   if (error) {
-    if (error.code === '23505') return { error: '이미 연결된 학부모입니다.' }
-    return { error: '학부모 연결에 실패했습니다.' }
+    if (error.code === '23505') return { success: false, error: '이미 연결된 학부모입니다.' }
+    return { success: false, error: `학부모 연결 실패: ${error.message}` }
   }
 
   revalidatePath(`/admin/students/${studentId}`)
-  return {}
+  return { success: true }
 }
 
 // ── 학부모 연결 해제
@@ -280,15 +272,15 @@ export async function unlinkParent(
   const adminSupabase = createAdminClient()
 
   const { data: { user: caller } } = await supabase.auth.getUser()
-  if (!caller) return { error: '인증이 필요합니다.' }
+  if (!caller) return { success: false, error: '인증이 필요합니다.' }
 
   const { error } = await adminSupabase
     .from('parent_links')
     .delete()
     .eq('id', linkId)
 
-  if (error) return { error: '연결 해제에 실패했습니다.' }
+  if (error) return { success: false, error: `연결 해제 실패: ${error.message}` }
 
   revalidatePath(`/admin/students/${studentId}`)
-  return {}
+  return { success: true }
 }

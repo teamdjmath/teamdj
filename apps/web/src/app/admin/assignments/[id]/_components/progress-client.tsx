@@ -60,7 +60,7 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
     }))
     startTransition(async () => {
       const result = await saveProgress(assignmentId, dueDate, entries)
-      if (result.error) {
+      if (!result.success) {
         setIsError(true)
         setResultMsg(result.error)
       } else {

@@ -12,7 +12,9 @@ export type AttendanceEntry = {
   absenceReason?: string
 }
 
-export type SaveResult = { error?: string; savedCount?: number }
+export type SaveResult =
+  | { success: true;  savedCount: number }
+  | { success: false; error: string }
 
 // ── 출결 일괄 저장 (upsert)
 export async function saveAttendance(
@@ -24,12 +26,12 @@ export async function saveAttendance(
   const adminSupabase = createAdminClient()
 
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: '인증이 필요합니다.' }
+  if (!user) return { success: false, error: '인증이 필요합니다.' }
 
   const role = user.user_metadata?.role as string | undefined
-  if (role !== 'teacher' && role !== 'ta') return { error: '권한이 없습니다.' }
+  if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
 
-  if (!entries.length) return { error: '저장할 출결 데이터가 없습니다.' }
+  if (!entries.length) return { success: false, error: '저장할 출결 데이터가 없습니다.' }
 
   const rows = entries.map((e) => ({
     class_id:       classId,
@@ -46,8 +48,8 @@ export async function saveAttendance(
       count: 'exact',
     })
 
-  if (error) return { error: `저장에 실패했습니다: ${error.message}` }
+  if (error) return { success: false, error: `저장 실패: ${error.message}` }
 
   revalidatePath('/admin/attendance')
-  return { savedCount: count ?? rows.length }
+  return { success: true, savedCount: count ?? rows.length }
 }
