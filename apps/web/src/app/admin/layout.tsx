@@ -101,6 +101,35 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    href: '/admin/exam-results',
+    label: '특별 시험',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9 2 2 4-4" />
+      </svg>
+    ),
+  },
+  {
+    href: '/admin/messages',
+    label: '쪽지 발송',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
+      </svg>
+    ),
+  },
+  {
+    href: '/admin/staff',
+    label: '근무 상태',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+        <circle cx="12" cy="8" r="4" strokeLinecap="round" strokeLinejoin="round" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+        <circle cx="19" cy="7" r="2.5" fill="currentColor" className="text-emerald-400" stroke="none" />
+      </svg>
+    ),
+  },
 ] as const
 
 export type NavItem = (typeof NAV_ITEMS)[number]
