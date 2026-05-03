@@ -1,13 +1,15 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
 export type ActionResult = { error?: string }
 
 // ── 분반 생성
 export async function createClass(formData: FormData): Promise<ActionResult> {
-  const supabase = await createClient()
+  const supabase      = await createClient()
+  const adminSupabase = createAdminClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: '인증이 필요합니다.' }
@@ -22,7 +24,7 @@ export async function createClass(formData: FormData): Promise<ActionResult> {
 
   if (!name || !subject || !grade) return { error: '필수 항목을 입력해주세요.' }
 
-  const { error } = await supabase.from('class_groups').insert({
+  const { error } = await adminSupabase.from('class_groups').insert({
     name,
     subject,
     grade,
@@ -30,7 +32,7 @@ export async function createClass(formData: FormData): Promise<ActionResult> {
     teacher_id: user.id,
   })
 
-  if (error) return { error: '분반 생성에 실패했습니다.' }
+  if (error) return { error: `분반 생성에 실패했습니다: ${error.message}` }
 
   revalidatePath('/admin/classes')
   return {}
@@ -38,7 +40,8 @@ export async function createClass(formData: FormData): Promise<ActionResult> {
 
 // ── 분반 수정
 export async function updateClass(formData: FormData): Promise<ActionResult> {
-  const supabase = await createClient()
+  const supabase      = await createClient()
+  const adminSupabase = createAdminClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: '인증이 필요합니다.' }
@@ -52,12 +55,12 @@ export async function updateClass(formData: FormData): Promise<ActionResult> {
 
   if (!classId || !name || !subject || !grade) return { error: '필수 항목을 입력해주세요.' }
 
-  const { error } = await supabase
+  const { error } = await adminSupabase
     .from('class_groups')
     .update({ name, subject, grade, schedule, is_active: isActive })
     .eq('id', classId)
 
-  if (error) return { error: '분반 수정에 실패했습니다.' }
+  if (error) return { error: `분반 수정에 실패했습니다: ${error.message}` }
 
   revalidatePath('/admin/classes')
   revalidatePath(`/admin/classes/${classId}`)
@@ -66,7 +69,8 @@ export async function updateClass(formData: FormData): Promise<ActionResult> {
 
 // ── 분반 삭제 (soft delete)
 export async function deleteClass(classId: string): Promise<ActionResult> {
-  const supabase = await createClient()
+  const supabase      = await createClient()
+  const adminSupabase = createAdminClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: '인증이 필요합니다.' }
@@ -74,12 +78,12 @@ export async function deleteClass(classId: string): Promise<ActionResult> {
   const role = user.user_metadata?.role as string | undefined
   if (role !== 'teacher') return { error: '선생님만 분반을 삭제할 수 있습니다.' }
 
-  const { error } = await supabase
+  const { error } = await adminSupabase
     .from('class_groups')
     .update({ is_active: false })
     .eq('id', classId)
 
-  if (error) return { error: '분반 삭제에 실패했습니다.' }
+  if (error) return { error: `분반 삭제에 실패했습니다: ${error.message}` }
 
   revalidatePath('/admin/classes')
   return {}
@@ -90,18 +94,19 @@ export async function removeStudentFromClass(
   classId: string,
   studentId: string,
 ): Promise<ActionResult> {
-  const supabase = await createClient()
+  const supabase      = await createClient()
+  const adminSupabase = createAdminClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: '인증이 필요합니다.' }
 
-  const { error } = await supabase
+  const { error } = await adminSupabase
     .from('class_members')
     .update({ is_active: false })
     .eq('class_id', classId)
     .eq('student_id', studentId)
 
-  if (error) return { error: '학생 제거에 실패했습니다.' }
+  if (error) return { error: `학생 제거에 실패했습니다: ${error.message}` }
 
   revalidatePath(`/admin/classes/${classId}`)
   return {}

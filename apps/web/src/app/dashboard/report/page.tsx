@@ -27,10 +27,10 @@ export default async function ReportPage() {
       .order('test_date', { ascending: true })
       .limit(10),
     supabase
-      .from('attendance')
+      .from('attendance_logs')
       .select('status')
       .eq('student_id', userId)
-      .gte('date', THIRTY_DAYS_AGO),
+      .gte('session_date', THIRTY_DAYS_AGO),
   ])
 
   const reports = reportsResult.data ?? []

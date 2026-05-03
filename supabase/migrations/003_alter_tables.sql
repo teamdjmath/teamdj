@@ -42,3 +42,49 @@ alter table public.push_messages
 
 alter table public.push_messages
   rename column sent_at           to created_at;
+
+-- 컬럼 이름 변경 후 기존 RLS 정책은 old 컬럼명을 참조하므로 재생성
+drop policy if exists "push_messages: 역할별 조회"    on public.push_messages;
+drop policy if exists "push_messages: teacher·ta만 생성" on public.push_messages;
+drop policy if exists "push_messages: teacher·ta만 수정" on public.push_messages;
+drop policy if exists "push_messages: teacher·ta만 삭제" on public.push_messages;
+
+create policy "push_messages: 역할별 조회"
+  on public.push_messages for select using (
+    get_my_role() in ('teacher', 'ta')
+    or (get_my_role() = 'student' and (
+          student_id = auth.uid()
+          or (class_id is not null and i_am_in_class(class_id))
+        ))
+    or (get_my_role() = 'parent' and (
+          is_my_child(student_id)
+          or (class_id is not null and my_child_is_in_class(class_id))
+        ))
+  );
+
+create policy "push_messages: teacher·ta만 생성"
+  on public.push_messages for insert with check (
+    get_my_role() = 'teacher'
+    or (get_my_role() = 'ta' and (
+          class_id is null
+          or ta_has_class_access(class_id)
+        ))
+  );
+
+create policy "push_messages: teacher·ta만 수정"
+  on public.push_messages for update using (
+    get_my_role() = 'teacher'
+    or (get_my_role() = 'ta' and (
+          class_id is null
+          or ta_has_class_access(class_id)
+        ))
+  );
+
+create policy "push_messages: teacher·ta만 삭제"
+  on public.push_messages for delete using (
+    get_my_role() = 'teacher'
+    or (get_my_role() = 'ta' and (
+          class_id is null
+          or ta_has_class_access(class_id)
+        ))
+  );

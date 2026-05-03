@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
 export type AttendanceStatus = 'present' | 'absent' | 'late'
@@ -19,7 +20,8 @@ export async function saveAttendance(
   sessionDate: string, // YYYY-MM-DD
   entries: AttendanceEntry[],
 ): Promise<SaveResult> {
-  const supabase = await createClient()
+  const supabase      = await createClient()
+  const adminSupabase = createAdminClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: '인증이 필요합니다.' }
@@ -37,14 +39,14 @@ export async function saveAttendance(
     absence_reason: e.absenceReason ?? null,
   }))
 
-  const { error, count } = await supabase
+  const { error, count } = await adminSupabase
     .from('attendance_logs')
     .upsert(rows, {
       onConflict: 'class_id,student_id,session_date',
       count: 'exact',
     })
 
-  if (error) return { error: '저장에 실패했습니다.' }
+  if (error) return { error: `저장에 실패했습니다: ${error.message}` }
 
   revalidatePath('/admin/attendance')
   return { savedCount: count ?? rows.length }

@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export type AuthState = {
   error: string | null
@@ -70,8 +71,9 @@ export async function signUp(
   }
 
   const supabase = await createClient()
+  const adminSupabase = createAdminClient()
 
-  const { error: signUpError } = await supabase.auth.signUp({
+  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -84,6 +86,17 @@ export async function signUp(
       return { error: '이미 사용 중인 이메일입니다.' }
     }
     return { error: '회원가입 중 오류가 발생했습니다.' }
+  }
+
+  // public.users에 삽입해야 get_my_role()이 정상 작동하고 RLS 통과 가능
+  if (signUpData.user) {
+    await adminSupabase.from('users').insert({
+      id:            signUpData.user.id,
+      name,
+      role,
+      phone:         null,
+      password_hash: 'managed_by_supabase_auth',
+    })
   }
 
   redirect('/login?registered=1')
