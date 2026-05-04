@@ -4,59 +4,82 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 type ClassOption = { id: string; name: string }
-type Report = {
-  id: string
-  report_date: string
-  image_url: string | null
-  kakao_sent_at: string | null
-  created_at: string
-  studentName: string
+type Session = {
+  classId: string
   className: string
+  date: string
+  total: number
+  sentCount: number
+  sampleImageUrl: string | null
 }
 
 interface Props {
   classOptions: ClassOption[]
   selectedClassId: string | null
-  reports: Report[]
+  selectedDate: string | null
+  sessions: Session[]
 }
 
-function formatDate(iso: string) {
-  const d = new Date(iso)
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
+function fmtDate(iso: string) {
+  const [, mm, dd] = iso.split('-')
+  return `${mm}.${dd}`
 }
 
-export function ReportsClient({ classOptions, selectedClassId, reports }: Props) {
+export function ReportsClient({ classOptions, selectedClassId, selectedDate, sessions }: Props) {
   const router = useRouter()
+
+  function nav(classId: string, date: string) {
+    const p = new URLSearchParams()
+    if (classId) p.set('classId', classId)
+    if (date)    p.set('date', date)
+    router.push(`/admin/reports?${p.toString()}`)
+  }
 
   return (
     <>
-      {/* 분반 필터 */}
-      <div className="mb-6 flex flex-wrap gap-2">
-        <button
-          onClick={() => router.push('/admin/reports')}
-          className={[
-            'rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors',
-            !selectedClassId ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200',
-          ].join(' ')}
-        >
-          전체
-        </button>
-        {classOptions.map((c) => (
+      {/* 필터 */}
+      <div className="mb-6 flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           <button
-            key={c.id}
-            onClick={() => router.push(`/admin/reports?classId=${c.id}`)}
+            onClick={() => nav('', selectedDate ?? '')}
             className={[
               'rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors',
-              selectedClassId === c.id ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200',
+              !selectedClassId ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200',
             ].join(' ')}
           >
-            {c.name}
+            전체
           </button>
-        ))}
+          {classOptions.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => nav(c.id, selectedDate ?? '')}
+              className={[
+                'rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors',
+                selectedClassId === c.id ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200',
+              ].join(' ')}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+        <input
+          type="date"
+          value={selectedDate ?? ''}
+          onChange={(e) => nav(selectedClassId ?? '', e.target.value)}
+          className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-zinc-400"
+        />
+        {(selectedClassId || selectedDate) && (
+          <button
+            onClick={() => nav('', '')}
+            className="rounded-full px-3.5 py-1.5 text-xs font-medium text-zinc-500 bg-zinc-100 hover:bg-zinc-200 transition-colors"
+          >
+            초기화
+          </button>
+        )}
       </div>
 
-      {/* 리포트 목록 */}
-      {reports.length === 0 ? (
+      {/* 세션 목록 */}
+      {sessions.length === 0 ? (
         <div className="rounded-xl border border-zinc-200 bg-white py-20 text-center">
           <p className="text-sm text-zinc-400 mb-4">작성된 리포트가 없습니다.</p>
           <Link
@@ -68,19 +91,19 @@ export function ReportsClient({ classOptions, selectedClassId, reports }: Props)
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {reports.map((r) => (
+          {sessions.map((s) => (
             <Link
-              key={r.id}
-              href={`/admin/reports/${r.id}`}
-              className="group rounded-xl border border-zinc-200 bg-white overflow-hidden hover:border-zinc-400 hover:shadow-sm transition-all"
+              key={`${s.date}__${s.classId}`}
+              href={`/admin/reports/session/${s.classId}/${s.date}`}
+              className="group rounded-xl border border-zinc-200 bg-white overflow-hidden hover:border-zinc-300 hover:shadow-sm transition-all"
             >
               {/* 썸네일 */}
-              <div className="aspect-[4/3] bg-zinc-100 overflow-hidden">
-                {r.image_url ? (
+              <div className="aspect-4/3 bg-zinc-100 overflow-hidden relative">
+                {s.sampleImageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={r.image_url}
-                    alt="리포트 이미지"
+                    src={s.sampleImageUrl}
+                    alt="리포트 썸네일"
                     className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
                   />
                 ) : (
@@ -90,30 +113,32 @@ export function ReportsClient({ classOptions, selectedClassId, reports }: Props)
                     </svg>
                   </div>
                 )}
+                <div className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white">
+                  {s.total}명
+                </div>
               </div>
 
               {/* 정보 */}
               <div className="p-3">
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center justify-between gap-2">
                   <div>
-                    <p className="font-semibold text-sm text-zinc-900">{r.studentName}</p>
-                    <p className="text-xs text-zinc-500 mt-0.5">{r.className} · {r.report_date}</p>
+                    <p className="font-semibold text-sm text-zinc-900">{fmtDate(s.date)} · {s.className}</p>
+                    <p className="text-xs text-zinc-400 mt-0.5">{s.date}</p>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
-                    {r.kakao_sent_at ? (
-                      <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-[10px] font-medium text-white">
-                        발송 완료
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500">
-                        미발송
-                      </span>
-                    )}
-                  </div>
+                  {s.sentCount === s.total && s.total > 0 ? (
+                    <span className="shrink-0 rounded-full bg-zinc-900 px-2 py-0.5 text-[10px] font-medium text-white">
+                      전체 발송 완료
+                    </span>
+                  ) : s.sentCount > 0 ? (
+                    <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-600">
+                      {s.sentCount}/{s.total} 발송
+                    </span>
+                  ) : (
+                    <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500">
+                      미발송
+                    </span>
+                  )}
                 </div>
-                {r.kakao_sent_at && (
-                  <p className="mt-1 text-[10px] text-zinc-400">{formatDate(r.kakao_sent_at)} 발송</p>
-                )}
               </div>
             </Link>
           ))}

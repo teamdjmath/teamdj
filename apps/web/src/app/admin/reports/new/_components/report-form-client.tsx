@@ -1,25 +1,28 @@
 'use client'
 
+import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { useState, useTransition, useRef } from 'react'
-import { SelectField, InputField } from '@/components/ui/form-field'
-import { Modal } from '@/components/ui/modal'
 import { ReportCard } from '../../_components/report-card'
-import { saveReport } from '@/lib/actions/reports'
+import { saveBatchReports } from '@/lib/actions/reports'
 import type { ReportContent } from '@/lib/actions/reports'
 import type { ReportCardData } from '../../_components/report-card'
 
 type ClassOption = { id: string; name: string }
-type Student = { id: string; name: string }
+type StudentData = {
+  id: string
+  name: string
+  attendance: 'present' | 'late' | 'absent' | null
+  recentScore: { score: number; title: string; examType: string; date: string } | null
+  avgAssignmentPct: number
+}
+type Attendance = 'present' | 'late' | 'absent' | ''
 
 interface Props {
   classOptions: ClassOption[]
-  students: Student[]
+  students: StudentData[]
   selectedClassId: string | null
-  selectedStudentId: string | null
-  studentName: string
+  selectedSessionDate: string | null
   className: string
-  autoData: Pick<ReportContent, 'recentScores' | 'attendanceSummary' | 'avgAssignmentPct'> | null
 }
 
 const TODAY = new Date().toISOString().split('T')[0]
@@ -28,295 +31,320 @@ export function ReportFormClient({
   classOptions,
   students,
   selectedClassId,
-  selectedStudentId,
-  studentName,
+  selectedSessionDate,
   className,
-  autoData,
 }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
-  const [errMsg, setErrMsg] = useState('')
-  const [previewOpen, setPreviewOpen] = useState(false)
-  const [capturing, setCapturing] = useState(false)
 
-  const [form, setForm] = useState({
-    studyContent: '',
-    homework: '',
-    notes: '',
-    announcement: '',
-    reportDate: TODAY,
-  })
+  const [common, setCommon] = useState({ studyContent: '', homework: '', announcement: '' })
+  const [perStudent, setPerStudent] = useState<Record<string, { att: Attendance; notes: string }>>(
+    () => Object.fromEntries(
+      students.map((s) => [s.id, { att: (s.attendance ?? '') as Attendance, notes: '' }]),
+    ),
+  )
+  const [progress, setProgress] = useState<{ cur: number; total: number } | null>(null)
+  const [done, setDone] = useState<number | null>(null)
+  const [err, setErr] = useState('')
 
-  const cardRef = useRef<HTMLDivElement | null>(null)
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
-  function handleClassChange(classId: string) {
+  function nav(classId: string, date: string) {
     const p = new URLSearchParams()
     if (classId) p.set('classId', classId)
+    if (date) p.set('sessionDate', date)
     router.push(`/admin/reports/new?${p.toString()}`)
   }
 
-  function handleStudentChange(studentId: string) {
-    const p = new URLSearchParams()
-    if (selectedClassId) p.set('classId', selectedClassId)
-    if (studentId) p.set('studentId', studentId)
-    router.push(`/admin/reports/new?${p.toString()}`)
+  function buildCardData(s: StudentData): ReportCardData {
+    const sd = perStudent[s.id] ?? { att: (s.attendance ?? '') as Attendance, notes: '' }
+    return {
+      studentName: s.name,
+      className,
+      reportDate: selectedSessionDate ?? TODAY,
+      content: {
+        studyContent:     common.studyContent    ?? '',
+        homework:         common.homework        ?? '',
+        announcement:     common.announcement    ?? '',
+        notes:            sd.notes               ?? '',
+        todayAttendance:  (sd.att || null) as ReportContent['todayAttendance'],
+        recentScore:      s.recentScore,
+        avgAssignmentPct: s.avgAssignmentPct,
+      },
+    }
   }
-
-  const cardData: ReportCardData | null =
-    selectedClassId && selectedStudentId && autoData
-      ? {
-          studentName,
-          className,
-          reportDate: form.reportDate,
-          content: {
-            studyContent: form.studyContent,
-            homework: form.homework,
-            notes: form.notes,
-            announcement: form.announcement,
-            recentScores: autoData.recentScores,
-            attendanceSummary: autoData.attendanceSummary,
-            avgAssignmentPct: autoData.avgAssignmentPct,
-          },
-        }
-      : null
 
   async function handleSave() {
-    if (!cardData || !selectedClassId || !selectedStudentId) {
-      setErrMsg('분반과 학생을 선택하세요.')
-      return
-    }
-    if (!form.studyContent.trim()) {
-      setErrMsg('이번 시간 학습 내용을 입력하세요.')
-      return
-    }
-    setErrMsg('')
-    setCapturing(true)
+    if (!selectedClassId || !selectedSessionDate) { setErr('분반과 날짜를 선택하세요.'); return }
+    if (!common.studyContent.trim()) { setErr('이번 시간 학습 내용을 입력하세요.'); return }
+    if (students.length === 0) { setErr('소속 학생이 없습니다.'); return }
+    setErr('')
+    setDone(null)
+    setProgress({ cur: 0, total: students.length })
 
     try {
       const { toPng } = await import('html-to-image')
-      if (!cardRef.current) throw new Error('카드 요소를 찾을 수 없습니다.')
+      const items: Parameters<typeof saveBatchReports>[0] = []
 
-      const dataUrl = await toPng(cardRef.current, {
-        quality: 1,
-        pixelRatio: 2,
-        backgroundColor: '#ffffff',
-      })
+      for (let i = 0; i < students.length; i++) {
+        const s = students[i]
+        setProgress({ cur: i + 1, total: students.length })
 
-      setCapturing(false)
+        const el = cardRefs.current.get(s.id)
+        if (!el) continue
+
+        const imageBase64 = await toPng(el, { quality: 1, pixelRatio: 2, backgroundColor: '#ffffff' })
+        const sd = perStudent[s.id] ?? { att: '', notes: '' }
+
+        items.push({
+          classId:     selectedClassId,
+          studentId:   s.id,
+          sessionDate: selectedSessionDate,
+          contentJson: {
+            studyContent:     common.studyContent,
+            homework:         common.homework,
+            announcement:     common.announcement,
+            notes:            sd.notes,
+            todayAttendance:  (sd.att || null) as ReportContent['todayAttendance'],
+            recentScore:      s.recentScore,
+            avgAssignmentPct: s.avgAssignmentPct,
+          },
+          imageBase64,
+        })
+      }
 
       startTransition(async () => {
-        const result = await saveReport({
-          classId: selectedClassId,
-          studentId: selectedStudentId,
-          reportDate: form.reportDate,
-          contentJson: cardData.content,
-          imageBase64: dataUrl,
-        })
-
-        if (result.error) {
-          setErrMsg(result.error)
-          return
-        }
-
-        router.push(`/admin/reports/${result.id}`)
+        const result = await saveBatchReports(items)
+        setProgress(null)
+        if (result.error) { setErr(result.error); return }
+        setDone(result.saved)
       })
     } catch (e) {
-      setCapturing(false)
-      setErrMsg(e instanceof Error ? e.message : '이미지 생성에 실패했습니다.')
+      setProgress(null)
+      setErr(e instanceof Error ? e.message : '이미지 생성 실패')
     }
   }
 
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* 왼쪽: 입력 폼 */}
-      <div className="space-y-5">
-        {/* 분반 + 학생 선택 */}
-        <div className="rounded-xl border border-zinc-200 bg-white p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-zinc-900">기본 정보</h2>
+  const showForm = !!(selectedClassId && selectedSessionDate)
 
-          <SelectField
-            label="분반"
-            required
+  return (
+    <div className="space-y-6">
+      {/* 분반 + 날짜 선택 */}
+      <div className="rounded-xl border border-zinc-200 bg-white p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium text-zinc-600">분반 *</label>
+          <select
             value={selectedClassId ?? ''}
-            onChange={(e) => handleClassChange(e.target.value)}
+            onChange={(e) => nav(e.target.value, selectedSessionDate ?? '')}
+            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
           >
             <option value="">선택하세요</option>
             {classOptions.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
-          </SelectField>
-
-          <SelectField
-            label="학생"
-            required
-            value={selectedStudentId ?? ''}
-            onChange={(e) => handleStudentChange(e.target.value)}
-            disabled={!selectedClassId || students.length === 0}
-          >
-            <option value="">{selectedClassId ? '선택하세요' : '분반을 먼저 선택하세요'}</option>
-            {students.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </SelectField>
-
-          <InputField
-            label="리포트 날짜"
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium text-zinc-600">수업 날짜 *</label>
+          <input
             type="date"
-            required
-            value={form.reportDate}
-            onChange={(e) => setForm((f) => ({ ...f, reportDate: e.target.value }))}
+            value={selectedSessionDate ?? ''}
+            onChange={(e) => nav(selectedClassId ?? '', e.target.value)}
+            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
           />
         </div>
-
-        {/* 자동 수집 데이터 요약 */}
-        {autoData && (
-          <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-5">
-            <h2 className="mb-3 text-sm font-semibold text-zinc-700">자동 수집 데이터</h2>
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="rounded-lg bg-white border border-zinc-200 py-3">
-                <div className="text-xl font-bold text-zinc-950">
-                  {autoData.recentScores.length > 0 ? Math.round(autoData.recentScores[0].score) : '-'}
-                </div>
-                <div className="text-[10px] text-zinc-500 mt-0.5">최근 점수</div>
-              </div>
-              <div className="rounded-lg bg-white border border-zinc-200 py-3">
-                <div className="text-xl font-bold text-zinc-950">
-                  {autoData.attendanceSummary.total > 0
-                    ? `${Math.round((autoData.attendanceSummary.present / autoData.attendanceSummary.total) * 100)}%`
-                    : '-'}
-                </div>
-                <div className="text-[10px] text-zinc-500 mt-0.5">출석률 (30일)</div>
-              </div>
-              <div className="rounded-lg bg-white border border-zinc-200 py-3">
-                <div className="text-xl font-bold text-zinc-950">{autoData.avgAssignmentPct}%</div>
-                <div className="text-[10px] text-zinc-500 mt-0.5">과제 완료율</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 리포트 내용 입력 */}
-        <div className="rounded-xl border border-zinc-200 bg-white p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-zinc-900">리포트 내용</h2>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700">
-              이번 시간 학습 내용 <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              rows={3}
-              value={form.studyContent}
-              onChange={(e) => setForm((f) => ({ ...f, studyContent: e.target.value }))}
-              placeholder="예: 수열과 급수 1단원 — 등차수열 개념 및 공식 학습"
-              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-sm resize-none focus:border-zinc-400 focus:bg-white focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700">다음 시간 과제</label>
-            <textarea
-              rows={2}
-              value={form.homework}
-              onChange={(e) => setForm((f) => ({ ...f, homework: e.target.value }))}
-              placeholder="예: 교재 p.52 1~15번"
-              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-sm resize-none focus:border-zinc-400 focus:bg-white focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700">특이사항</label>
-            <textarea
-              rows={2}
-              value={form.notes}
-              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              placeholder="예: 집중력이 크게 향상되었습니다."
-              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-sm resize-none focus:border-zinc-400 focus:bg-white focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700">공지사항</label>
-            <textarea
-              rows={2}
-              value={form.announcement}
-              onChange={(e) => setForm((f) => ({ ...f, announcement: e.target.value }))}
-              placeholder="예: 다음 주 금요일 모의고사가 있습니다."
-              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-sm resize-none focus:border-zinc-400 focus:bg-white focus:outline-none"
-            />
-          </div>
-        </div>
-
-        {errMsg && <p className="text-sm text-red-500">{errMsg}</p>}
-
-        {/* 액션 버튼 */}
-        <div className="flex gap-3">
-          <button
-            onClick={() => { if (cardData) setPreviewOpen(true) }}
-            disabled={!cardData}
-            className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-40"
-          >
-            미리보기
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!cardData || capturing || pending}
-            className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 transition-colors disabled:opacity-50"
-          >
-            {capturing ? '이미지 생성 중...' : pending ? '저장 중...' : '저장 및 완료'}
-          </button>
-        </div>
       </div>
 
-      {/* 오른쪽: 실시간 미리보기 */}
-      <div className="hidden lg:block">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-500">실시간 미리보기</h2>
-        {cardData ? (
-          <div className="overflow-x-auto">
-            <ReportCard data={cardData} cardRef={cardRef} />
-          </div>
-        ) : (
-          <div className="rounded-xl border border-dashed border-zinc-200 bg-zinc-50 flex items-center justify-center h-[400px]">
-            <p className="text-sm text-zinc-400">분반과 학생을 선택하면<br />미리보기가 표시됩니다.</p>
-          </div>
-        )}
-      </div>
+      {!showForm && (
+        <p className="text-center text-sm text-zinc-400 py-10">분반과 날짜를 선택하면 입력 폼이 표시됩니다.</p>
+      )}
 
-      {/* 미리보기 모달 (모바일용 + 저장 확인) */}
-      <Modal open={previewOpen} onClose={() => setPreviewOpen(false)} title="리포트 미리보기" size="lg">
-        {cardData && (
-          <div className="space-y-4">
-            <div className="overflow-x-auto max-h-[60vh] overflow-y-auto rounded-lg border border-zinc-200 bg-zinc-50 p-4">
-              {/* 모달 내 미리보기 (캡처는 데스크탑 cardRef 사용) */}
-              <ReportCard data={cardData} />
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPreviewOpen(false)}
-                className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
-              >
-                닫기
-              </button>
-              <button
-                onClick={() => { setPreviewOpen(false); handleSave() }}
-                disabled={capturing || pending}
-                className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 transition-colors disabled:opacity-50"
-              >
-                저장 및 완료
-              </button>
-            </div>
+      {showForm && (
+        <>
+          {/* 공통 입력 */}
+          <div className="rounded-xl border border-zinc-200 bg-white p-5 space-y-4">
+            <h2 className="text-sm font-semibold text-zinc-900">공통 내용</h2>
+            {[
+              { key: 'studyContent', label: '이번 시간 학습 내용', required: true, placeholder: '예: 수열과 급수 — 등차수열 개념 학습' },
+              { key: 'homework',     label: '다음 시간 과제',       required: false, placeholder: '예: 교재 p.52 1~15번' },
+              { key: 'announcement', label: '공지사항',             required: false, placeholder: '예: 다음 주 금요일 모의고사 예정' },
+            ].map(({ key, label, required, placeholder }) => (
+              <div key={key}>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-600">
+                  {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+                </label>
+                <textarea
+                  rows={key === 'studyContent' ? 3 : 2}
+                  value={common[key as keyof typeof common]}
+                  onChange={(e) => setCommon((f) => ({ ...f, [key]: e.target.value }))}
+                  placeholder={placeholder}
+                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-sm resize-none focus:border-zinc-400 focus:bg-white focus:outline-none"
+                />
+              </div>
+            ))}
           </div>
-        )}
-      </Modal>
 
-      {/* 저장용 숨겨진 카드 (모바일에서도 캡처 가능하게) */}
-      {cardData && (
-        <div
-          className="lg:hidden"
-          style={{ position: 'fixed', top: -9999, left: -9999, opacity: 0, pointerEvents: 'none' }}
-          aria-hidden="true"
-        >
-          <ReportCard data={cardData} cardRef={cardRef} />
-        </div>
+          {/* 학생별 입력 */}
+          <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
+            <div className="border-b border-zinc-100 bg-zinc-50 px-5 py-3 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-zinc-900">
+                  학생별 입력 <span className="text-zinc-400 font-normal">({students.length}명)</span>
+                </h2>
+                {students.some((s) => s.attendance !== null) && (
+                  <p className="text-[10px] text-zinc-400 mt-0.5">
+                    출석부에서 당일 출석 현황 자동 로드됨 · 직접 수정 가능
+                  </p>
+                )}
+                {students.length > 0 && students.every((s) => s.attendance === null) && (
+                  <p className="text-[10px] text-amber-500 mt-0.5">
+                    이 날짜의 출석 기록이 없습니다. 직접 입력하세요.
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setPerStudent((prev) =>
+                    Object.fromEntries(
+                      Object.entries(prev).map(([id, v]) => [id, { ...v, att: 'present' }]),
+                    ),
+                  )
+                }
+                className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors shrink-0"
+              >
+                전체 출석 처리
+              </button>
+            </div>
+            {students.length === 0 ? (
+              <p className="py-10 text-center text-sm text-zinc-400">소속 학생이 없습니다.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-100">
+                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-zinc-500">이름</th>
+                    <th className="px-5 py-2.5 text-center text-xs font-semibold text-zinc-500">출석</th>
+                    <th className="px-5 py-2.5 text-center text-xs font-semibold text-zinc-500 hidden sm:table-cell">최근 점수</th>
+                    <th className="px-5 py-2.5 text-center text-xs font-semibold text-zinc-500 hidden sm:table-cell">과제율</th>
+                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-zinc-500">특이사항</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-50">
+                  {students.map((s) => {
+                    const sd = perStudent[s.id] ?? { att: '', notes: '' }
+                    return (
+                      <tr key={s.id} className="hover:bg-zinc-50 transition-colors">
+                        <td className="px-5 py-2.5 font-medium text-zinc-900">{s.name}</td>
+                        <td className="px-5 py-2.5 text-center">
+                          <select
+                            value={sd.att}
+                            onChange={(e) =>
+                              setPerStudent((p) => ({
+                                ...p,
+                                [s.id]: { ...p[s.id]!, att: e.target.value as Attendance },
+                              }))
+                            }
+                            className={`rounded-lg border px-2 py-1 text-xs font-medium focus:outline-none ${
+                              sd.att === 'present'
+                                ? 'border-zinc-900 bg-zinc-900 text-white'
+                                : sd.att === 'late'
+                                  ? 'border-amber-400 bg-amber-50 text-amber-700'
+                                  : sd.att === 'absent'
+                                    ? 'border-red-300 bg-red-50 text-red-600'
+                                    : 'border-zinc-200 bg-zinc-50 text-zinc-400'
+                            }`}
+                          >
+                            <option value="">—</option>
+                            <option value="present">출석</option>
+                            <option value="late">지각</option>
+                            <option value="absent">결석</option>
+                          </select>
+                        </td>
+                        <td className="hidden sm:table-cell px-5 py-2.5 text-center text-xs text-zinc-500">
+                          {s.recentScore ? `${Math.round(s.recentScore.score)}점` : '—'}
+                        </td>
+                        <td className="hidden sm:table-cell px-5 py-2.5 text-center text-xs text-zinc-500">
+                          {s.avgAssignmentPct}%
+                        </td>
+                        <td className="px-5 py-2.5">
+                          <input
+                            type="text"
+                            value={sd.notes}
+                            onChange={(e) =>
+                              setPerStudent((p) => ({
+                                ...p,
+                                [s.id]: { ...p[s.id]!, notes: e.target.value },
+                              }))
+                            }
+                            placeholder="특이사항 (선택)"
+                            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-xs focus:border-zinc-400 focus:outline-none"
+                          />
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {err && <p className="text-sm text-red-500">{err}</p>}
+
+          {progress && (
+            <div className="rounded-xl border border-zinc-200 bg-white p-5 text-center space-y-3">
+              <p className="text-sm font-medium text-zinc-700">
+                이미지 생성 중… {progress.cur} / {progress.total}명
+              </p>
+              <div className="h-1.5 w-full rounded-full bg-zinc-100">
+                <div
+                  className="h-1.5 rounded-full bg-zinc-950 transition-all"
+                  style={{ width: `${(progress.cur / progress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {done !== null && (
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-5 text-center space-y-3">
+              <p className="text-sm font-semibold text-zinc-900">
+                ✓ {done}명 리포트 저장 완료
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push('/admin/reports')}
+                className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
+              >
+                리포트 목록 보기
+              </button>
+            </div>
+          )}
+
+          {done === null && !progress && (
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={pending}
+              className="w-full rounded-xl bg-zinc-950 py-3 text-sm font-medium text-white hover:bg-zinc-800 transition-colors disabled:opacity-50"
+            >
+              {pending ? '저장 중…' : `${students.length}명 리포트 일괄 저장`}
+            </button>
+          )}
+
+          {/* 숨겨진 캡처용 카드 */}
+          {students.map((s) => (
+            <div
+              key={s.id}
+              ref={(el) => {
+                if (el) cardRefs.current.set(s.id, el)
+                else cardRefs.current.delete(s.id)
+              }}
+              style={{ position: 'fixed', top: -9999, left: -9999, pointerEvents: 'none' }}
+              aria-hidden="true"
+            >
+              <ReportCard data={buildCardData(s)} />
+            </div>
+          ))}
+        </>
       )}
     </div>
   )

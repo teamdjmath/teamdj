@@ -39,32 +39,52 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
 
   const email = toAuthEmail(phone)
 
-  // 1. Supabase Auth 계정 생성 (phone을 metadata에 포함해야 트리거가 phone을 올바르게 INSERT)
-  const { data: authData, error: authErr } = await adminSupabase.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { name, role: 'student', phone },
-  })
+  // 1. Supabase Auth 계정 생성
+  let userId: string
+  try {
+    const { data: authData, error: authErr } = await adminSupabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { name, role: 'student', phone },
+    })
 
-  if (authErr) {
-    if (authErr.message.includes('already been registered')) {
-      return { success: false, error: '이미 등록된 전화번호입니다.' }
+    if (authErr) {
+      console.error('[createStudent] auth.admin.createUser error:', authErr)
+      if (
+        authErr.message.includes('already been registered') ||
+        authErr.message.includes('already exists') ||
+        authErr.message.includes('duplicate')
+      ) {
+        return { success: false, error: '이미 등록된 전화번호입니다.' }
+      }
+      return { success: false, error: `계정 생성 실패: ${authErr.message}` }
     }
-    return { success: false, error: `계정 생성 실패: ${authErr.message}` }
+
+    if (!authData?.user?.id) {
+      console.error('[createStudent] auth.admin.createUser returned no user:', authData)
+      return { success: false, error: '계정 생성 실패: 사용자 정보를 받지 못했습니다.' }
+    }
+
+    userId = authData.user.id
+  } catch (e) {
+    console.error('[createStudent] auth.admin.createUser threw:', e)
+    return { success: false, error: `계정 생성 중 오류 발생: ${e instanceof Error ? e.message : String(e)}` }
   }
 
-  const userId = authData.user.id
-
   // 2. public.users upsert
-  //    트리거가 auth.users INSERT 직후 public.users에 먼저 INSERT하므로 upsert로 처리
+  //    handle_new_user 트리거가 auth.users INSERT 직후 public.users를 자동 생성하므로 upsert로 병합
   const { error: userErr } = await adminSupabase.from('users').upsert(
     { id: userId, phone, name, role: 'student' },
     { onConflict: 'id' },
   )
 
   if (userErr) {
-    await adminSupabase.auth.admin.deleteUser(userId)
+    // auth.users는 생성 완료 상태. deleteUser를 호출하면 ON DELETE CASCADE로
+    // public.users도 삭제되어 고아 레코드 문제가 해결되지만, 재등록 시도가 가능하도록 삭제.
+    console.error('[createStudent] public.users upsert error:', userErr)
+    const { error: delErr } = await adminSupabase.auth.admin.deleteUser(userId)
+    if (delErr) console.error('[createStudent] rollback deleteUser error:', delErr)
     return { success: false, error: `학생 정보 저장 실패: ${userErr.message}` }
   }
 
@@ -75,7 +95,7 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
       student_id: userId,
     })
     if (memberErr) {
-      console.error('class_members insert error:', memberErr.message)
+      console.error('[createStudent] class_members insert error:', memberErr.message)
     }
   }
 
@@ -121,7 +141,21 @@ export async function bulkCreateStudents(
         })
 
       if (authErr) {
-        failed.push({ name: row.name, phone: row.phone, reason: authErr.message })
+        console.error(`[bulkCreateStudents] createUser error for ${row.name}:`, authErr)
+        const isDuplicate =
+          authErr.message.includes('already been registered') ||
+          authErr.message.includes('already exists') ||
+          authErr.message.includes('duplicate')
+        failed.push({
+          name:   row.name,
+          phone:  row.phone,
+          reason: isDuplicate ? '이미 등록된 전화번호' : authErr.message,
+        })
+        continue
+      }
+
+      if (!authData?.user?.id) {
+        failed.push({ name: row.name, phone: row.phone, reason: '계정 생성 실패: 사용자 정보 없음' })
         continue
       }
 
@@ -133,6 +167,7 @@ export async function bulkCreateStudents(
       )
 
       if (userErr) {
+        console.error(`[bulkCreateStudents] upsert error for ${row.name}:`, userErr)
         await adminSupabase.auth.admin.deleteUser(userId)
         failed.push({ name: row.name, phone: row.phone, reason: `정보 저장 실패: ${userErr.message}` })
         continue
@@ -147,8 +182,9 @@ export async function bulkCreateStudents(
       }
 
       succeeded++
-    } catch {
-      failed.push({ name: row.name, phone: row.phone, reason: '알 수 없는 오류' })
+    } catch (e) {
+      console.error(`[bulkCreateStudents] unexpected error for ${row.name}:`, e)
+      failed.push({ name: row.name, phone: row.phone, reason: e instanceof Error ? e.message : '알 수 없는 오류' })
     }
   }
 

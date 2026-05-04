@@ -1,47 +1,60 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { ReportsClient } from './_components/reports-client'
 
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ classId?: string }>
+  searchParams: Promise<{ classId?: string; date?: string }>
 }) {
-  const { classId: selectedClassId } = await searchParams
-  const supabase = await createClient()
+  const { classId: selectedClassId, date: selectedDate } = await searchParams
+  const admin = createAdminClient()
 
-  const { data: classes } = await supabase
+  const { data: classes } = await admin
     .from('class_groups')
     .select('id, name')
     .eq('is_active', true)
     .order('name')
 
-  let query = supabase
+  let query = admin
     .from('reports')
-    .select(
-      'id, report_date, image_url, kakao_sent_at, created_at, student:users!student_id(name), class:class_groups!class_id(name)',
-    )
+    .select('id, report_date, class_id, image_url, kakao_sent_at, class:class_groups!class_id(name)')
     .order('report_date', { ascending: false })
-    .order('created_at', { ascending: false })
+    .order('class_id')
 
-  if (selectedClassId) {
-    query = query.eq('class_id', selectedClassId) as typeof query
-  }
+  if (selectedClassId) query = query.eq('class_id', selectedClassId) as typeof query
+  if (selectedDate)    query = query.eq('report_date', selectedDate)  as typeof query
 
   const { data: rows } = await query
 
-  const reports = (rows ?? []).map((r) => {
-    const row = r as Record<string, unknown>
-    return {
-      id: row.id as string,
-      report_date: row.report_date as string,
-      image_url: (row.image_url ?? null) as string | null,
-      kakao_sent_at: (row.kakao_sent_at ?? null) as string | null,
-      created_at: row.created_at as string,
-      studentName: ((row.student as { name?: string } | null)?.name ?? '') as string,
-      className: ((row.class as { name?: string } | null)?.name ?? '') as string,
+  // 세션(날짜+분반) 단위로 그룹핑
+  const sessionMap = new Map<string, {
+    classId: string
+    className: string
+    date: string
+    total: number
+    sentCount: number
+    sampleImageUrl: string | null
+  }>()
+
+  for (const row of rows ?? []) {
+    const r         = row as Record<string, unknown>
+    const classId   = r.class_id as string
+    const date      = r.report_date as string
+    const className = ((r.class as { name?: string } | null)?.name ?? '') as string
+    const key       = `${date}__${classId}`
+
+    if (!sessionMap.has(key)) {
+      sessionMap.set(key, { classId, className, date, total: 0, sentCount: 0, sampleImageUrl: null })
     }
-  })
+
+    const session = sessionMap.get(key)!
+    session.total++
+    if (r.kakao_sent_at) session.sentCount++
+    if (!session.sampleImageUrl && r.image_url) session.sampleImageUrl = r.image_url as string
+  }
+
+  const sessions = Array.from(sessionMap.values())
 
   return (
     <div>
@@ -59,9 +72,10 @@ export default async function ReportsPage({
       </div>
 
       <ReportsClient
-        classOptions={(classes ?? []).map((c) => ({ id: c.id, name: c.name }))}
+        classOptions={(classes ?? []).map((c) => ({ id: c.id as string, name: c.name as string }))}
         selectedClassId={selectedClassId ?? null}
-        reports={reports}
+        selectedDate={selectedDate ?? null}
+        sessions={sessions}
       />
     </div>
   )

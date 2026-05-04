@@ -222,7 +222,7 @@ export function ScoresClient({ classOptions, selectedClassId, selectedDate, test
                     {t.totalQ ?? '—'}
                   </td>
                   <td className="hidden lg:table-cell px-5 py-3.5 text-center text-zinc-500">
-                    {t.difficulty || '—'}
+                    {t.difficulty ? `난이도 ${t.difficulty}` : '—'}
                   </td>
                   <td className="px-5 py-3.5 text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -326,16 +326,16 @@ export function ScoresClient({ classOptions, selectedClassId, selectedDate, test
             />
           </div>
 
-          <SelectField
-            label="난이도"
+          <InputField
+            label="난이도 (0.0 ~ 10.0)"
+            type="number"
+            step="0.1"
+            min="0"
+            max="10"
             value={form.difficulty}
             onChange={(e) => setForm((f) => ({ ...f, difficulty: e.target.value }))}
-          >
-            <option value="">선택 안 함</option>
-            {['상', '중', '하'].map((d) => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </SelectField>
+            placeholder="예: 3.8"
+          />
 
           {needsGradeCuts && (
             <div>

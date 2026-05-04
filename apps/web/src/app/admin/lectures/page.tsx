@@ -1,53 +1,70 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { LecturesClient } from './_components/lectures-client'
 
-export default async function LecturesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ classId?: string }>
-}) {
-  const { classId: selectedClassId } = await searchParams
-  const supabase = await createClient()
+export default async function LecturesPage() {
+  const admin = createAdminClient()
 
-  const { data: classes } = await supabase
+  const { data: classes } = await admin
     .from('class_groups')
     .select('id, name')
     .eq('is_active', true)
     .order('name')
 
-  let query = supabase
+  // 강좌별 접근 분반
+  const { data: accessRows } = await admin
+    .from('lecture_class_access')
+    .select('course_name, class_id')
+    .order('course_name')
+
+  // 모든 강의 (강좌명 기준)
+  const { data: lectureRows } = await admin
     .from('lectures')
-    .select('id, title, youtube_video_id, youtube_playlist_id, order_num, synced_at, class_id, class_groups!class_id(name)')
+    .select('id, title, youtube_video_id, order_num, synced_at, course_name')
+    .not('course_name', 'is', null)
+    .order('course_name')
     .order('order_num', { ascending: true })
 
-  if (selectedClassId) {
-    query = query.eq('class_id', selectedClassId) as typeof query
+  // 강좌명 목록 수집 (lecture_class_access + lectures 합집합)
+  const courseNameSet = new Set<string>()
+  for (const row of accessRows ?? []) courseNameSet.add(row.course_name as string)
+  for (const row of lectureRows ?? []) {
+    if (row.course_name) courseNameSet.add(row.course_name as string)
   }
 
-  const { data: rows } = await query
+  // 강좌별 접근 분반 맵
+  const accessMap: Record<string, string[]> = {}
+  for (const row of accessRows ?? []) {
+    const cn = row.course_name as string
+    if (!accessMap[cn]) accessMap[cn] = []
+    if (row.class_id) accessMap[cn].push(row.class_id as string)
+  }
 
-  const lectures = (rows ?? []).map((l) => ({
-    id: l.id as string,
-    title: l.title as string,
-    youtube_video_id: (l.youtube_video_id ?? '') as string,
-    youtube_playlist_id: (l.youtube_playlist_id ?? '') as string,
-    order_num: (l.order_num ?? 0) as number,
-    synced_at: (l.synced_at ?? null) as string | null,
-    class_id: l.class_id as string,
-    className: ((l.class_groups as unknown as { name: string } | null)?.name ?? '') as string,
+  // 강좌별 강의 맵
+  const lectureMap: Record<string, Array<{
+    id: string; title: string; videoId: string; orderNum: number; syncedAt: string | null
+  }>> = {}
+  for (const row of lectureRows ?? []) {
+    const cn = row.course_name as string
+    if (!lectureMap[cn]) lectureMap[cn] = []
+    lectureMap[cn].push({
+      id:       row.id as string,
+      title:    row.title as string,
+      videoId:  (row.youtube_video_id ?? '') as string,
+      orderNum: (row.order_num ?? 0) as number,
+      syncedAt: (row.synced_at ?? null) as string | null,
+    })
+  }
+
+  const courses = Array.from(courseNameSet).sort().map((cn) => ({
+    courseName:     cn,
+    allowedClassIds: accessMap[cn] ?? [],
+    lectures:       lectureMap[cn] ?? [],
   }))
-
-  // Last synced time for the selected class
-  const lastSynced = selectedClassId
-    ? lectures.filter((l) => l.synced_at).sort((a, b) => (b.synced_at! > a.synced_at! ? 1 : -1))[0]?.synced_at ?? null
-    : null
 
   return (
     <LecturesClient
       classOptions={(classes ?? []).map((c) => ({ id: c.id, name: c.name }))}
-      selectedClassId={selectedClassId ?? null}
-      lectures={lectures}
-      lastSynced={lastSynced}
+      courses={courses}
     />
   )
 }

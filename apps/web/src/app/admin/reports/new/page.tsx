@@ -1,106 +1,137 @@
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { ReportFormClient } from './_components/report-form-client'
-import type { ReportContent } from '@/lib/actions/reports'
 
 export default async function NewReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ classId?: string; studentId?: string }>
+  searchParams: Promise<{ classId?: string; sessionDate?: string }>
 }) {
-  const { classId: selectedClassId, studentId: selectedStudentId } = await searchParams
-  const supabase = await createClient()
+  const { classId: selectedClassId, sessionDate: selectedSessionDate } =
+    await searchParams
 
-  const { data: classes } = await supabase
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const admin = createAdminClient()
+
+  const { data: classes } = await admin
     .from('class_groups')
     .select('id, name')
     .eq('is_active', true)
     .order('name')
 
-  // 분반 선택 시 해당 학생 목록
-  let students: Array<{ id: string; name: string }> = []
-  if (selectedClassId) {
-    const { data: members } = await supabase
+  const classOptions = (classes ?? []).map((c) => ({ id: c.id as string, name: c.name as string }))
+  const className    = classOptions.find((c) => c.id === selectedClassId)?.name ?? ''
+
+  type StudentData = {
+    id: string
+    name: string
+    attendance: 'present' | 'late' | 'absent' | null
+    recentScore: { score: number; title: string; examType: string; date: string } | null
+    avgAssignmentPct: number
+  }
+
+  let students: StudentData[] = []
+
+  if (selectedClassId && selectedSessionDate) {
+    const { data: members } = await admin
       .from('class_members')
       .select('student_id, users!student_id(name)')
       .eq('class_id', selectedClassId)
       .eq('is_active', true)
 
-    students = (members ?? [])
+    const memberList = (members ?? [])
       .map((m) => ({
-        id: m.student_id as string,
+        id:   m.student_id as string,
         name: ((m.users as unknown as { name: string } | null)?.name ?? '') as string,
       }))
+      .filter((s) => s.name)
       .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
-  }
 
-  // 학생 + 분반 선택 시 데이터 자동 수집
-  let autoData: Pick<ReportContent, 'recentScores' | 'attendanceSummary' | 'avgAssignmentPct'> | null = null
-  let studentName = ''
-  let className = ''
+    const studentIds = memberList.map((m) => m.id)
 
-  if (selectedClassId && selectedStudentId) {
-    // 학생 이름
-    const found = students.find((s) => s.id === selectedStudentId)
-    studentName = found?.name ?? ''
+    // 당일 출석 현황 (attendance_logs)
+    const attendanceMap: Record<string, 'present' | 'late' | 'absent'> = {}
+    if (studentIds.length > 0) {
+      const { data: attRows } = await admin
+        .from('attendance_logs')
+        .select('student_id, status')
+        .eq('class_id', selectedClassId)
+        .eq('session_date', selectedSessionDate)
+        .in('student_id', studentIds)
 
-    // 분반 이름
-    const foundClass = (classes ?? []).find((c) => c.id === selectedClassId)
-    className = foundClass?.name ?? ''
-
-    // 최근 테스트 점수 (최근 5개)
-    const { data: scoreRows } = await supabase
-      .from('test_scores')
-      .select('score, total_q, difficulty, test_date')
-      .eq('student_id', selectedStudentId)
-      .eq('class_id', selectedClassId)
-      .order('test_date', { ascending: false })
-      .limit(5)
-
-    const recentScores = (scoreRows ?? []).map((s) => ({
-      date: s.test_date as string,
-      score: s.score as number,
-      total_q: (s.total_q ?? null) as number | null,
-      difficulty: (s.difficulty ?? null) as string | null,
-    }))
-
-    // 출석 현황 (최근 30일)
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-    const since = thirtyDaysAgo.toISOString().split('T')[0]
-
-    const { data: attRows } = await supabase
-      .from('attendance_logs')
-      .select('status')
-      .eq('student_id', selectedStudentId)
-      .eq('class_id', selectedClassId)
-      .gte('session_date', since)
-
-    const attArr = (attRows ?? []).map((a) => a.status as string)
-    const attendanceSummary = {
-      present: attArr.filter((s) => s === 'present').length,
-      late: attArr.filter((s) => s === 'late').length,
-      absent: attArr.filter((s) => s === 'absent').length,
-      total: attArr.length,
+      for (const row of attRows ?? []) {
+        const sid    = row.student_id as string
+        const status = row.status    as string
+        if (status === 'present' || status === 'late' || status === 'absent') {
+          attendanceMap[sid] = status
+        }
+      }
     }
 
-    // 과제 평균 완료율
-    const { data: progressRows } = await supabase
-      .from('assignment_progress')
-      .select('completion_pct, assignments!assignment_id(class_id)')
-      .eq('student_id', selectedStudentId)
+    // 최근 테스트 점수 (student별 가장 최신 1건)
+    const scoreMap: Record<string, { score: number; title: string; examType: string; date: string }> = {}
+    if (studentIds.length > 0) {
+      const { data: scoreRows } = await admin
+        .from('test_scores')
+        .select('student_id, score, test_date, tests!test_id(title, exam_type)')
+        .eq('class_id', selectedClassId)
+        .in('student_id', studentIds)
+        .order('test_date', { ascending: false })
 
-    const classProgress = (progressRows ?? []).filter((p) => {
-      const a = p.assignments as { class_id?: string } | null
-      return a?.class_id === selectedClassId
-    })
+      for (const row of scoreRows ?? []) {
+        const sid = row.student_id as string
+        if (scoreMap[sid]) continue
+        const t = row.tests as unknown as { title: string; exam_type: string } | null
+        scoreMap[sid] = {
+          score:    row.score    as number,
+          title:    t?.title    ?? '',
+          examType: t?.exam_type ?? '',
+          date:     row.test_date as string,
+        }
+      }
+    }
 
-    const avgAssignmentPct =
-      classProgress.length > 0
-        ? Math.round(classProgress.reduce((sum, p) => sum + ((p.completion_pct as number) ?? 0), 0) / classProgress.length)
-        : 0
+    // 평균 과제 완료율
+    const assignmentPctMap: Record<string, number> = {}
+    if (studentIds.length > 0) {
+      const { data: assignments } = await admin
+        .from('assignments')
+        .select('id')
+        .eq('class_id', selectedClassId)
 
-    autoData = { recentScores, attendanceSummary, avgAssignmentPct }
+      const assignmentIds = (assignments ?? []).map((a) => a.id as string)
+
+      if (assignmentIds.length > 0) {
+        const { data: progressRows } = await admin
+          .from('assignment_progress')
+          .select('student_id, completion_pct')
+          .in('student_id', studentIds)
+          .in('assignment_id', assignmentIds)
+
+        const studentProgress: Record<string, number[]> = {}
+        for (const p of progressRows ?? []) {
+          const sid = p.student_id as string
+          if (!studentProgress[sid]) studentProgress[sid] = []
+          studentProgress[sid].push((p.completion_pct as number) ?? 0)
+        }
+
+        for (const [sid, pcts] of Object.entries(studentProgress)) {
+          assignmentPctMap[sid] = Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length)
+        }
+      }
+    }
+
+    students = memberList.map((m) => ({
+      id:               m.id,
+      name:             m.name,
+      attendance:       attendanceMap[m.id] ?? null,
+      recentScore:      scoreMap[m.id] ?? null,
+      avgAssignmentPct: assignmentPctMap[m.id] ?? 0,
+    }))
   }
 
   return (
@@ -119,13 +150,11 @@ export default async function NewReportPage({
       </div>
 
       <ReportFormClient
-        classOptions={(classes ?? []).map((c) => ({ id: c.id, name: c.name }))}
+        classOptions={classOptions}
         students={students}
         selectedClassId={selectedClassId ?? null}
-        selectedStudentId={selectedStudentId ?? null}
-        studentName={studentName}
+        selectedSessionDate={selectedSessionDate ?? null}
         className={className}
-        autoData={autoData}
       />
     </div>
   )
