@@ -5,7 +5,8 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Modal } from '@/components/ui/modal'
 import { InputField, SelectField } from '@/components/ui/form-field'
-import { createAssignment, updateAssignment, deleteAssignment } from '@/lib/actions/assignments'
+import { createAssignment, updateAssignment, deleteAssignment, createCategory } from '@/lib/actions/assignments'
+import { DatePicker } from '@/components/ui/date-picker'
 
 type ClassOption = { id: string; name: string }
 
@@ -19,8 +20,6 @@ type Assignment = {
   className: string
 }
 
-const CATEGORIES = ['매월승리', 'KBS', 'EB-Schema', '기타']
-
 const TODAY = new Date().toISOString().split('T')[0]
 
 function isOverdue(due_date: string) {
@@ -31,6 +30,7 @@ interface Props {
   classOptions: ClassOption[]
   selectedClassId: string | null
   assignments: Assignment[]
+  categoryOptions: string[]
 }
 
 type ModalState =
@@ -38,29 +38,46 @@ type ModalState =
   | { type: 'edit'; assignment: Assignment }
   | null
 
-export function AssignmentsClient({ classOptions, selectedClassId, assignments }: Props) {
+export function AssignmentsClient({ classOptions, selectedClassId, assignments, categoryOptions }: Props) {
   const router = useRouter()
   const [modal, setModal] = useState<ModalState>(null)
   const [pending, startTransition] = useTransition()
   const [err, setErr] = useState('')
+  const [isAddingCategory, setIsAddingCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
 
   // Form state
   const [form, setForm] = useState({
     classId: selectedClassId ?? classOptions[0]?.id ?? '',
     title: '',
-    category: CATEGORIES[0],
+    category: categoryOptions[0] || '',
     dueDate: '',
     weekNum: '',
   })
 
+  async function handleAddCategory() {
+    if (!newCategoryName.trim()) return
+    startTransition(async () => {
+      const res = await createCategory(newCategoryName.trim())
+      if (res.success) {
+        setForm(f => ({ ...f, category: newCategoryName.trim() }))
+        setNewCategoryName('')
+        setIsAddingCategory(false)
+        router.refresh()
+      } else {
+        alert(res.error)
+      }
+    })
+  }
+
   function openCreate() {
-    setForm({ classId: selectedClassId ?? classOptions[0]?.id ?? '', title: '', category: CATEGORIES[0], dueDate: '', weekNum: '' })
+    setForm({ classId: selectedClassId ?? classOptions[0]?.id ?? '', title: '', category: categoryOptions[0] || '', dueDate: '', weekNum: '' })
     setErr('')
     setModal({ type: 'create' })
   }
 
   function openEdit(a: Assignment) {
-    setForm({ classId: a.class_id, title: a.title, category: a.category || CATEGORIES[0], dueDate: a.due_date, weekNum: a.week_num?.toString() ?? '' })
+    setForm({ classId: a.class_id, title: a.title, category: a.category || (categoryOptions[0] || ''), dueDate: a.due_date, weekNum: a.week_num?.toString() ?? '' })
     setErr('')
     setModal({ type: 'edit', assignment: a })
   }
@@ -259,22 +276,64 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments }
             placeholder="과제 제목을 입력하세요"
           />
 
-          <SelectField
-            label="카테고리"
-            value={form.category}
-            onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-          >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </SelectField>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-zinc-400">카테고리</label>
+              {!isAddingCategory && (
+                <button
+                  onClick={() => setIsAddingCategory(true)}
+                  className="text-[11px] font-bold text-zinc-400 hover:text-zinc-900 transition-colors"
+                >
+                  + 새 카테고리
+                </button>
+              )}
+            </div>
+            
+            {isAddingCategory ? (
+              <div className="flex gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                <input
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="새 카테고리 명"
+                  className="flex-1 rounded-xl bg-white border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 placeholder:text-zinc-400 shadow-sm"
+                  autoFocus
+                />
+                <button
+                  onClick={handleAddCategory}
+                  disabled={pending}
+                  className="rounded-xl bg-zinc-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-zinc-800 disabled:opacity-50"
+                >
+                  추가
+                </button>
+                <button
+                  onClick={() => setIsAddingCategory(false)}
+                  className="rounded-xl border border-zinc-200 px-4 py-2.5 text-xs font-bold text-zinc-500 hover:bg-zinc-50"
+                >
+                  취소
+                </button>
+              </div>
+            ) : (
+              <select
+                value={form.category}
+                onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-bold text-zinc-900 shadow-sm transition-all focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 cursor-pointer appearance-none"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2371717a' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 1rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
+              >
+                {categoryOptions.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            )}
+          </div>
 
-          <InputField
-            label="마감일"
-            type="date"
-            value={form.dueDate}
-            onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
-          />
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-zinc-400">마감일</label>
+            <DatePicker
+              value={form.dueDate}
+              onChange={(d) => setForm((f) => ({ ...f, dueDate: d }))}
+              placeholder="마감일을 선택하세요"
+            />
+          </div>
 
           <InputField
             label="주차"

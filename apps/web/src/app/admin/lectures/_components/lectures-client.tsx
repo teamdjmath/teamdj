@@ -17,7 +17,7 @@ import {
 
 type ClassOption = { id: string; name: string }
 type LectureItem = {
-  id: string; title: string; videoId: string; orderNum: number; syncedAt: string | null
+  id: string; title: string; videoId: string; orderNum: number; syncedAt: string | null; materialUrl?: string | null
 }
 type Course = {
   courseName: string; allowedClassIds: string[]; lectures: LectureItem[]
@@ -49,7 +49,11 @@ export function LecturesClient({ classOptions, courses }: Props) {
   const [pending, startTransition] = useTransition()
   const [modal, setModal] = useState<ModalType>(null)
   const [err, setErr] = useState('')
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {}
+    courses.forEach(c => { init[c.courseName] = true })
+    return init
+  })
 
   // 강좌 생성 폼
   const [newCourseName, setNewCourseName] = useState('')
@@ -63,7 +67,7 @@ export function LecturesClient({ classOptions, courses }: Props) {
   const [syncResult, setSyncResult] = useState('')
 
   // 강의 폼
-  const [lectureForm, setLectureForm] = useState({ title: '', videoId: '', orderNum: '1' })
+  const [lectureForm, setLectureForm] = useState({ title: '', videoId: '', orderNum: '1', materialUrl: '' })
 
   function toggleCollapse(cn: string) {
     setCollapsed((prev) => ({ ...prev, [cn]: !prev[cn] }))
@@ -133,19 +137,28 @@ export function LecturesClient({ classOptions, courses }: Props) {
 
   // ─ 강의 추가
   function openAddLecture(course: Course) {
-    setLectureForm({ title: '', videoId: '', orderNum: String(course.lectures.length + 1) })
+    setLectureForm({ title: '', videoId: '', orderNum: String(course.lectures.length + 1), materialUrl: '' })
     setErr('')
     setModal({ kind: 'addLecture', courseName: course.courseName, nextOrder: course.lectures.length + 1 })
   }
+
   // ─ 강의 수정
   function openEditLecture(lec: LectureItem) {
-    setLectureForm({ title: lec.title, videoId: lec.videoId, orderNum: String(lec.orderNum) })
+    setLectureForm({
+      title: lec.title,
+      videoId: lec.videoId,
+      orderNum: String(lec.orderNum),
+      materialUrl: lec.materialUrl || '',
+    })
     setErr('')
     setModal({ kind: 'editLecture', lecture: lec })
   }
 
   function handleSaveLecture() {
-    if (!lectureForm.title.trim()) { setErr('강의 제목을 입력하세요.'); return }
+    if (!lectureForm.title.trim()) {
+      setErr('강의 제목을 입력하세요.')
+      return
+    }
     setErr('')
     startTransition(async () => {
       let res
@@ -154,6 +167,7 @@ export function LecturesClient({ classOptions, courses }: Props) {
           title: lectureForm.title.trim(),
           youtubeVideoId: lectureForm.videoId.trim(),
           orderNum: parseInt(lectureForm.orderNum) || 0,
+          materialUrl: lectureForm.materialUrl.trim(),
         })
       } else if (modal?.kind === 'addLecture') {
         res = await createLecture({
@@ -161,10 +175,14 @@ export function LecturesClient({ classOptions, courses }: Props) {
           title: lectureForm.title.trim(),
           youtubeVideoId: lectureForm.videoId.trim(),
           orderNum: parseInt(lectureForm.orderNum) || 0,
+          materialUrl: lectureForm.materialUrl.trim(),
         })
       } else return
 
-      if (!res.success) { setErr(res.error); return }
+      if (!res.success) {
+        setErr(res.error)
+        return
+      }
       setModal(null)
       router.refresh()
     })
@@ -362,6 +380,21 @@ export function LecturesClient({ classOptions, courses }: Props) {
                                   {lec.videoId}
                                 </a>
                               )}
+                              {lec.materialUrl && (
+                                <div className="mt-1 flex items-center gap-2">
+                                  <a
+                                    href={lec.materialUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 rounded bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 hover:bg-zinc-200"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                    </svg>
+                                    강의 자료
+                                  </a>
+                                </div>
+                              )}
                             </td>
                             {/* 액션 */}
                             <td className="px-3 py-3 text-right w-24">
@@ -502,6 +535,12 @@ export function LecturesClient({ classOptions, courses }: Props) {
             />
             <p className="mt-1 text-xs text-zinc-400">URL의 <code className="bg-zinc-100 px-1 rounded">v=</code> 뒤 값</p>
           </div>
+          <InputField
+            label="강의 자료 링크"
+            value={lectureForm.materialUrl}
+            onChange={(e) => setLectureForm((f) => ({ ...f, materialUrl: e.target.value }))}
+            placeholder="PDF, Google Drive 등 자료 링크"
+          />
           <InputField label="순서" type="number" value={lectureForm.orderNum} onChange={(e) => setLectureForm((f) => ({ ...f, orderNum: e.target.value }))} />
           {lectureForm.videoId && (
             <div className="rounded-lg overflow-hidden border border-zinc-200">

@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { Modal } from '@/components/ui/modal'
-import { InputField, SelectField } from '@/components/ui/form-field'
+import { InputField, SelectField, TextareaField } from '@/components/ui/form-field'
 import { createNotice, updateNotice, deleteNotice } from '@/lib/actions/notices'
 
 type ClassOption = { id: string; name: string }
@@ -190,18 +190,14 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
             placeholder="공지 제목을 입력하세요"
           />
 
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700">
-              내용 <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              rows={8}
-              value={form.content}
-              onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-              placeholder="공지 내용을 입력하세요 (마크다운 지원)"
-              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-sm resize-none focus:border-zinc-400 focus:bg-white focus:outline-none focus:ring-0"
-            />
-          </div>
+          <TextareaField
+            label="내용"
+            required
+            rows={8}
+            value={form.content}
+            onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
+            placeholder="공지 내용을 입력하세요 (마크다운 지원)"
+          />
 
           <SelectField
             label="대상 분반"
@@ -221,7 +217,7 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
               aria-checked={form.isPinned}
               onClick={() => setForm((f) => ({ ...f, isPinned: !f.isPinned }))}
               className={[
-                'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
+                'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
                 form.isPinned ? 'bg-zinc-950' : 'bg-zinc-200',
               ].join(' ')}
             >
@@ -318,7 +314,7 @@ function NoticeRow({
           onClick={onView}
           className="flex items-center gap-2 text-left w-full group"
         >
-          {pinned && <span className="text-base leading-none flex-shrink-0" aria-label="고정">📌</span>}
+          {pinned && <span className="text-base leading-none shrink-0" aria-label="고정">📌</span>}
           <span className="font-medium text-zinc-900 group-hover:text-zinc-700 truncate">{notice.title}</span>
         </button>
         <div className="mt-1 flex flex-wrap gap-2 text-xs text-zinc-400">
@@ -330,7 +326,7 @@ function NoticeRow({
           <span>{formatDate(notice.created_at)}</span>
         </div>
       </div>
-      <div className="flex items-center gap-1 flex-shrink-0">
+      <div className="flex items-center gap-1 shrink-0">
         <button
           onClick={onEdit}
           className="rounded-md px-2.5 py-1 text-xs text-zinc-500 hover:bg-zinc-200 transition-colors"

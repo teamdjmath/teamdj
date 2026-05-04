@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Modal } from '@/components/ui/modal'
+import { InputField } from '@/components/ui/form-field'
 import { StudentFormModal } from './student-form-modal'
 import { ExcelImportModal } from './excel-import-modal'
 
@@ -10,6 +10,8 @@ type StudentRow = {
   id: string
   name: string
   phone: string
+  school: string | null
+  grade: string | null
   is_active: boolean
   className: string | null
   classId: string | null
@@ -32,9 +34,9 @@ export function StudentsClient({
   async function handleSampleDownload() {
     const XLSX = await import('xlsx')
     const data = [
-      { 이름: '홍길동', 전화번호: '01012345678', 초기비밀번호: 'pass1234', 분반명: '수학A반' },
-      { 이름: '김철수', 전화번호: '01087654321', 초기비밀번호: 'pass1234', 분반명: '수학A반' },
-      { 이름: '이영희', 전화번호: '01055556666', 초기비밀번호: 'pass5678', 분반명: '영어B반' },
+      { 이름: '홍길동', 전화번호: '01012345678', 초기비밀번호: 'pass1234', 학교명: '세종고', 학년: '1', 분반명: '수학A반', 학부모전화번호: '01011112222' },
+      { 이름: '김철수', 전화번호: '01087654321', 초기비밀번호: 'pass1234', 학교명: '강남고', 학년: '2', 분반명: '수학A반', 학부모전화번호: '01033334444' },
+      { 이름: '이영희', 전화번호: '01055556666', 초기비밀번호: 'pass5678', 학교명: '세종중', 학년: '3', 분반명: '영어B반', 학부모전화번호: '' },
     ]
     const ws = XLSX.utils.json_to_sheet(data)
     const wb = XLSX.utils.book_new()
@@ -83,13 +85,12 @@ export function StudentsClient({
       </div>
 
       {/* 검색 */}
-      <div className="mb-4">
-        <input
+      <div className="mb-4 max-w-sm">
+        <InputField
           type="search"
           placeholder="이름, 전화번호, 반 이름으로 검색"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="w-full max-w-sm rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm focus:border-zinc-400 focus:outline-none"
         />
       </div>
 
@@ -116,7 +117,12 @@ export function StudentsClient({
             ) : (
               filtered.map((s) => (
                 <tr key={s.id} className="hover:bg-zinc-50 transition-colors">
-                  <td className="px-5 py-3.5 font-medium text-zinc-900">{s.name}</td>
+                  <td className="px-5 py-3.5">
+                    <div className="font-medium text-zinc-900">{s.name}</div>
+                    <div className="text-[11px] text-zinc-400">
+                      {s.school || '학교 미지정'} · {s.grade ? `${s.grade}학년` : '학년 미지정'}
+                    </div>
+                  </td>
                   <td className="hidden sm:table-cell px-5 py-3.5 text-zinc-500">{s.phone}</td>
                   <td className="px-5 py-3.5">
                     {s.className ? (

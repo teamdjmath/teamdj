@@ -2,27 +2,45 @@
 
 import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
+import { Calendar } from '@/components/ui/calendar'
 
 const LS_KEY = 'teamdj_dday_target'
+const LS_TITLE_KEY = 'teamdj_dday_title'
 
 interface DdayCardProps {
   defaultDate: string
 }
 
 export function DdayCard({ defaultDate }: DdayCardProps) {
-  const [targetDate, setTargetDate] = useState(defaultDate)
-  const [editing, setEditing] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [ddayState, setDdayState] = useState({ date: defaultDate, title: '수능까지' })
+  const [editing, setEditing] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem(LS_KEY)
-    if (saved) setTargetDate(saved)
-    setMounted(true)
-  }, [])
+    const savedTitle = localStorage.getItem(LS_TITLE_KEY)
+    
+    requestAnimationFrame(() => {
+      if (saved || savedTitle) {
+        setDdayState({
+          date: saved || defaultDate,
+          title: savedTitle || '수능까지'
+        })
+      }
+      setMounted(true)
+    })
+  }, [defaultDate])
+
+  const { date: targetDate, title } = ddayState
 
   function handleChange(date: string) {
-    setTargetDate(date)
+    setDdayState(prev => ({ ...prev, date }))
     localStorage.setItem(LS_KEY, date)
+  }
+
+  function handleTitleChange(val: string) {
+    setDdayState(prev => ({ ...prev, title: val }))
+    localStorage.setItem(LS_TITLE_KEY, val)
   }
 
   const today = new Date()
@@ -35,40 +53,47 @@ export function DdayCard({ defaultDate }: DdayCardProps) {
   const targetStr = target.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
 
   if (!mounted) return (
-    <div className="h-[100px] rounded-2xl border border-zinc-200 bg-white animate-pulse" />
+    <div className="h-[120px] rounded-[32px] bg-white animate-pulse" />
   )
 
   return (
-    <Card className="relative overflow-hidden">
-      <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-zinc-100 opacity-60" />
-      <div className="absolute -right-2 -top-2 h-16 w-16 rounded-full bg-zinc-200 opacity-40" />
+    <div className="space-y-4">
+      <Card className="relative overflow-hidden">
+        <div className="absolute -right-6 -top-6 h-40 w-40 rounded-full bg-zinc-50 opacity-60" />
+        <div className="absolute -right-2 -top-2 h-20 w-20 rounded-full bg-zinc-100 opacity-40" />
 
-      <div className="relative px-5 py-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs font-medium text-zinc-400">수능까지</p>
-            <p className="mt-1 text-4xl font-bold tracking-tight text-zinc-950">{label}</p>
-            <p className="mt-1 text-xs text-zinc-500">{targetStr}</p>
+        <div className="relative px-8 py-8">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              {editing ? (
+                <input
+                  value={title}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                  className="text-sm font-bold text-zinc-400 bg-transparent border-b border-zinc-200 focus:border-zinc-900 outline-none pb-1 mb-2 w-full max-w-[150px]"
+                  autoFocus
+                />
+              ) : (
+                <p className="text-sm font-semibold text-zinc-400">{title}</p>
+              )}
+              <p className="mt-1 text-5xl font-semibold tracking-normal text-zinc-950">{label}</p>
+              <p className="mt-2 text-[13px] font-semibold text-zinc-400">{targetStr}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEditing((v) => !v)}
+              className="rounded-2xl bg-zinc-50 px-5 py-2.5 text-sm font-bold text-zinc-600 transition-all hover:bg-zinc-100 active:scale-95"
+            >
+              {editing ? '닫기' : '설정'}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setEditing((v) => !v)}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-500 transition-colors hover:border-zinc-400 hover:text-zinc-800"
-          >
-            {editing ? '닫기' : '날짜 변경'}
-          </button>
         </div>
-        {editing && (
-          <div className="mt-4">
-            <input
-              type="date"
-              value={targetDate}
-              onChange={(e) => handleChange(e.target.value)}
-              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
-            />
-          </div>
-        )}
-      </div>
-    </Card>
+      </Card>
+
+      {editing && (
+        <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+          <Calendar value={targetDate} onChange={handleChange} />
+        </div>
+      )}
+    </div>
   )
 }

@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { sendKakaoReport } from '@/lib/actions/reports'
-import { ReportCard } from '../../_components/report-card'
+import { ReportCard } from '../../../_components/report-card'
 import type { ReportContent } from '@/lib/actions/reports'
 
 type Report = {
@@ -13,7 +13,10 @@ type Report = {
   kakao_sent_at: string | null
   content_json: ReportContent
   created_at: string
+  updated_at: string
   studentName: string
+  school: string
+  grade: string
   className: string
 }
 
@@ -48,9 +51,11 @@ export function ReportDetailClient({ report }: Props) {
 
   const cardData = {
     studentName: report.studentName,
-    className: report.className,
-    reportDate: report.report_date,
-    content: report.content_json,
+    school:      report.school,
+    grade:       report.grade,
+    className:   report.className,
+    reportDate:  report.report_date,
+    content:     report.content_json,
   }
 
   return (
@@ -86,8 +91,8 @@ export function ReportDetailClient({ report }: Props) {
               <span className="text-sm font-medium text-zinc-900">{report.report_date}</span>
             </div>
             <div className="flex items-center justify-between py-2 border-b border-zinc-50">
-              <span className="text-sm text-zinc-500">작성 일시</span>
-              <span className="text-sm text-zinc-700">{formatDatetime(report.created_at)}</span>
+              <span className="text-sm text-zinc-500">최종 수정 일시</span>
+              <span className="text-sm text-zinc-700">{formatDatetime(report.updated_at || report.created_at)}</span>
             </div>
             <div className="flex items-center justify-between py-2">
               <span className="text-sm text-zinc-500">카카오톡 발송</span>

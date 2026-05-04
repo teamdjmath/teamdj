@@ -37,7 +37,11 @@ export const colors = {
     strong:  '#d4d4d8',
   },
 
-  // 상태 컬러 (최소한)
+  // 상태 및 브랜드 컬러
   error: '#ef4444',
   success: '#22c55e',
+  brand: {
+    notice: '#FFE5E8', // 연한 핑크 (확성기 배경)
+    noticeIcon: '#E9394D', // 확성기 아이콘 색상
+  }
 } as const

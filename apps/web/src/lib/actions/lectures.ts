@@ -78,6 +78,7 @@ export async function createLecture(data: {
   title: string
   youtubeVideoId: string
   orderNum: number
+  materialUrl?: string
 }): Promise<ActionResult> {
   const auth = await assertStaff()
   if (!auth.ok) return { success: false, error: auth.error }
@@ -91,6 +92,7 @@ export async function createLecture(data: {
     title:             data.title.trim(),
     youtube_video_id:  data.youtubeVideoId.trim() || null,
     order_num:         data.orderNum,
+    material_url:      data.materialUrl?.trim() || null,
     class_id:          null,
   })
 
@@ -102,7 +104,7 @@ export async function createLecture(data: {
 // ── 강의 수정
 export async function updateLecture(
   id: string,
-  data: { title: string; youtubeVideoId: string; orderNum: number },
+  data: { title: string; youtubeVideoId: string; orderNum: number; materialUrl?: string },
 ): Promise<ActionResult> {
   const auth = await assertStaff()
   if (!auth.ok) return { success: false, error: auth.error }
@@ -114,6 +116,7 @@ export async function updateLecture(
       title:            data.title,
       youtube_video_id: data.youtubeVideoId || null,
       order_num:        data.orderNum,
+      material_url:     data.materialUrl || null,
     })
     .eq('id', id)
 

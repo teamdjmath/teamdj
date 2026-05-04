@@ -15,8 +15,15 @@ export type ReportContent = {
     title: string
     examType: string
     date: string
+    totalQ?: number
+    objQ?: number
+    subjQ?: number
+    difficulty?: string
+    classAverage?: number
   } | null
   avgAssignmentPct: number
+  absenceReason?: string
+  lastAssignmentTitle?: string
 }
 
 async function assertStaff() {
@@ -34,13 +41,19 @@ async function uploadReportImage(
   sessionDate: string,
   imageBase64: string,
 ): Promise<{ error?: string; publicUrl?: string }> {
-  const b64 = imageBase64.replace(/^data:image\/png;base64,/, '')
+  const b64 = imageBase64.split(',')[1] || imageBase64
   const buffer = Buffer.from(b64, 'base64')
-  const filePath = `${studentId}/${sessionDate}_${Date.now()}.png`
+  
+  // 데이터 URL에서 MIME 타입 추출 시도 (기본값 image/png)
+  const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/)
+  const contentType = mimeMatch ? mimeMatch[1] : 'image/png'
+  const ext = contentType.split('/')[1] || 'png'
+  
+  const filePath = `${studentId}/${sessionDate}_${Date.now()}.${ext}`
 
   const { error: uploadError } = await admin.storage
     .from('reports')
-    .upload(filePath, buffer, { contentType: 'image/png', upsert: true })
+    .upload(filePath, buffer, { contentType, upsert: true })
 
   if (uploadError) return { error: `이미지 업로드 실패: ${uploadError.message}` }
 
@@ -68,13 +81,15 @@ export async function saveReport(data: {
 
   const { data: report, error: reportError } = await admin
     .from('reports')
-    .insert({
+    .upsert({
       class_id:           data.classId,
       student_id:         data.studentId,
       report_date:        data.reportDate,
       class_session_date: data.reportDate,
       content_json:       data.contentJson as unknown as Record<string, unknown>,
       image_url:          publicUrl,
+    }, {
+      onConflict: 'class_id, student_id, report_date'
     })
     .select('id')
     .single()
@@ -109,13 +124,15 @@ export async function saveBatchReports(
 
     const { data: report } = await admin
       .from('reports')
-      .insert({
+      .upsert({
         class_id:           item.classId,
         student_id:         item.studentId,
         report_date:        item.sessionDate,
         class_session_date: item.sessionDate,
         content_json:       item.contentJson as unknown as Record<string, unknown>,
         image_url:          publicUrl,
+      }, {
+        onConflict: 'class_id, student_id, report_date'
       })
       .select('id')
       .single()

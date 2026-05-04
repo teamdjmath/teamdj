@@ -300,10 +300,10 @@ export function AttendanceClient({
                                   }))
                                 }
                                 placeholder="사유 입력 (선택)"
-                                className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-xs focus:border-zinc-400 focus:outline-none"
+                                className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 focus:outline-none transition-all shadow-sm"
                               />
                             ) : (
-                              <span className="text-xs text-zinc-200">—</span>
+                              <span className="text-xs text-zinc-300">—</span>
                             )}
                           </td>
                         </tr>

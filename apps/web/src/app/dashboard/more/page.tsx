@@ -59,11 +59,13 @@ export default function MorePage() {
   const [termsOpen, setTermsOpen] = useState(false)
 
   useEffect(() => {
-    const n = localStorage.getItem(LS_NOTIFICATIONS)
-    const m = localStorage.getItem(LS_MARKETING)
-    if (n !== null) setNotifications(n === 'true')
-    if (m !== null) setMarketing(m === 'true')
-    setMounted(true)
+    if (typeof window !== 'undefined') {
+      const n = localStorage.getItem(LS_NOTIFICATIONS)
+      const m = localStorage.getItem(LS_MARKETING)
+      if (n !== null) setNotifications(n === 'true')
+      if (m !== null) setMarketing(m === 'true')
+      setMounted(true)
+    }
   }, [])
 
   function handleNotifications(v: boolean) {
@@ -102,10 +104,10 @@ export default function MorePage() {
             <button
               type="button"
               onClick={() => setInquiryOpen(true)}
-              className="flex w-full items-center justify-between px-5 py-4 text-sm text-zinc-800 hover:bg-zinc-50 transition-colors"
+              className="flex w-full items-center justify-between px-6 py-5 text-[15px] font-bold text-zinc-800 hover:bg-zinc-50 transition-colors"
             >
               1:1 문의
-              <svg className="h-4 w-4 text-zinc-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <svg className="h-5 w-5 text-zinc-200" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
               </svg>
             </button>
@@ -114,10 +116,10 @@ export default function MorePage() {
             <button
               type="button"
               onClick={() => setOpenFaq(openFaq === -1 ? null : -1)}
-              className="flex w-full items-center justify-between px-5 py-4 text-sm text-zinc-800 hover:bg-zinc-50 transition-colors"
+              className="flex w-full items-center justify-between px-6 py-5 text-[15px] font-bold text-zinc-800 hover:bg-zinc-50 transition-colors"
             >
               자주 묻는 질문
-              <svg className="h-4 w-4 text-zinc-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <svg className="h-5 w-5 text-zinc-200" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
               </svg>
             </button>
@@ -126,10 +128,10 @@ export default function MorePage() {
             <button
               type="button"
               onClick={() => setTermsOpen(true)}
-              className="flex w-full items-center justify-between px-5 py-4 text-sm text-zinc-800 hover:bg-zinc-50 transition-colors"
+              className="flex w-full items-center justify-between px-6 py-5 text-[15px] font-bold text-zinc-800 hover:bg-zinc-50 transition-colors"
             >
               약관 및 이용동의
-              <svg className="h-4 w-4 text-zinc-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <svg className="h-5 w-5 text-zinc-200" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
               </svg>
             </button>
@@ -141,17 +143,17 @@ export default function MorePage() {
       {openFaq === -1 && (
         <Card>
           <CardHeader title="자주 묻는 질문" />
-          <ul className="divide-y divide-zinc-100 px-0">
+          <ul className="divide-y divide-zinc-50 px-0">
             {FAQ_ITEMS.map((item, idx) => (
               <li key={idx}>
                 <button
                   type="button"
                   onClick={() => setOpenFaq(openFaq === idx ? -1 : idx)}
-                  className="flex w-full items-start justify-between gap-3 px-5 py-4 text-left"
+                  className="flex w-full items-start justify-between gap-3 px-6 py-5 text-left"
                 >
-                  <span className="text-sm font-medium text-zinc-800">{item.q}</span>
+                  <span className="text-[15px] font-bold text-zinc-800">{item.q}</span>
                   <svg
-                    className={`mt-0.5 h-4 w-4 shrink-0 text-zinc-300 transition-transform ${openFaq === idx ? 'rotate-90' : ''}`}
+                    className={`mt-0.5 h-5 w-5 shrink-0 text-zinc-200 transition-transform ${openFaq === idx ? 'rotate-90' : ''}`}
                     fill="none"
                     stroke="currentColor"
                     strokeWidth={2}
@@ -161,8 +163,8 @@ export default function MorePage() {
                   </svg>
                 </button>
                 {openFaq === idx && (
-                  <div className="px-5 pb-4">
-                    <p className="text-sm text-zinc-500 leading-relaxed">{item.a}</p>
+                  <div className="px-6 pb-5">
+                    <p className="text-sm text-zinc-500 leading-relaxed font-medium">{item.a}</p>
                   </div>
                 )}
               </li>
@@ -173,10 +175,10 @@ export default function MorePage() {
 
       {/* 알림 설정 */}
       <Card>
-        <div className="px-5 py-3">
-          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">알림 설정</p>
+        <div className="px-6 py-4">
+          <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">알림 설정</p>
         </div>
-        <ul className="divide-y divide-zinc-100">
+        <ul className="divide-y divide-zinc-50">
           <ToggleItem
             label="알림 허용"
             description="수업, 과제, 공지 알림"
@@ -194,7 +196,7 @@ export default function MorePage() {
 
       {/* 로그아웃 */}
       <Card>
-        <div className="px-5 py-4">
+        <div className="px-6 py-5">
           <LogoutButton />
         </div>
       </Card>
@@ -202,42 +204,49 @@ export default function MorePage() {
       {/* 1:1 문의 모달 */}
       {inquiryOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-[2px]"
           onClick={() => setInquiryOpen(false)}
         >
           <div
-            className="w-full max-w-lg rounded-t-2xl bg-white px-5 pt-5 pb-10"
+            className="w-full max-w-lg rounded-t-[40px] bg-white px-6 pt-8 pb-12 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-zinc-900">1:1 문의</h2>
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-xl font-extrabold text-zinc-900">1:1 문의</h2>
               <button
                 type="button"
                 onClick={() => setInquiryOpen(false)}
-                className="text-sm text-zinc-400 hover:text-zinc-700"
+                className="w-8 h-8 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400 hover:text-zinc-700 transition-colors"
               >
-                닫기
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
             {inquiryDone ? (
-              <div className="py-8 text-center">
-                <p className="text-sm font-medium text-zinc-800">문의가 접수되었습니다.</p>
-                <p className="mt-1 text-xs text-zinc-400">영업일 기준 1~2일 내 답변드립니다.</p>
+              <div className="py-12 text-center">
+                <div className="w-16 h-16 rounded-full bg-zinc-50 flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <p className="text-lg font-bold text-zinc-900">문의가 접수되었습니다.</p>
+                <p className="mt-2 text-sm text-zinc-400">영업일 기준 1~2일 내 답변드립니다.</p>
               </div>
             ) : (
-              <form onSubmit={handleInquirySubmit} className="space-y-3">
+              <form onSubmit={handleInquirySubmit} className="space-y-4">
                 <textarea
                   value={inquiryText}
                   onChange={(e) => setInquiryText(e.target.value)}
                   placeholder="문의 내용을 입력해주세요."
                   rows={5}
-                  className="w-full resize-none rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none"
+                  className="w-full resize-none rounded-2xl border-none bg-zinc-50 px-5 py-4 text-[15px] text-zinc-900 placeholder:text-zinc-400 focus:ring-2 focus:ring-zinc-900 transition-all outline-none"
                 />
                 <button
                   type="submit"
                   disabled={!inquiryText.trim()}
-                  className="w-full rounded-xl bg-zinc-950 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:bg-zinc-200 disabled:text-zinc-400"
+                  className="w-full rounded-2xl bg-zinc-950 py-4 text-[15px] font-bold text-white transition-all hover:bg-zinc-900 disabled:bg-zinc-100 disabled:text-zinc-400"
                 >
                   문의 보내기
                 </button>
@@ -250,24 +259,26 @@ export default function MorePage() {
       {/* 약관 모달 */}
       {termsOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-[2px]"
           onClick={() => setTermsOpen(false)}
         >
           <div
-            className="w-full max-w-lg rounded-t-2xl bg-white px-5 pt-5 pb-10 max-h-[75vh] overflow-y-auto"
+            className="w-full max-w-lg rounded-t-[40px] bg-white px-6 pt-8 pb-12 max-h-[85vh] overflow-y-auto shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-zinc-900">약관 및 이용동의</h2>
+            <div className="mb-6 flex items-center justify-between sticky top-0 bg-white pb-4">
+              <h2 className="text-xl font-extrabold text-zinc-900">약관 및 이용동의</h2>
               <button
                 type="button"
                 onClick={() => setTermsOpen(false)}
-                className="text-sm text-zinc-400 hover:text-zinc-700"
+                className="w-8 h-8 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400 hover:text-zinc-700 transition-colors"
               >
-                닫기
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
-            <pre className="whitespace-pre-wrap text-xs leading-relaxed text-zinc-500 font-sans">
+            <pre className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-600 font-sans px-2">
               {TERMS_TEXT}
             </pre>
           </div>
@@ -289,10 +300,10 @@ function ToggleItem({
   onChange: (v: boolean) => void
 }) {
   return (
-    <li className="flex items-center justify-between px-5 py-4">
+    <li className="flex items-center justify-between px-6 py-5">
       <div>
-        <p className="text-sm text-zinc-800">{label}</p>
-        <p className="text-xs text-zinc-400">{description}</p>
+        <p className="text-[15px] font-bold text-zinc-800">{label}</p>
+        <p className="text-xs font-medium text-zinc-400 mt-0.5">{description}</p>
       </div>
       <button
         type="button"
@@ -300,13 +311,13 @@ function ToggleItem({
         aria-checked={value}
         onClick={() => onChange(!value)}
         className={[
-          'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200',
-          value ? 'bg-zinc-900' : 'bg-zinc-200',
+          'relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 shadow-inner',
+          value ? 'bg-zinc-950' : 'bg-zinc-200',
         ].join(' ')}
       >
         <span
           className={[
-            'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200',
+            'pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200',
             value ? 'translate-x-5' : 'translate-x-0',
           ].join(' ')}
         />

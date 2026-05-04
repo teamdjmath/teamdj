@@ -26,15 +26,18 @@ export default async function ReportSessionPage({
     .eq('report_date', date)
     .order('student_id')
 
-  const reports = (rows ?? []).map((r) => {
-    const row = r as Record<string, unknown>
-    return {
-      id:           row.id as string,
-      imageUrl:     (row.image_url ?? null) as string | null,
-      kakaoSentAt:  (row.kakao_sent_at ?? null) as string | null,
-      studentName:  ((row.student as { name?: string } | null)?.name ?? '') as string,
-    }
-  }).sort((a, b) => a.studentName.localeCompare(b.studentName, 'ko'))
+  const reports = (rows ?? [])
+    .map((r) => {
+      const row = r as Record<string, unknown>
+      return {
+        id:           row.id as string,
+        imageUrl:     (row.image_url ?? null) as string | null,
+        kakaoSentAt:  (row.kakao_sent_at ?? null) as string | null,
+        studentName:  ((row.student as { name?: string } | null)?.name ?? '') as string,
+      }
+    })
+    .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
+    .sort((a, b) => a.studentName.localeCompare(b.studentName, 'ko'))
 
   const className = (classRow as { name: string }).name
 

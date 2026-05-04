@@ -37,11 +37,19 @@ export default async function AssignmentsPage({
     className: ((a.class_groups as unknown as { name: string } | null)?.name ?? '') as string,
   }))
 
+  const { data: catRows } = await adminSupabase
+    .from('assignment_categories')
+    .select('name')
+    .order('name')
+  
+  const categoryOptions = (catRows ?? []).map(r => r.name as string)
+
   return (
     <AssignmentsClient
       classOptions={(classes ?? []).map((c) => ({ id: c.id, name: c.name }))}
       selectedClassId={selectedClassId ?? null}
       assignments={assignments}
+      categoryOptions={categoryOptions}
     />
   )
 }

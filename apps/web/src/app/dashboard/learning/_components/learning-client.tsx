@@ -1,11 +1,14 @@
 'use client'
 
-import { useState } from 'react'
-import { Card, CardHeader } from '@/components/ui/card'
+import { useState, useTransition } from 'react'
+import Link from 'next/link'
+import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
+import { createTodo, toggleTodo, deleteTodo } from '@/lib/actions/todos'
 
 type Lecture = { id: string; title: string; videoId: string; orderNum: number }
 type Course = { courseName: string; lectures: Lecture[] }
+type Todo = { id: string; content: string; is_completed: boolean }
 
 const CATEGORY_STYLE: Record<string, string> = {
   '매월승리': 'bg-zinc-950 text-white',
@@ -25,12 +28,46 @@ interface Props {
   sortedWeeks: number[]
   progressMap: Record<string, number>
   today: string
+  initialTodos: Todo[]
 }
 
-export function LearningClient({ courses, weekGroups, sortedWeeks, progressMap, today }: Props) {
-  const [openCourse, setOpenCourse] = useState<string | null>(
-    courses.length === 1 ? courses[0].courseName : null,
-  )
+export function LearningClient({ courses, weekGroups, sortedWeeks, progressMap, today, initialTodos }: Props) {
+  const [todos, setTodos] = useState(initialTodos)
+  const [newTodo, setNewTodo] = useState('')
+  const [isPending, startTransition] = useTransition()
+
+  async function handleAddTodo(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newTodo.trim() || isPending) return
+    const content = newTodo.trim()
+    setNewTodo('')
+    
+    // Optimistic UI
+    const tempId = Math.random().toString()
+    setTodos([{ id: tempId, content, is_completed: false }, ...todos])
+
+    startTransition(async () => {
+      const res = await createTodo(content)
+      if (!res.success) {
+        alert(res.error)
+        setTodos(prev => prev.filter(t => t.id !== tempId))
+      }
+    })
+  }
+
+  async function handleToggle(id: string, completed: boolean) {
+    setTodos(todos.map(t => t.id === id ? { ...t, is_completed: !completed } : t))
+    startTransition(async () => {
+      await toggleTodo(id, !completed)
+    })
+  }
+
+  async function handleDelete(id: string) {
+    setTodos(todos.filter(t => t.id !== id))
+    startTransition(async () => {
+      await deleteTodo(id)
+    })
+  }
 
   return (
     <div className="space-y-4">
@@ -38,26 +75,23 @@ export function LearningClient({ courses, weekGroups, sortedWeeks, progressMap, 
 
       <Card>
         <CardHeader title="강의 영상" />
-        <div className="px-5 pb-5">
+        <CardContent>
           {courses.length === 0 ? (
             <EmptyState message="수강 가능한 강좌가 없습니다." />
           ) : (
             <div className="space-y-2">
               {courses.map((course) => (
-                <div key={course.courseName} className="rounded-xl border border-zinc-200 overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setOpenCourse(openCourse === course.courseName ? null : course.courseName)
-                    }
-                    className="w-full flex items-center justify-between px-4 py-3 bg-zinc-50 hover:bg-zinc-100 transition-colors text-left"
+                <div key={course.courseName} className="rounded-[20px] bg-zinc-50 overflow-hidden">
+                  <Link
+                    href={`/dashboard/learning/course/${encodeURIComponent(course.courseName)}`}
+                    className="w-full flex items-center justify-between px-5 py-4 hover:bg-zinc-100 transition-colors text-left"
                   >
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-sm text-zinc-900">{course.courseName}</span>
                       <span className="text-[11px] text-zinc-400">{course.lectures.length}강</span>
                     </div>
                     <svg
-                      className={`w-4 h-4 text-zinc-400 transition-transform ${openCourse === course.courseName ? 'rotate-180' : ''}`}
+                      className="w-4 h-4 text-zinc-400 transition-transform -rotate-90"
                       fill="none"
                       stroke="currentColor"
                       strokeWidth={2}
@@ -65,63 +99,74 @@ export function LearningClient({ courses, weekGroups, sortedWeeks, progressMap, 
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                     </svg>
-                  </button>
-
-                  {openCourse === course.courseName && (
-                    <div className="p-3">
-                      {course.lectures.length === 0 ? (
-                        <p className="py-4 text-center text-xs text-zinc-400">등록된 강의가 없습니다.</p>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-2">
-                          {course.lectures.map((lec) => (
-                            <a
-                              key={lec.id}
-                              href={`https://www.youtube.com/watch?v=${lec.videoId}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="group rounded-lg overflow-hidden border border-zinc-100 hover:border-zinc-300 transition-colors"
-                            >
-                              <div className="relative aspect-video bg-zinc-100">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={`https://img.youtube.com/vi/${lec.videoId}/mqdefault.jpg`}
-                                  alt={lec.title}
-                                  className="w-full h-full object-cover"
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
-                                  <svg
-                                    className="h-8 w-8 text-white drop-shadow"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                  >
-                                    <path d="M8 5v14l11-7z" />
-                                  </svg>
-                                </div>
-                                <span className="absolute top-1.5 left-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white font-medium">
-                                  {lec.orderNum}강
-                                </span>
-                              </div>
-                              <div className="px-2 py-1.5">
-                                <p className="text-xs font-medium text-zinc-800 line-clamp-2 leading-tight">
-                                  {lec.title}
-                                </p>
-                              </div>
-                            </a>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  </Link>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader title="나의 할 일" />
+        <CardContent>
+          <form onSubmit={handleAddTodo} className="mb-6 flex gap-2">
+            <input
+              value={newTodo}
+              onChange={(e) => setNewTodo(e.target.value)}
+              placeholder="오늘 할 일을 계획해보세요"
+              className="flex-1 rounded-2xl bg-zinc-50 px-5 py-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-zinc-900 transition-all placeholder:text-zinc-500"
+            />
+            <button
+              type="submit"
+              disabled={!newTodo.trim() || isPending}
+              className="rounded-2xl bg-zinc-950 px-5 py-3 text-sm font-bold text-white hover:bg-zinc-800 transition-all disabled:bg-zinc-100 disabled:text-zinc-300 active:scale-95"
+            >
+              추가
+            </button>
+          </form>
+
+          {todos.length === 0 ? (
+            <div className="py-10 text-center text-sm text-zinc-400">
+              아직 계획된 할 일이 없습니다.
+            </div>
+          ) : (
+            <ul className="space-y-3">
+              {todos.map((t) => (
+                <li key={t.id} className="flex items-center justify-between gap-3 group">
+                  <button
+                    onClick={() => handleToggle(t.id, t.is_completed)}
+                    className="flex items-center gap-3 flex-1 text-left"
+                  >
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${t.is_completed ? 'bg-zinc-950 border-zinc-950' : 'border-zinc-200 hover:border-zinc-400'}`}>
+                      {t.is_completed && (
+                        <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className={`text-[15px] font-bold transition-all ${t.is_completed ? 'text-zinc-300 line-through' : 'text-zinc-800'}`}>
+                      {t.content}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => handleDelete(t.id)}
+                    className="p-2 text-zinc-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
       </Card>
 
       <Card>
         <CardHeader title="과제 목록" />
-        <div className="px-5 pb-5 space-y-5">
+        <CardContent className="space-y-6">
           {sortedWeeks.length > 0 ? (
             sortedWeeks.map((wk) => (
               <div key={wk}>
@@ -146,7 +191,7 @@ export function LearningClient({ courses, weekGroups, sortedWeeks, progressMap, 
                               {category || '기타'}
                             </span>
                             <span
-                              className={`truncate text-sm ${isOverdue ? 'text-red-600' : 'text-zinc-800'}`}
+                              className={`truncate text-sm font-bold ${isOverdue ? 'text-red-600' : 'text-zinc-800'}`}
                             >
                               {title}
                             </span>
@@ -180,7 +225,7 @@ export function LearningClient({ courses, weekGroups, sortedWeeks, progressMap, 
           ) : (
             <EmptyState message="등록된 과제가 없습니다." />
           )}
-        </div>
+        </CardContent>
       </Card>
     </div>
   )

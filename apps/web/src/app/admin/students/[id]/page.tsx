@@ -14,7 +14,7 @@ export default async function StudentDetailPage({
   // 학생 기본 정보
   const { data: student } = await supabase
     .from('users')
-    .select('id, name, phone, is_active, created_at')
+    .select('id, name, phone, is_active, created_at, school, grade')
     .eq('id', id)
     .eq('role', 'student')
     .single()
@@ -89,6 +89,8 @@ export default async function StudentDetailPage({
           id:        student.id,
           name:      student.name,
           phone:     student.phone,
+          school:    student.school,
+          grade:     student.grade,
           is_active: student.is_active,
           createdAt: student.created_at,
         }}

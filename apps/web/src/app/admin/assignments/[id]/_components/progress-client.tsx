@@ -127,9 +127,9 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
                         max={100}
                         value={pct}
                         onChange={(e) => setPct(s.id, parseInt(e.target.value) || 0)}
-                        className="w-20 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm text-center focus:border-zinc-400 focus:outline-none focus:ring-0"
+                        className="w-24 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-base font-bold text-zinc-950 text-center focus:border-zinc-950 focus:outline-none focus:ring-0 transition-all"
                       />
-                      <span className="text-zinc-400 text-xs">/ 100</span>
+                      <span className="text-zinc-500 font-medium">/ 100</span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center hidden sm:table-cell">

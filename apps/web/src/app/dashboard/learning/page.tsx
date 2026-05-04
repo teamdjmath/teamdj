@@ -100,6 +100,13 @@ export default async function LearningPage() {
   }
   const sortedWeeks = Object.keys(weekGroups).map(Number).sort((a, b) => b - a)
 
+  // Personal To-Dos
+  const { data: todos } = await admin
+    .from('student_todos')
+    .select('*')
+    .eq('student_id', userId)
+    .order('created_at', { ascending: false })
+
   return (
     <LearningClient
       courses={courses}
@@ -107,6 +114,7 @@ export default async function LearningPage() {
       sortedWeeks={sortedWeeks}
       progressMap={progressMap}
       today={today}
+      initialTodos={todos ?? []}
     />
   )
 }

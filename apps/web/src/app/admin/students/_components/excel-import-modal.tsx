@@ -54,6 +54,9 @@ export function ExcelImportModal({
         phone:     String(row['전화번호'] ?? row['phone'] ?? '').trim(),
         password:  String(row['초기비밀번호'] ?? row['password'] ?? '').trim(),
         className: String(row['분반명'] ?? row['class'] ?? '').trim(),
+        school:    String(row['학교명'] ?? row['school'] ?? '').trim(),
+        grade:     String(row['학년'] ?? row['grade'] ?? '').trim(),
+        parentPhone: String(row['학부모전화번호'] ?? row['parentPhone'] ?? '').trim(),
       }))
 
       // 빈 행 제거 + 기본 유효성 검사
@@ -71,7 +74,8 @@ export function ExcelImportModal({
 
   function handleImport() {
     startTransition(async () => {
-      const res = await bulkCreateStudents(rows.map(({ _idx: _, ...r }) => r))
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const res = await bulkCreateStudents(rows.map(({ _idx, ...r }) => r))
       setResult(res)
       if (res.succeeded > 0) router.refresh()
     })
@@ -155,8 +159,8 @@ export function ExcelImportModal({
               className="block w-full text-sm text-zinc-500 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-zinc-700"
             />
             <p className="mt-1.5 text-[11px] text-zinc-400">
-              필수 컬럼: <span className="font-mono">이름, 전화번호, 초기비밀번호</span> &nbsp;|&nbsp;
-              선택: <span className="font-mono">분반명</span>
+              필수 컬럼: <span className="font-mono">이름, 전화번호, 초기비밀번호, 학교명, 학년</span> &nbsp;|&nbsp;
+              선택: <span className="font-mono">분반명, 학부모전화번호</span>
             </p>
             {parseError && (
               <p className="mt-1.5 text-xs text-red-500">{parseError}</p>
@@ -176,6 +180,8 @@ export function ExcelImportModal({
                       <th className="px-4 py-2.5 text-left font-semibold text-zinc-500">행</th>
                       <th className="px-4 py-2.5 text-left font-semibold text-zinc-500">이름</th>
                       <th className="px-4 py-2.5 text-left font-semibold text-zinc-500">전화번호</th>
+                      <th className="px-4 py-2.5 text-left font-semibold text-zinc-500">학교/학년</th>
+                      <th className="px-4 py-2.5 text-left font-semibold text-zinc-500">학부모</th>
                       <th className="px-4 py-2.5 text-left font-semibold text-zinc-500">분반명</th>
                     </tr>
                   </thead>
@@ -185,6 +191,8 @@ export function ExcelImportModal({
                         <td className="px-4 py-2 text-zinc-400">{r._idx}</td>
                         <td className="px-4 py-2 text-zinc-800">{r.name}</td>
                         <td className="px-4 py-2 text-zinc-600">{r.phone}</td>
+                        <td className="px-4 py-2 text-zinc-500">{r.school || '세종고'}/{r.grade || '1'}학년</td>
+                        <td className="px-4 py-2 text-zinc-500">{r.parentPhone || '—'}</td>
                         <td className="px-4 py-2 text-zinc-500">{r.className || '—'}</td>
                       </tr>
                     ))}

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { Card, CardHeader } from '@/components/ui/card'
+import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { DdayCard } from './_components/dday-card'
 
@@ -97,11 +97,11 @@ export default async function DashboardPage() {
       <Card>
         <CardHeader
           title="오늘의 학습 계획"
-          action={<Link href="/dashboard/learning" className="hover:text-zinc-700">전체 보기</Link>}
+          action={<Link href="/dashboard/learning" className="hover:text-zinc-700">전체 보기 &rarr;</Link>}
         />
-        <div className="px-5 pb-5">
+        <CardContent>
           {assignments && assignments.length > 0 ? (
-            <ul className="space-y-3">
+            <ul className="space-y-4">
               {assignments.map((a) => {
                 const pct = progressMap[a.id as string] ?? 0
                 const isOverdue = a.due_date && (a.due_date as string) < TODAY
@@ -137,33 +137,45 @@ export default async function DashboardPage() {
           ) : (
             <EmptyState message="오늘 마감인 과제가 없습니다." />
           )}
-        </div>
+        </CardContent>
       </Card>
 
       {/* 공지사항 */}
       <Card>
-        <CardHeader title="공지사항" />
-        <div className="px-5 pb-5">
+        <CardHeader 
+          title="공지사항" 
+        />
+        <CardContent>
           {notices && notices.length > 0 ? (
-            <ul className="divide-y divide-zinc-100">
+            <div className="space-y-2">
               {notices.map((n) => (
-                <li key={n.id as string} className="flex items-center gap-2 py-2.5">
-                  {(n.is_pinned as boolean) && (
-                    <span className="shrink-0 rounded bg-zinc-900 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                      고정
-                    </span>
-                  )}
-                  <span className="flex-1 truncate text-sm text-zinc-800">{n.title as string}</span>
-                  <span className="shrink-0 text-[10px] text-zinc-400">
-                    {new Date(n.created_at as string).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                <Link 
+                  key={n.id as string} 
+                  href={`/dashboard/notices/${n.id}`}
+                  className="flex items-center gap-4 p-4 rounded-2xl hover:bg-zinc-50 transition-colors group"
+                >
+                  <span className="shrink-0 rounded-xl bg-zinc-100 px-3 py-1.5 text-xs font-bold text-zinc-400 group-hover:bg-zinc-200">
+                    공지
                   </span>
-                </li>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-bold text-zinc-800">
+                      {(n.is_pinned as boolean) && <span className="text-red-500 mr-1.5">[고정]</span>}
+                      {n.title as string}
+                    </p>
+                    <p className="text-[11px] text-zinc-400 mt-0.5">
+                      {new Date(n.created_at as string).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
+                  </div>
+                  <svg className="w-5 h-5 text-zinc-200 group-hover:text-zinc-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
               ))}
-            </ul>
+            </div>
           ) : (
             <EmptyState message="공지사항이 없습니다." />
           )}
-        </div>
+        </CardContent>
       </Card>
 
       {/* 질의응답 */}
@@ -171,25 +183,30 @@ export default async function DashboardPage() {
         <CardHeader
           title="질의응답"
           action={
-            <Link href="/dashboard/learning" className="hover:text-zinc-700">
-              전체 보기
+            <Link href="/dashboard/qna" className="hover:text-zinc-700">
+              전체 보기 &rarr;
             </Link>
           }
         />
-        <div className="px-5 pb-5">
+        <CardContent>
           {questions && questions.length > 0 ? (
-            <ul className="divide-y divide-zinc-100">
+            <ul className="divide-y divide-zinc-50">
               {questions.map((q) => (
-                <li key={q.id as string} className="flex items-center justify-between gap-3 py-2.5">
-                  <span className="flex-1 truncate text-sm text-zinc-800">{(q.content as string).slice(0, 50)}</span>
-                  <StatusBadge status={q.status as string} />
+                <li key={q.id as string}>
+                  <Link 
+                    href={`/dashboard/qna/${q.id}`}
+                    className="flex items-center justify-between gap-3 py-3 hover:bg-zinc-50 px-2 rounded-xl transition-colors"
+                  >
+                    <span className="flex-1 truncate text-sm text-zinc-800 font-medium">{(q.content as string).slice(0, 50)}</span>
+                    <StatusBadge status={q.status as string} />
+                  </Link>
                 </li>
               ))}
             </ul>
           ) : (
             <EmptyState message="아직 질문이 없습니다." />
           )}
-        </div>
+        </CardContent>
       </Card>
     </div>
   )

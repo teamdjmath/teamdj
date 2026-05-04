@@ -11,6 +11,9 @@ export type StudentBulkRow = {
   phone: string
   password: string
   className: string
+  school: string
+  grade: string
+  parentPhone?: string
 }
 
 export type BulkResult = {
@@ -34,6 +37,9 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
   const phone    = (formData.get('phone')    as string).trim()
   const password = formData.get('password') as string
   const classId  = formData.get('classId')  as string | null
+  const school   = (formData.get('school')   as string || '').trim()
+  const grade    = (formData.get('grade')    as string || '').trim()
+  const parentPhone = (formData.get('parentPhone') as string || '').trim()
 
   if (!name || !phone || !password) return { success: false, error: '필수 항목을 입력해주세요.' }
 
@@ -46,7 +52,7 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
       email,
       password,
       email_confirm: true,
-      user_metadata: { name, role: 'student', phone },
+      user_metadata: { name, role: 'student', phone, school, grade },
     })
 
     if (authErr) {
@@ -75,7 +81,7 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
   // 2. public.users upsert
   //    handle_new_user 트리거가 auth.users INSERT 직후 public.users를 자동 생성하므로 upsert로 병합
   const { error: userErr } = await adminSupabase.from('users').upsert(
-    { id: userId, phone, name, role: 'student' },
+    { id: userId, phone, name, role: 'student', school, grade },
     { onConflict: 'id' },
   )
 
@@ -96,6 +102,23 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
     })
     if (memberErr) {
       console.error('[createStudent] class_members insert error:', memberErr.message)
+    }
+  }
+
+  // 4. parent_links insert (if parent exists)
+  if (parentPhone) {
+    const { data: parent } = await adminSupabase
+      .from('users')
+      .select('id')
+      .eq('phone', parentPhone)
+      .eq('role', 'parent')
+      .maybeSingle()
+
+    if (parent) {
+      await adminSupabase.from('parent_links').insert({
+        parent_id:  parent.id,
+        student_id: userId,
+      })
     }
   }
 
@@ -137,7 +160,7 @@ export async function bulkCreateStudents(
           email,
           password: row.password,
           email_confirm: true,
-          user_metadata: { name: row.name, role: 'student', phone: row.phone },
+          user_metadata: { name: row.name, role: 'student', phone: row.phone, school: row.school, grade: row.grade },
         })
 
       if (authErr) {
@@ -162,7 +185,7 @@ export async function bulkCreateStudents(
       const userId = authData.user.id
 
       const { error: userErr } = await adminSupabase.from('users').upsert(
-        { id: userId, phone: row.phone, name: row.name, role: 'student' },
+        { id: userId, phone: row.phone, name: row.name, role: 'student', school: row.school, grade: row.grade },
         { onConflict: 'id' },
       )
 
@@ -179,6 +202,23 @@ export async function bulkCreateStudents(
           class_id:   classId,
           student_id: userId,
         })
+      }
+
+      // 4. parent_links
+      if (row.parentPhone) {
+        const { data: parent } = await adminSupabase
+          .from('users')
+          .select('id')
+          .eq('phone', row.parentPhone)
+          .eq('role', 'parent')
+          .single()
+        
+        if (parent) {
+          await adminSupabase.from('parent_links').insert({
+            parent_id:  parent.id,
+            student_id: authData.user!.id,
+          })
+        }
       }
 
       succeeded++
@@ -203,12 +243,14 @@ export async function updateStudent(formData: FormData): Promise<ActionResult> {
   const studentId = formData.get('studentId') as string
   const name      = (formData.get('name')  as string).trim()
   const phone     = (formData.get('phone') as string).trim()
+  const school    = (formData.get('school') as string || '').trim()
+  const grade     = (formData.get('grade') as string || '').trim()
 
   if (!studentId || !name || !phone) return { success: false, error: '필수 항목을 입력해주세요.' }
 
   const { error } = await adminSupabase
     .from('users')
-    .update({ name, phone })
+    .update({ name, phone, school, grade })
     .eq('id', studentId)
 
   if (error) return { success: false, error: `학생 정보 수정 실패: ${error.message}` }

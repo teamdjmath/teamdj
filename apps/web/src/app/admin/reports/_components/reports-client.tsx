@@ -20,8 +20,11 @@ interface Props {
   sessions: Session[]
 }
 
-function fmtDate(iso: string) {
-  const [, mm, dd] = iso.split('-')
+function fmtDate(iso?: string) {
+  if (!iso || !iso.includes('-')) return iso || ''
+  const parts = iso.split('-')
+  if (parts.length < 3) return iso
+  const [, mm, dd] = parts
   return `${mm}.${dd}`
 }
 

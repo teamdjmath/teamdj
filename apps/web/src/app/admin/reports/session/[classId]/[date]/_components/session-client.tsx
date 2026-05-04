@@ -66,19 +66,27 @@ export function SessionClient({ classId, date, sessionLabel, reports }: Props) {
           {batchErr && <p className="mt-1.5 text-xs text-red-500">{batchErr}</p>}
           {batchResult && <p className="mt-1.5 text-xs font-medium text-zinc-700">✓ {batchResult}</p>}
         </div>
-        <button
-          type="button"
-          onClick={handleBatchSend}
-          disabled={pending || reports.length === 0}
-          className={[
-            'shrink-0 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50',
-            allSent
-              ? 'border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
-              : 'bg-zinc-950 text-white hover:bg-zinc-800',
-          ].join(' ')}
-        >
-          {pending ? '발송 중…' : allSent ? '전체 재발송' : '전체 발송'}
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/admin/reports/new?classId=${classId}&sessionDate=${date}`}
+            className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-100 hover:border-zinc-300 transition-all active:scale-95 shadow-sm"
+          >
+            리포트 수정
+          </Link>
+          <button
+            type="button"
+            onClick={handleBatchSend}
+            disabled={pending || reports.length === 0}
+            className={[
+              'shrink-0 rounded-lg px-4 py-2.5 text-sm font-medium transition-all active:scale-95 disabled:opacity-50',
+              allSent
+                ? 'border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
+                : 'bg-zinc-950 text-white hover:bg-zinc-800',
+            ].join(' ')}
+          >
+            {pending ? '발송 중…' : allSent ? '전체 재발송' : '전체 발송'}
+          </button>
+        </div>
       </div>
 
       {/* 학생별 리포트 그리드 */}

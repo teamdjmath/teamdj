@@ -49,6 +49,20 @@ export function StudentFormModal({
           placeholder="01012345678"
           required
         />
+        <div className="grid grid-cols-2 gap-4">
+          <InputField
+            label="학교명"
+            name="school"
+            placeholder="OO고 또는 OO중"
+            required
+          />
+          <InputField
+            label="학년"
+            name="grade"
+            placeholder="1"
+            required
+          />
+        </div>
         <InputField
           label="초기 비밀번호"
           name="password"
@@ -63,6 +77,12 @@ export function StudentFormModal({
             <option key={c.id} value={c.id}>{c.label}</option>
           ))}
         </SelectField>
+        <InputField
+          label="학부모 전화번호 (선택)"
+          name="parentPhone"
+          type="tel"
+          placeholder="01012345678"
+        />
         <p className="text-[11px] text-zinc-400">
           로그인 ID: <span className="font-mono text-zinc-600">전화번호@teamdj.com</span>
         </p>

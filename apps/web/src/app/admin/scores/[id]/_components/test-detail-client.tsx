@@ -215,7 +215,7 @@ export function TestDetailClient({
                         onChange={(e) =>
                           setScores((prev) => ({ ...prev, [s.id]: e.target.value }))
                         }
-                        className="w-24 rounded-lg border border-zinc-200 px-2 py-1.5 text-center text-sm focus:outline-none focus:border-zinc-400"
+                        className="w-24 rounded-lg border border-zinc-200 bg-white px-2 py-2 text-center text-base font-bold text-zinc-950 placeholder:text-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 focus:outline-none transition-all shadow-sm"
                         placeholder="—"
                       />
                     </td>

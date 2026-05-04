@@ -4,16 +4,12 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { ScoreChart } from './_components/score-chart'
 import { ReportList } from './_components/report-list'
 
-const THIRTY_DAYS_AGO = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-  .toISOString()
-  .split('T')[0]
-
 export default async function ReportPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const userId = user!.id
 
-  const [reportsResult, scoresResult, attendanceResult] = await Promise.all([
+  const [reportsResult, scoresResult] = await Promise.all([
     supabase
       .from('reports')
       .select('id, created_at, image_url')
@@ -26,25 +22,10 @@ export default async function ReportPage() {
       .eq('student_id', userId)
       .order('test_date', { ascending: true })
       .limit(10),
-    supabase
-      .from('attendance_logs')
-      .select('status')
-      .eq('student_id', userId)
-      .gte('session_date', THIRTY_DAYS_AGO),
   ])
 
   const reports = reportsResult.data ?? []
   const scores = scoresResult.data ?? []
-  const attendance = attendanceResult.data ?? []
-
-  const attCount = { present: 0, late: 0, absent: 0 }
-  for (const row of attendance) {
-    const s = row.status as string
-    if (s === 'present') attCount.present++
-    else if (s === 'late') attCount.late++
-    else if (s === 'absent') attCount.absent++
-  }
-  const attTotal = attCount.present + attCount.late + attCount.absent
 
   const scoreData = scores.map((s) => ({
     date: s.test_date as string,
@@ -63,26 +44,10 @@ export default async function ReportPage() {
     <div className="space-y-4">
       <h1 className="text-xl font-bold text-zinc-950">리포트</h1>
 
-      {/* 출석 현황 */}
-      <Card>
-        <CardHeader title="출석 현황 (최근 30일)" />
-        <div className="px-5 pb-5">
-          {attTotal > 0 ? (
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <AttStat label="출석" value={attCount.present} total={attTotal} />
-              <AttStat label="지각" value={attCount.late} total={attTotal} />
-              <AttStat label="결석" value={attCount.absent} total={attTotal} />
-            </div>
-          ) : (
-            <EmptyState message="출결 데이터가 없습니다." />
-          )}
-        </div>
-      </Card>
-
       {/* 성적 히스토리 차트 */}
       <Card>
         <CardHeader title="성적 히스토리" />
-        <div className="px-5 pb-5">
+        <div className="px-6 pb-6">
           {scoreData.length > 0 ? (
             <ScoreChart scores={scoreData} />
           ) : (
@@ -94,7 +59,7 @@ export default async function ReportPage() {
       {/* 학습 리포트 목록 */}
       <Card>
         <CardHeader title="학습 리포트" />
-        <div className="px-5 pb-5">
+        <div className="px-6 pb-6">
           {reportItems.length > 0 ? (
             <ReportList reports={reportItems} />
           ) : (
@@ -106,21 +71,3 @@ export default async function ReportPage() {
   )
 }
 
-function AttStat({
-  label,
-  value,
-  total,
-}: {
-  label: string
-  value: number
-  total: number
-}) {
-  const pct = total > 0 ? Math.round((value / total) * 100) : 0
-  return (
-    <div className="rounded-xl border border-zinc-100 p-3 text-center">
-      <p className="text-2xl font-bold text-zinc-950">{value}</p>
-      <p className="text-xs font-medium text-zinc-500 mt-0.5">{label}</p>
-      <p className="text-[10px] text-zinc-300 mt-1">{pct}%</p>
-    </div>
-  )
-}

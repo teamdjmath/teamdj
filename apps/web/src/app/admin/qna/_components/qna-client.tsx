@@ -2,6 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 type ClassOption = { id: string; name: string }
 type Question = {
@@ -55,6 +57,20 @@ export function QnaClient({ classOptions, selectedStatus, selectedClassId, quest
     if (classId) p.set('classId', classId)
     router.push(`/admin/qna?${p.toString()}`)
   }
+
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel('admin_qna_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'qna_questions' }, () => {
+        router.refresh()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [router])
 
   const counts = {
     all: questions.length,

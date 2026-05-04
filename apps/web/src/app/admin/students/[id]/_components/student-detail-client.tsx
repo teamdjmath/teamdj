@@ -20,6 +20,8 @@ type StudentDetailClientProps = {
     id: string
     name: string
     phone: string | null
+    school: string | null
+    grade: string | null
     is_active: boolean
     createdAt: string
   }
@@ -116,6 +118,10 @@ export function StudentDetailClient({
             <div className="grid grid-cols-2 gap-4">
               <InputField label="이름" name="name" defaultValue={student.name} required />
               <InputField label="전화번호" name="phone" type="tel" defaultValue={student.phone ?? ''} required />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <InputField label="학교명" name="school" defaultValue={student.school ?? ''} placeholder="OO고 또는 OO중" required />
+              <InputField label="학년" name="grade" defaultValue={student.grade ?? ''} placeholder="1" required />
             </div>
             <div className="flex items-center gap-4">
               <div>

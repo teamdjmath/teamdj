@@ -45,15 +45,27 @@ export async function submitAnswer(data: {
 
   if (answerError) return { error: '답변 등록에 실패했습니다.' }
 
-  const { error: qError } = await supabase
+  const { error: qError, data: qData } = await supabase
     .from('qna_questions')
     .update({ status: 'answered', assigned_ta_id: user.id })
     .eq('id', data.questionId)
+    .select('student_id')
+    .single()
 
   if (qError) return { error: '질문 상태 업데이트에 실패했습니다.' }
 
+  if (qData?.student_id) {
+    await supabase.from('push_messages').insert({
+      sender_id: user.id,
+      target_student_id: qData.student_id,
+      message: '질문에 대한 답변이 등록되었습니다.',
+    })
+  }
+
   revalidatePath('/admin/qna')
   revalidatePath(`/admin/qna/${data.questionId}`)
+  revalidatePath('/dashboard/qna')
+  revalidatePath(`/dashboard/qna/${data.questionId}`)
   return {}
 }
 
@@ -96,4 +108,63 @@ export async function generateAiDraft(
   } catch {
     return { error: 'AI 초안 생성 중 오류가 발생했습니다.' }
   }
+}
+
+export async function createQuestion(data: {
+  title: string
+  content: string
+  classId: string | null
+  imageUrls: string[]
+}): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: '인증이 필요합니다.' }
+
+  const { error } = await supabase
+    .from('qna_questions')
+    .insert({
+      student_id: user.id,
+      class_id: data.classId || null,
+      title: data.title,
+      content: data.content,
+      image_urls: data.imageUrls,
+      status: 'open',
+    })
+
+  if (error) {
+    return { error: '질문 등록에 실패했습니다.' }
+  }
+
+  revalidatePath('/dashboard/qna')
+  revalidatePath('/admin/qna')
+  return {}
+}
+
+export async function deleteQuestion(id: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: '인증이 필요합니다.' }
+
+  const { data: question, error: fetchError } = await supabase
+    .from('qna_questions')
+    .select('status, student_id')
+    .eq('id', id)
+    .single()
+
+  if (fetchError || !question) return { error: '질문을 찾을 수 없습니다.' }
+  if (question.student_id !== user.id) return { error: '권한이 없습니다.' }
+  if (question.status !== 'open') return { error: '미답변 상태인 질문만 삭제할 수 있습니다.' }
+
+  const { error } = await supabase
+    .from('qna_questions')
+    .delete()
+    .eq('id', id)
+
+  if (error) return { error: '삭제에 실패했습니다.' }
+
+  revalidatePath('/dashboard/qna')
+  revalidatePath('/admin/qna')
+  return {}
 }

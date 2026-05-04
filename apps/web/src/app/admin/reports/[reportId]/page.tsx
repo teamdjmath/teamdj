@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ReportDetailClient } from './_components/report-detail-client'
@@ -10,12 +10,12 @@ export default async function ReportDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data: row } = await supabase
     .from('reports')
     .select(
-      'id, report_date, image_url, kakao_sent_at, content_json, created_at, student:users!student_id(name), class:class_groups!class_id(name)',
+      'id, report_date, image_url, kakao_sent_at, content_json, created_at, updated_at, student:users!student_id(name, school, grade), class:class_groups!class_id(name)',
     )
     .eq('id', id)
     .single()
@@ -31,8 +31,11 @@ export default async function ReportDetailPage({
     kakao_sent_at: (r.kakao_sent_at ?? null) as string | null,
     content_json: (r.content_json ?? {}) as unknown as ReportContent,
     created_at: r.created_at as string,
-    studentName: ((r.student as { name?: string } | null)?.name ?? '') as string,
-    className: ((r.class as { name?: string } | null)?.name ?? '') as string,
+    updated_at: r.updated_at as string,
+    studentName: ((r.student as { name?: string } | null)?.name   ?? '') as string,
+    school:      ((r.student as { school?: string } | null)?.school ?? '') as string,
+    grade:       ((r.student as { grade?: string } | null)?.grade  ?? '') as string,
+    className:   ((r.class as { name?: string } | null)?.name     ?? '') as string,
   }
 
   return (
@@ -50,7 +53,7 @@ export default async function ReportDetailPage({
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold text-zinc-950">학습 리포트</h1>
           <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-600">
-            {report.studentName} · {report.className}
+            {report.studentName} · {report.school} {report.grade} {report.className}
           </span>
         </div>
         <p className="mt-1 text-sm text-zinc-500">{report.report_date}</p>

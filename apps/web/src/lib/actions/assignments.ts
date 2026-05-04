@@ -122,3 +122,18 @@ export async function saveProgress(
   revalidatePath('/admin/assignments')
   return { success: true, savedCount: count ?? rows.length }
 }
+
+export async function createCategory(name: string): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: '인증이 필요합니다.' }
+
+  const role = user.user_metadata?.role as string | undefined
+  if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+
+  const { error } = await supabase.from('assignment_categories').insert({ name })
+  if (error) return { success: false, error: `카테고리 등록 실패: ${error.message}` }
+  
+  revalidatePath('/admin/assignments')
+  return { success: true }
+}

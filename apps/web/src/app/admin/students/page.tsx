@@ -8,7 +8,7 @@ export default async function StudentsPage() {
   const { data: students } = await supabase
     .from('users')
     .select(`
-      id, name, phone, is_active,
+      id, name, phone, is_active, school, grade,
       class_members!student_id(class_id, is_active, class_groups(name)),
       parent_links!student_id(id)
     `)
@@ -35,6 +35,8 @@ export default async function StudentsPage() {
       id:           s.id,
       name:         s.name,
       phone:        s.phone,
+      school:       s.school,
+      grade:        s.grade,
       is_active:    s.is_active,
       className:    activeClass?.class_groups?.name ?? null,
       classId:      activeClass?.class_id ?? null,
