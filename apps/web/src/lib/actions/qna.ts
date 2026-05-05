@@ -1,7 +1,9 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { GoogleGenAI } from '@google/genai'
 
 export async function assignQuestion(questionId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
@@ -57,8 +59,8 @@ export async function submitAnswer(data: {
   if (qData?.student_id) {
     await supabase.from('push_messages').insert({
       sender_id: user.id,
-      target_student_id: qData.student_id,
-      message: '질문에 대한 답변이 등록되었습니다.',
+      student_id: qData.student_id,
+      content: '질문에 대한 답변이 등록되었습니다.',
     })
   }
 
@@ -71,7 +73,8 @@ export async function submitAnswer(data: {
 
 export async function generateAiDraft(
   questionContent: string,
-): Promise<{ draft?: string; error?: string }> {
+  imageUrls: string[] = [],
+): Promise<{ draft?: string; mediaUrls?: string[]; error?: string }> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'Gemini API 키가 설정되지 않았습니다.' }
 
@@ -80,33 +83,99 @@ export async function generateAiDraft(
   if (!user) return { error: '인증이 필요합니다.' }
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `다음 수학 문제 또는 질문에 대해 단계별로 풀이를 설명해줘. 수식은 LaTeX 형식($...$)으로 작성해줘.\n\n질문: ${questionContent}`,
-                },
-              ],
-            },
-          ],
-        }),
-      },
-    )
+    const ai = new GoogleGenAI({ apiKey })
 
-    if (!res.ok) return { error: 'AI 초안 생성에 실패했습니다.' }
+    const promptText = `다음 수학 문제 또는 질문에 대해 단계별로 풀이를 설명해줘.
+수식은 LaTeX 형식($...$)으로 작성해줘.
+학생이 첨부한 이미지가 있다면 이를 상세히 참고해서 답변을 작성해줘.
+필요하다면 풀이 과정을 손으로 직접 쓴 것 같은 손필기 스타일의 이미지(handwritten solution image)도 하나 생성해서 포함해줘.
 
-    const body = await res.json()
-    const draft = body.candidates?.[0]?.content?.parts?.[0]?.text as string | undefined
-    if (!draft) return { error: 'AI 응답을 받지 못했습니다.' }
-    return { draft }
-  } catch {
-    return { error: 'AI 초안 생성 중 오류가 발생했습니다.' }
+질문: ${questionContent}`
+
+    const contentsParts: Array<string | { inlineData: { data: string; mimeType: string } }> = [promptText]
+
+    // 학생 첨부 이미지 포함
+    if (imageUrls.length > 0) {
+      for (const url of imageUrls) {
+        try {
+          const imgRes = await fetch(url)
+          if (imgRes.ok) {
+            const arrayBuffer = await imgRes.arrayBuffer()
+            const base64 = Buffer.from(arrayBuffer).toString('base64')
+            const mimeType = imgRes.headers.get('content-type') || 'image/png'
+            contentsParts.push({
+              inlineData: {
+                data: base64,
+                mimeType,
+              },
+            })
+          }
+        } catch (e) {
+          console.warn('[generateAiDraft] Failed to fetch student image:', url, e)
+        }
+      }
+    }
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.1-flash-image-preview',
+      contents: contentsParts,
+    })
+    
+    let draft = ''
+    const mediaUrls: string[] = []
+    const admin = createAdminClient()
+
+    const parts = response.candidates?.[0]?.content?.parts ?? []
+    for (const part of parts) {
+      if (part.text) {
+        draft += part.text
+      } else if (part.inlineData && part.inlineData.data) {
+        // 이미지 데이터 처리
+        const imageData = part.inlineData.data
+        const contentType = part.inlineData.mimeType || 'image/png'
+        const buffer = Buffer.from(imageData, 'base64')
+        const ext = contentType.split('/')[1] || 'png'
+        const filePath = `ai-drafts/${user.id}/${Date.now()}.${ext}`
+
+        const { error: uploadError } = await admin.storage
+          .from('qna-images')
+          .upload(filePath, buffer, { contentType, upsert: true })
+
+        if (!uploadError) {
+          const { data: { publicUrl } } = admin.storage.from('qna-images').getPublicUrl(filePath)
+          mediaUrls.push(publicUrl)
+        }
+      }
+    }
+
+    if (!draft && mediaUrls.length === 0) return { error: 'AI 응답을 받지 못했습니다.' }
+    
+    return { draft, mediaUrls }
+  } catch (err: unknown) {
+    console.error('[generateAiDraft] Error:', err)
+    
+    let errorMsg = 'AI 초안 생성 중 오류가 발생했습니다.'
+    
+    if (err instanceof Error) {
+      const msg = err.message
+      if (msg.includes('429') || msg.includes('Quota exceeded') || msg.includes('RESOURCE_EXHAUSTED')) {
+        errorMsg = 'AI API 호출 한도(Quota)를 초과했습니다. (무료 티어 제한 또는 할당량 부족). 잠시 후 다시 시도하거나 API 키 플랜을 확인해주세요.'
+      } else {
+        // JSON 형태의 에러 메시지 파싱 시도
+        try {
+          const match = msg.match(/"message":"(.*?)"/)
+          if (match && match[1]) {
+            errorMsg = `AI 오류: ${match[1]}`
+          } else {
+            errorMsg = `AI 오류: ${msg.split('\n')[0]}`
+          }
+        } catch {
+          errorMsg = `AI 오류: ${msg}`
+        }
+      }
+    }
+    
+    return { error: errorMsg }
   }
 }
 

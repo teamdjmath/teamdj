@@ -27,11 +27,18 @@ export default function RootLayout() {
   useEffect(() => {
     if (session === undefined) return
 
-    const inTabs = segments[0] === '(tabs)'
+    const rootSegment = segments[0] as string
+    const inTabs = rootSegment === '(tabs)'
+    const isLogin = rootSegment === 'login'
 
-    if (!session && inTabs) {
+    if (!session && !isLogin) {
+      // 세션 없는데 로그인이 아니면 로그인으로
       router.replace('/login')
-    } else if (session && !inTabs && segments[0] !== '(tabs)') {
+    } else if (session && isLogin) {
+      // 세션 있는데 로그인이면 메인으로
+      router.replace('/')
+    } else if (session && !inTabs && rootSegment !== '(tabs)') {
+      // 세션 있는데 탭 외부(루트 등)면 메인으로
       router.replace('/')
     }
   }, [session, segments])

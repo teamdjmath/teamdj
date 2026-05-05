@@ -173,10 +173,15 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
   async function handleAiDraft() {
     setAiErr('')
     setAiLoading(true)
-    const res = await generateAiDraft(question.content)
+    const res = await generateAiDraft(question.content, question.image_urls)
     setAiLoading(false)
     if (res.error) { setAiErr(res.error); return }
-    setContent(res.draft!)
+    
+    if (res.draft) setContent(res.draft)
+    if (res.mediaUrls && res.mediaUrls.length > 0) {
+      setMediaUrls((prev) => [...new Set([...prev, ...res.mediaUrls!])])
+    }
+    
     setIsAiDraft(true)
     setTab('write')
   }
@@ -347,22 +352,22 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
           {/* 에디터 / 미리보기 */}
           {tab === 'write' ? (
             <textarea
-              rows={10}
+              rows={12}
               value={content}
               onChange={(e) => { setContent(e.target.value); setIsAiDraft(false) }}
               placeholder={`답변 내용을 입력하세요.\n\n마크다운: **굵게**, *기울임*, \`코드\`\nLaTeX 수식: $x^2 + y^2 = z^2$ (인라인), $$\\frac{a}{b}$$ (블록)\n미디어 URL: 아래 첨부 입력란 사용`}
-              className="w-full resize-none rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-3 font-mono text-sm leading-relaxed focus:border-zinc-400 focus:bg-white focus:outline-none focus:ring-0"
+              className="w-full resize-none rounded-xl border border-zinc-200 bg-white px-4 py-4 font-mono text-sm leading-relaxed text-zinc-900 placeholder:text-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 focus:outline-none transition-all shadow-sm"
             />
           ) : (
             <div
-              className="min-h-[200px] rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-3 text-sm leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: previewHtml || '<span class="text-zinc-400">미리보기가 없습니다.</span>' }}
+              className="min-h-[280px] rounded-xl border border-zinc-200 bg-white px-4 py-4 text-sm leading-relaxed text-zinc-900 shadow-sm"
+              dangerouslySetInnerHTML={{ __html: previewHtml || '<span class="text-zinc-400 italic">미리보기가 없습니다.</span>' }}
             />
           )}
 
           {/* 미디어 URL 첨부 */}
-          <div className="mt-3">
-            <label className="mb-1.5 block text-xs font-medium text-zinc-500">이미지/동영상 URL 첨부</label>
+          <div className="mt-4">
+            <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-400">이미지 / 동영상 URL 첨부</label>
             <div className="flex gap-2">
               <input
                 type="url"
@@ -370,23 +375,25 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
                 onChange={(e) => setMediaInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addMediaUrl() } }}
                 placeholder="https://..."
-                className="flex-1 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-zinc-400 focus:bg-white focus:outline-none focus:ring-0"
+                className="flex-1 rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 focus:outline-none transition-all"
               />
               <button
                 onClick={addMediaUrl}
                 type="button"
-                className="rounded-lg border border-zinc-200 px-3 py-2 text-xs text-zinc-600 hover:bg-zinc-50 transition-colors"
+                className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-100 transition-all active:scale-95"
               >
                 추가
               </button>
             </div>
             {mediaUrls.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 {mediaUrls.map((url, i) => (
-                  <div key={i} className="flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-1 text-xs">
-                    <span className="max-w-[200px] truncate text-zinc-600">{url}</span>
-                    <button onClick={() => removeMediaUrl(i)} className="text-zinc-400 hover:text-zinc-700">
-                      ×
+                  <div key={i} className="flex items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm">
+                    <span className="max-w-[250px] truncate">{url}</span>
+                    <button onClick={() => removeMediaUrl(i)} className="text-zinc-400 hover:text-white transition-colors">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                     </button>
                   </div>
                 ))}
@@ -395,14 +402,24 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
           </div>
 
           {/* 제출 */}
-          {errMsg && <p className="mt-3 text-sm text-red-500">{errMsg}</p>}
-          <div className="mt-4 flex justify-end">
+          {errMsg && <p className="mt-3 text-sm text-red-500 font-medium">{errMsg}</p>}
+          <div className="mt-6 flex justify-end">
             <button
               onClick={handleSubmit}
               disabled={pending || !content.trim()}
-              className="rounded-lg bg-zinc-950 px-6 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 transition-colors disabled:opacity-50"
+              className="group relative inline-flex h-11 items-center justify-center overflow-hidden rounded-xl bg-zinc-950 px-8 py-3 text-sm font-bold text-white transition-all hover:bg-zinc-800 disabled:opacity-50 active:scale-95 shadow-lg shadow-zinc-200"
             >
-              {pending ? '제출 중...' : '답변 제출'}
+              {pending ? (
+                <div className="flex items-center gap-2">
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  제출 중...
+                </div>
+              ) : (
+                '답변 제출하기'
+              )}
             </button>
           </div>
         </div>

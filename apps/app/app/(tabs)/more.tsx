@@ -53,14 +53,20 @@ export default function MoreScreen() {
   const [inquiryDone, setInquiryDone] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
 
-  // AsyncStorage에서 설정 로드
+  const [userName, setUserName] = useState('')
+
+  // AsyncStorage 및 사용자 정보 로드
   useEffect(() => {
     Promise.all([
       AsyncStorage.getItem(LS_NOTIFICATIONS),
       AsyncStorage.getItem(LS_MARKETING),
-    ]).then(([n, m]) => {
+      supabase.auth.getUser()
+    ]).then(([n, m, { data }]) => {
       if (n !== null) setNotifications(n === 'true')
       if (m !== null) setMarketing(m === 'true')
+      if (data.user) {
+        setUserName(data.user.user_metadata?.name || data.user.email?.split('@')[0] || '')
+      }
     })
   }, [])
 
@@ -105,7 +111,6 @@ export default function MoreScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.pageTitle}>더보기</Text>
 
         {/* 지원 메뉴 */}
         <View style={styles.card}>
@@ -126,7 +131,8 @@ export default function MoreScreen() {
               value={notifications}
               onValueChange={handleNotifications}
               trackColor={{ false: '#e4e4e7', true: '#09090b' }}
-              thumbColor="#fff"
+              thumbColor="#ffffff"
+              ios_backgroundColor="#e4e4e7"
             />
           </View>
           <View style={[styles.toggleRow, styles.noBorder]}>
@@ -138,17 +144,24 @@ export default function MoreScreen() {
               value={marketing}
               onValueChange={handleMarketing}
               trackColor={{ false: '#e4e4e7', true: '#09090b' }}
-              thumbColor="#fff"
+              thumbColor="#ffffff"
+              ios_backgroundColor="#e4e4e7"
             />
           </View>
         </View>
 
-        {/* 로그아웃 */}
+        {/* 버전 정보 */}
         <View style={styles.card}>
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.75}>
-            <Text style={styles.logoutText}>로그아웃</Text>
-          </TouchableOpacity>
+          <View style={styles.versionRow}>
+            <Text style={styles.versionLabel}>앱 버전</Text>
+            <Text style={styles.versionValue}>1.0.0</Text>
+          </View>
         </View>
+
+        {/* 로그아웃 */}
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
+          <Text style={styles.logoutText}>로그아웃</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* FAQ 모달 */}
@@ -281,45 +294,66 @@ const TERMS_TEXT = `제1조 (목적)
 서비스는 천재지변, 시스템 장애 등 불가항력적인 사유로 인한 서비스 중단에 대해 책임을 지지 않습니다.`
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fafafa' },
+  safe: { flex: 1, backgroundColor: '#ffffff' },
   flex: { flex: 1 },
   scroll: { flex: 1 },
-  content: { padding: 16, gap: 12, paddingBottom: 32 },
-  pageTitle: { fontSize: 20, fontWeight: '700', color: '#09090b', marginBottom: 4 },
+  content: { padding: 20, gap: 12, paddingBottom: 40 },
+  header: { paddingVertical: 16, marginBottom: 12 },
+  welcome: { fontSize: 13, color: '#a1a1aa', fontWeight: '400' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  userName: { fontSize: 28, fontWeight: '600', color: '#09090b', letterSpacing: -0.5 },
+  roleBadge: { backgroundColor: '#f8f8fa', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: '#e4e4e7' },
+  roleBadgeText: { fontSize: 10, fontWeight: '500', color: '#71717a', textTransform: 'uppercase' },
 
   card: {
-    backgroundColor: '#fff', borderRadius: 16,
-    borderWidth: 1, borderColor: '#e4e4e7', overflow: 'hidden',
+    backgroundColor: '#f8f8fa', borderRadius: 24,
+    marginBottom: 16, overflow: 'hidden',
   },
   sectionLabel: {
-    fontSize: 11, fontWeight: '600', color: '#a1a1aa',
+    fontSize: 12, fontWeight: '600', color: '#a1a1aa',
     textTransform: 'uppercase', letterSpacing: 0.5,
-    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6,
+    paddingHorizontal: 20, paddingTop: 18, paddingBottom: 6,
   },
 
   // 메뉴 행
   menuRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 16,
+    paddingHorizontal: 22, paddingVertical: 20,
   },
-  menuBorder: { borderBottomWidth: 1, borderBottomColor: '#f4f4f5' },
-  menuLabel: { fontSize: 14, color: '#09090b' },
-  menuChevron: { fontSize: 18, color: '#d4d4d8' },
+  menuBorder: { borderBottomWidth: 1, borderBottomColor: '#f1f1f4' },
+  menuLabel: { fontSize: 16, fontWeight: '500', color: '#09090b' },
+  menuChevron: { fontSize: 22, color: '#d4d4d8' },
 
   // 토글
   toggleRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderTopWidth: 1, borderTopColor: '#f4f4f5',
+    paddingHorizontal: 22, paddingVertical: 16,
+    borderTopWidth: 1, borderTopColor: '#f1f1f4',
   },
   noBorder: { borderBottomWidth: 0 },
   toggleLeft: { gap: 2 },
-  toggleLabel: { fontSize: 14, color: '#09090b' },
-  toggleSub: { fontSize: 11, color: '#a1a1aa' },
+  toggleLabel: { fontSize: 16, fontWeight: '500', color: '#09090b' },
+  toggleSub: { fontSize: 12, color: '#a1a1aa' },
+
+  // 버전 정보
+  versionRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 22, paddingVertical: 20,
+  },
+  versionLabel: { fontSize: 16, fontWeight: '500', color: '#09090b' },
+  versionValue: { fontSize: 15, color: '#a1a1aa', fontWeight: '400' },
 
   // 로그아웃
-  logoutBtn: { paddingVertical: 16, alignItems: 'center' },
-  logoutText: { fontSize: 14, color: '#ef4444', fontWeight: '500' },
+  logoutBtn: { 
+    paddingVertical: 20, 
+    alignItems: 'center', 
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#f8f8fa',
+    marginTop: 8,
+  },
+  logoutText: { fontSize: 16, color: '#ef4444', fontWeight: '600' },
 
   // 모달 공통
   modalSafe: { flex: 1, backgroundColor: '#fff' },
