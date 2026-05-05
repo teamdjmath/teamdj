@@ -8,7 +8,7 @@ const PUBLIC_PATHS = ['/', '/intro', '/login', '/register']
 // teacher / ta 전용 경로
 const ADMIN_PATH_PREFIX = '/admin'
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // 1. Supabase 세션 갱신
