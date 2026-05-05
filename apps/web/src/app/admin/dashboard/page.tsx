@@ -8,37 +8,38 @@ export default async function AdminDashboardPage() {
 
   const today = new Date().toISOString().split('T')[0]
 
-  // ── 전체 학생 수
-  const { count: totalStudents } = await supabase
-    .from('users')
-    .select('id', { count: 'exact', head: true })
-    .eq('role', 'student')
-    .eq('is_active', true)
-
-  // ── 오늘 출석 통계
-  const { data: todayAttendance } = await supabase
-    .from('attendance_logs')
-    .select('status')
-    .eq('session_date', today)
+  // ── 모든 데이터 동시 페칭 (워터폴 방지)
+  const [
+    { count: totalStudents },
+    { data: todayAttendance },
+    { count: openQnaCount },
+    { data: notices }
+  ] = await Promise.all([
+    supabase
+      .from('users')
+      .select('id', { count: 'exact', head: true })
+      .eq('role', 'student')
+      .eq('is_active', true),
+    supabase
+      .from('attendance_logs')
+      .select('status')
+      .eq('session_date', today),
+    supabase
+      .from('qna_questions')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'open'),
+    supabase
+      .from('notices')
+      .select('id, title, created_at, is_pinned')
+      .order('is_pinned', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(5)
+  ])
 
   const presentCount = todayAttendance?.filter((a) => a.status === 'present').length ?? 0
   const absentCount  = todayAttendance?.filter((a) => a.status === 'absent').length ?? 0
   const lateCount    = todayAttendance?.filter((a) => a.status === 'late').length ?? 0
   const totalChecked = todayAttendance?.length ?? 0
-
-  // ── 미답변 질문 수
-  const { count: openQnaCount } = await supabase
-    .from('qna_questions')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'open')
-
-  // ── 최근 공지사항 (5개)
-  const { data: notices } = await supabase
-    .from('notices')
-    .select('id, title, created_at, is_pinned')
-    .order('is_pinned', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(5)
 
   const displayName = user?.user_metadata?.name ?? user?.email ?? ''
   const role = user?.user_metadata?.role as string | undefined

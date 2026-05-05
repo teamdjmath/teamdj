@@ -5,22 +5,26 @@ export default async function StudentsPage() {
   const supabase = await createClient()
 
   // 학생 목록 + 소속 반 + 학부모 연결 여부
-  const { data: students } = await supabase
-    .from('users')
-    .select(`
-      id, name, phone, is_active, school, grade,
-      class_members!student_id(class_id, is_active, class_groups(name)),
-      parent_links!student_id(id)
-    `)
-    .eq('role', 'student')
-    .order('created_at', { ascending: false })
+  // 학생 목록 및 분반 목록 동시 페칭
+  const [studentsRes, classesRes] = await Promise.all([
+    supabase
+      .from('users')
+      .select(`
+        id, name, phone, is_active, school, grade,
+        class_members!student_id(class_id, is_active, class_groups(name)),
+        parent_links!student_id(id)
+      `)
+      .eq('role', 'student')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('class_groups')
+      .select('id, name, subject, grade')
+      .eq('is_active', true)
+      .order('name')
+  ])
 
-  // 분반 목록 (학생 등록 모달용)
-  const { data: classes } = await supabase
-    .from('class_groups')
-    .select('id, name, subject, grade')
-    .eq('is_active', true)
-    .order('name')
+  const students = studentsRes.data
+  const classes = classesRes.data
 
   type ClassMember = {
     class_id: string
