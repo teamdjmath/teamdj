@@ -25,19 +25,22 @@ export async function middleware(request: NextRequest) {
   }
 
   // 3. 로그인된 유저가 /login 또는 /register 접근 시 → 역할별 대시보드
-  if (user && isPublic) {
+  if (user && isPublic && (pathname === '/login' || pathname === '/register')) {
     const role = user.user_metadata?.role as string | undefined
-    const dest = role === 'teacher' || role === 'ta'
+    const redirectUrl = request.nextUrl.clone()
+    redirectUrl.pathname = role === 'teacher' || role === 'ta'
       ? '/admin/dashboard'
       : '/dashboard'
-    return NextResponse.redirect(new URL(dest, request.url))
+    return NextResponse.redirect(redirectUrl)
   }
 
   // 4. /admin/* 경로는 teacher / ta 만 접근 가능
   if (user && pathname.startsWith(ADMIN_PATH_PREFIX)) {
     const role = user.user_metadata?.role as string | undefined
     if (role !== 'teacher' && role !== 'ta') {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+      const dashboardUrl = request.nextUrl.clone()
+      dashboardUrl.pathname = '/dashboard'
+      return NextResponse.redirect(dashboardUrl)
     }
   }
 
