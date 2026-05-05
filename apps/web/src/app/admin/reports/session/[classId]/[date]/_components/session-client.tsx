@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { sendBatchKakaoReports, deleteReport } from '@/lib/actions/reports'
+import { sendBatchKakaoReports, deleteSessionReports } from '@/lib/actions/reports'
 
 type StudentReport = {
   id: string
@@ -24,6 +24,7 @@ export function SessionClient({ classId, date, sessionLabel, reports }: Props) {
   const [pending, startTransition] = useTransition()
   const [batchResult, setBatchResult] = useState('')
   const [batchErr, setBatchErr] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
 
   function handleBatchSend() {
     if (!confirm(`${sessionLabel} 리포트를 전체 학부모에게 카카오톡으로 발송하시겠습니까?`)) return
@@ -40,12 +41,18 @@ export function SessionClient({ classId, date, sessionLabel, reports }: Props) {
     })
   }
 
-  function handleDelete(id: string, name: string) {
-    if (!confirm(`${name} (${date}) 리포트를 삭제하시겠습니까?\n저장된 이미지도 함께 삭제됩니다.`)) return
+  function handleBatchDelete() {
+    if (!confirm(`${sessionLabel} 리포트를 전체 삭제하시겠습니까?\n모든 학생의 데이터와 이미지가 삭제되며 복구할 수 없습니다.`)) return
+    
+    setIsDeleting(true)
     startTransition(async () => {
-      const result = await deleteReport(id)
-      if (result.error) alert(result.error)
-      else router.refresh()
+      const result = await deleteSessionReports(classId, date)
+      if (result.error) {
+        alert(result.error)
+        setIsDeleting(false)
+      } else {
+        router.push('/admin/reports')
+      }
     })
   }
 
@@ -75,8 +82,17 @@ export function SessionClient({ classId, date, sessionLabel, reports }: Props) {
           </Link>
           <button
             type="button"
+            onClick={handleBatchDelete}
+            disabled={pending || isDeleting || reports.length === 0}
+            className="shrink-0 rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-all active:scale-95 disabled:opacity-50"
+          >
+            {isDeleting ? '삭제 중…' : '전체 삭제'}
+          </button>
+
+          <button
+            type="button"
             onClick={handleBatchSend}
-            disabled={pending || reports.length === 0}
+            disabled={pending || isDeleting || reports.length === 0}
             className={[
               'shrink-0 rounded-lg px-4 py-2.5 text-sm font-medium transition-all active:scale-95 disabled:opacity-50',
               allSent
@@ -138,15 +154,6 @@ export function SessionClient({ classId, date, sessionLabel, reports }: Props) {
                   >
                     상세 / 개별 발송
                   </Link>
-                  <span className="text-zinc-200">|</span>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(r.id, r.studentName)}
-                    disabled={pending}
-                    className="text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                  >
-                    삭제
-                  </button>
                 </div>
               </div>
             </div>

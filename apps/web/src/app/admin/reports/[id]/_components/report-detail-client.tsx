@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { sendKakaoReport } from '@/lib/actions/reports'
-import { ReportCard } from '../../../_components/report-card'
+import { ReportCard } from '../../_components/report-card'
 import type { ReportContent } from '@/lib/actions/reports'
 
 type Report = {
@@ -25,6 +25,7 @@ interface Props {
 }
 
 function formatDatetime(iso: string) {
+  if (!iso) return '-'
   const d = new Date(iso)
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
@@ -91,7 +92,7 @@ export function ReportDetailClient({ report }: Props) {
               <span className="text-sm font-medium text-zinc-900">{report.report_date}</span>
             </div>
             <div className="flex items-center justify-between py-2 border-b border-zinc-50">
-              <span className="text-sm text-zinc-500">최종 수정 일시</span>
+              <span className="text-sm text-zinc-500">작성 일시</span>
               <span className="text-sm text-zinc-700">{formatDatetime(report.updated_at || report.created_at)}</span>
             </div>
             <div className="flex items-center justify-between py-2">

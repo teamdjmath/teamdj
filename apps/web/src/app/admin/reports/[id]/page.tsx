@@ -10,15 +10,20 @@ export default async function ReportDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
+  console.log('[ReportDetailPage] ID:', id)
+
   const supabase = createAdminClient()
 
-  const { data: row } = await supabase
+  const { data: row, error } = await supabase
     .from('reports')
     .select(
-      'id, report_date, image_url, kakao_sent_at, content_json, created_at, updated_at, student:users!student_id(name, school, grade), class:class_groups!class_id(name)',
+      'id, report_date, image_url, kakao_sent_at, content_json, created_at, student:users!student_id(name, school, grade), class:class_groups!class_id(name)',
     )
     .eq('id', id)
     .single()
+
+  console.log('[ReportDetailPage] Row:', row ? 'Found' : 'Not Found')
+  if (error) console.error('[ReportDetailPage] Error:', error)
 
   if (!row) notFound()
 
@@ -31,7 +36,7 @@ export default async function ReportDetailPage({
     kakao_sent_at: (r.kakao_sent_at ?? null) as string | null,
     content_json: (r.content_json ?? {}) as unknown as ReportContent,
     created_at: r.created_at as string,
-    updated_at: r.updated_at as string,
+    updated_at: r.created_at as string,
     studentName: ((r.student as { name?: string } | null)?.name   ?? '') as string,
     school:      ((r.student as { school?: string } | null)?.school ?? '') as string,
     grade:       ((r.student as { grade?: string } | null)?.grade  ?? '') as string,

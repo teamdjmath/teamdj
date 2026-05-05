@@ -177,6 +177,55 @@ export async function deleteReport(reportId: string): Promise<{ error?: string }
   return {}
 }
 
+export async function deleteSessionReports(
+  classId: string,
+  sessionDate: string
+): Promise<{ error?: string }> {
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error }
+
+  const admin = createAdminClient()
+
+  // 1. 해당 세션의 모든 리포트 이미지 조회
+  const { data: reports } = await admin
+    .from('reports')
+    .select('image_url')
+    .eq('class_id', classId)
+    .eq('report_date', sessionDate)
+
+  if (reports && reports.length > 0) {
+    const filePaths: string[] = []
+    const bucket = 'reports'
+    const marker = `/object/public/${bucket}/`
+
+    for (const r of reports) {
+      if (r.image_url) {
+        const url = r.image_url as string
+        const idx = url.indexOf(marker)
+        if (idx !== -1) {
+          filePaths.push(decodeURIComponent(url.slice(idx + marker.length)))
+        }
+      }
+    }
+
+    if (filePaths.length > 0) {
+      await admin.storage.from(bucket).remove(filePaths)
+    }
+  }
+
+  // 2. 리포트 레코드 일괄 삭제
+  const { error } = await admin
+    .from('reports')
+    .delete()
+    .eq('class_id', classId)
+    .eq('report_date', sessionDate)
+
+  if (error) return { error: `삭제 실패: ${error.message}` }
+
+  revalidatePath('/admin/reports')
+  return {}
+}
+
 // ── 카카오톡 친구톡 발송
 export async function sendKakaoReport(
   reportId: string,

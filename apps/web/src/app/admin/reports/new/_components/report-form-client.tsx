@@ -357,7 +357,8 @@ export function ReportFormClient({
                               }))
                             }
                             placeholder="특이사항 입력..."
-                            className="w-full rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-1.5 text-xs focus:bg-white focus:border-zinc-300 focus:outline-none"
+                                                         className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 focus:outline-none transition-all shadow-sm"
+
                           />
                         </td>
                       </tr>

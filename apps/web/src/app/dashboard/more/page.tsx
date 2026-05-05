@@ -18,7 +18,7 @@ const FAQ_ITEMS = [
   },
   {
     q: '질문은 어떻게 등록하나요?',
-    a: '현재 질문 등록은 선생님을 통해서만 가능합니다. 추후 학생 직접 등록 기능이 추가될 예정입니다.',
+    a: 'Q&A 게시판에 질문을 등록해주세요. 담당 선생님이 확인 후 답변해드립니다.',
   },
   {
     q: '성적표는 어디서 확인하나요?',
@@ -43,9 +43,11 @@ const TERMS_TEXT = `제1조 (목적)
 서비스는 천재지변, 시스템 장애 등 불가항력적인 사유로 인한 서비스 중단에 대해 책임을 지지 않습니다.`
 
 export default function MorePage() {
-  const [notifications, setNotifications] = useState(true)
-  const [marketing, setMarketing] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const [settings, setSettings] = useState({
+    notifications: true,
+    marketing: false,
+    mounted: false,
+  })
 
   // FAQ
   const [openFaq, setOpenFaq] = useState<number | null>(null)
@@ -59,22 +61,27 @@ export default function MorePage() {
   const [termsOpen, setTermsOpen] = useState(false)
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const n = localStorage.getItem(LS_NOTIFICATIONS)
-      const m = localStorage.getItem(LS_MARKETING)
-      if (n !== null) setNotifications(n === 'true')
-      if (m !== null) setMarketing(m === 'true')
-      setMounted(true)
-    }
+    const n = localStorage.getItem(LS_NOTIFICATIONS)
+    const m = localStorage.getItem(LS_MARKETING)
+    
+    // Use requestAnimationFrame to avoid "synchronous setState in effect" lint error
+    // and prevent cascading renders during initial mount.
+    requestAnimationFrame(() => {
+      setSettings({
+        notifications: n !== null ? n === 'true' : true,
+        marketing: m !== null ? m === 'true' : false,
+        mounted: true,
+      })
+    })
   }, [])
 
   function handleNotifications(v: boolean) {
-    setNotifications(v)
+    setSettings(s => ({ ...s, notifications: v }))
     localStorage.setItem(LS_NOTIFICATIONS, String(v))
   }
 
   function handleMarketing(v: boolean) {
-    setMarketing(v)
+    setSettings(s => ({ ...s, marketing: v }))
     localStorage.setItem(LS_MARKETING, String(v))
   }
 
@@ -89,7 +96,7 @@ export default function MorePage() {
     }, 2000)
   }
 
-  if (!mounted) {
+  if (!settings.mounted) {
     return <div className="h-screen animate-pulse" />
   }
 
@@ -182,13 +189,13 @@ export default function MorePage() {
           <ToggleItem
             label="알림 허용"
             description="수업, 과제, 공지 알림"
-            value={notifications}
+            value={settings.notifications}
             onChange={handleNotifications}
           />
           <ToggleItem
             label="마케팅 알림"
             description="이벤트 및 혜택 정보"
-            value={marketing}
+            value={settings.marketing}
             onChange={handleMarketing}
           />
         </ul>

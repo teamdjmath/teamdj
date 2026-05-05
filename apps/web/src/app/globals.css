@@ -1,12 +1,12 @@
 @import "tailwindcss";
-@plugin "@tailwindcss/typography";
+@plugin "@tailwindcss/typography"; /* Tailwind v4 plugin syntax */
 
 :root {
   --background: #F7F7F7;
   --foreground: #171717;
 }
 
-@theme inline {
+@theme inline { /* Tailwind v4 theme syntax */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
