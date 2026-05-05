@@ -1,9 +1,9 @@
 // Next.js 16: middleware.ts → proxy.ts (named export `proxy`)
 import { NextResponse, type NextRequest } from 'next/server'
-import { updateSession } from '@/lib/supabase/middleware'
+import { updateSession } from './lib/supabase/middleware'
 
 // 로그인 없이 접근 가능한 공개 경로
-const PUBLIC_PATHS = ['/login', '/register']
+const PUBLIC_PATHS = ['/', '/intro', '/login', '/register']
 
 // teacher / ta 전용 경로
 const ADMIN_PATH_PREFIX = '/admin'
