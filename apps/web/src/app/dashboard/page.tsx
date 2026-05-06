@@ -7,6 +7,14 @@ import { DdayCard } from './_components/dday-card'
 const CSAT_DEFAULT = '2026-11-19'
 const TODAY = new Date().toISOString().split('T')[0]
 
+// 서울 기준 요일 (0=일 1=월 … 6=토)
+function getTodayDow() {
+  const seoulOffset = 9 * 60
+  const now = new Date()
+  const utcMs = now.getTime() + now.getTimezoneOffset() * 60_000
+  return new Date(utcMs + seoulOffset * 60_000).getDay()
+}
+
 // 카테고리별 색상
 const CATEGORY_STYLE: Record<string, string> = {
   '매월승리': 'bg-zinc-950 text-white',
@@ -81,6 +89,22 @@ export default async function DashboardPage() {
 
   const { data: notices } = await noticesQuery
 
+  // 오늘 수업 (day_of_week 배열에 오늘 요일 포함된 분반)
+  const todayDow = getTodayDow()
+  const todayClassesQuery = classIds.length
+    ? supabase
+        .from('class_groups')
+        .select('id, name, subject, grade, start_time, end_time')
+        .in('id', classIds)
+        .contains('day_of_week', [todayDow])
+        .not('start_time', 'is', null)
+        .order('start_time', { ascending: true })
+    : null
+
+  const { data: todayClasses } = todayClassesQuery
+    ? await todayClassesQuery
+    : { data: [] }
+
   // 최근 질문
   const { data: questions } = await supabase
     .from('qna_questions')
@@ -92,6 +116,37 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-4">
       <DdayCard defaultDate={CSAT_DEFAULT} />
+
+      {/* 오늘 수업 */}
+      {todayClasses && todayClasses.length > 0 && (
+        <Card>
+          <CardHeader title="오늘 수업" />
+          <CardContent>
+            <ul className="space-y-2">
+              {todayClasses.map((cls) => (
+                <li key={cls.id as string} className="flex items-center gap-3 py-1">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-zinc-100">
+                    <svg className="h-4 w-4 text-zinc-500" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" />
+                      <circle cx="12" cy="12" r="10" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-zinc-900 truncate">
+                      {cls.grade as string} {cls.subject as string} — {cls.name as string}
+                    </p>
+                    {cls.start_time && cls.end_time && (
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        {(cls.start_time as string).slice(0, 5)} ~ {(cls.end_time as string).slice(0, 5)}
+                      </p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 오늘의 학습 계획 */}
       <Card>

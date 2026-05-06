@@ -8,6 +8,7 @@ export default async function ClassesPage() {
     .from('class_groups')
     .select(`
       id, name, subject, grade, schedule, is_active,
+      start_time, end_time, day_of_week,
       class_members(count)
     `)
     .order('created_at', { ascending: false })
@@ -19,6 +20,9 @@ export default async function ClassesPage() {
     subject:      c.subject,
     grade:        c.grade,
     schedule:     c.schedule,
+    start_time:   c.start_time,
+    end_time:     c.end_time,
+    day_of_week:  c.day_of_week,
     is_active:    c.is_active,
     studentCount: (c.class_members as unknown as { count: number }[])[0]?.count ?? 0,
   }))

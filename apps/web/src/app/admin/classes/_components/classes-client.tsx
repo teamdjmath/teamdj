@@ -7,14 +7,67 @@ import { Modal } from '@/components/ui/modal'
 import { InputField } from '@/components/ui/form-field'
 import { createClass, updateClass, deleteClass, hardDeleteClass } from '@/lib/actions/classes'
 
+const DAYS = [
+  { label: '월', value: 1 },
+  { label: '화', value: 2 },
+  { label: '수', value: 3 },
+  { label: '목', value: 4 },
+  { label: '금', value: 5 },
+  { label: '토', value: 6 },
+]
+
 type ClassRow = {
   id: string
   name: string
   subject: string
   grade: string
   schedule: string | null
+  start_time: string | null
+  end_time: string | null
+  day_of_week: number[] | null
   is_active: boolean
   studentCount: number
+}
+
+function DayCheckboxes({ defaultDays }: { defaultDays?: number[] | null }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-xs font-medium text-zinc-600">수업 요일</label>
+      <div className="flex gap-3 flex-wrap">
+        {DAYS.map(({ label, value }) => (
+          <label key={value} className="flex items-center gap-1.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              name="day_of_week"
+              value={value}
+              defaultChecked={defaultDays?.includes(value) ?? false}
+              className="h-4 w-4 rounded border-zinc-300 accent-zinc-900"
+            />
+            <span className="text-sm text-zinc-700">{label}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function TimeFields({ defaultStart, defaultEnd }: { defaultStart?: string | null; defaultEnd?: string | null }) {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <InputField
+        label="시작 시간"
+        name="start_time"
+        type="time"
+        defaultValue={defaultStart?.slice(0, 5) ?? ''}
+      />
+      <InputField
+        label="종료 시간"
+        name="end_time"
+        type="time"
+        defaultValue={defaultEnd?.slice(0, 5) ?? ''}
+      />
+    </div>
+  )
 }
 
 export function ClassesClient({ classes }: { classes: ClassRow[] }) {
@@ -156,10 +209,11 @@ export function ClassesClient({ classes }: { classes: ClassRow[] }) {
       {/* 생성 모달 */}
       <Modal open={createOpen} onClose={() => { setCreateOpen(false); setError(null) }} title="새 분반 만들기">
         <form onSubmit={handleCreate} className="space-y-4">
-          <InputField label="반 이름" name="name" placeholder="예: 수학 A반" required />
-          <InputField label="과목"   name="subject" placeholder="예: 수학" required />
-          <InputField label="학년"   name="grade"   placeholder="예: 고2" required />
-          <InputField label="수업 일정" name="schedule" placeholder="예: 월수 18:00~20:00" />
+          <InputField label="반 이름" name="name" placeholder="예: 고1 수학 목반" required />
+          <InputField label="과목"   name="subject" placeholder="예: 공통수학1" required />
+          <InputField label="학년"   name="grade"   placeholder="예: 고1" required />
+          <DayCheckboxes />
+          <TimeFields />
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>}
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={() => setCreateOpen(false)} className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50">
@@ -170,6 +224,41 @@ export function ClassesClient({ classes }: { classes: ClassRow[] }) {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* 수정 모달 — key로 re-mount해 defaultChecked 초기화 */}
+      <Modal open={!!editTarget} onClose={() => { setEditTarget(null); setError(null) }} title="분반 수정">
+        {editTarget && (
+          <form key={editTarget.id} onSubmit={handleEdit} className="space-y-4">
+            <input type="hidden" name="classId" value={editTarget.id} />
+            <input type="hidden" name="is_active" value={String(editTarget.is_active)} />
+            <InputField label="반 이름" name="name"    defaultValue={editTarget.name}    required />
+            <InputField label="과목"   name="subject" defaultValue={editTarget.subject} required />
+            <InputField label="학년"   name="grade"   defaultValue={editTarget.grade}   required />
+            <DayCheckboxes defaultDays={editTarget.day_of_week} />
+            <TimeFields defaultStart={editTarget.start_time} defaultEnd={editTarget.end_time} />
+            <div className="flex items-center gap-2">
+              <input
+                id="is_active_toggle"
+                type="checkbox"
+                name="is_active"
+                defaultChecked={editTarget.is_active}
+                onChange={(e) => setEditTarget((prev) => prev ? { ...prev, is_active: e.target.checked } : prev)}
+                className="h-4 w-4 rounded border-zinc-300 accent-zinc-900"
+              />
+              <label htmlFor="is_active_toggle" className="text-sm text-zinc-700">활성 상태</label>
+            </div>
+            {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>}
+            <div className="flex justify-end gap-2 pt-1">
+              <button type="button" onClick={() => setEditTarget(null)} className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50">
+                취소
+              </button>
+              <button type="submit" disabled={isPending} className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">
+                {isPending ? '저장 중…' : '저장'}
+              </button>
+            </div>
+          </form>
+        )}
       </Modal>
 
       {/* 삭제 확인 모달 */}
@@ -214,40 +303,6 @@ export function ClassesClient({ classes }: { classes: ClassRow[] }) {
               </button>
             </div>
           </div>
-        )}
-      </Modal>
-
-      {/* 수정 모달 */}
-      <Modal open={!!editTarget} onClose={() => { setEditTarget(null); setError(null) }} title="분반 수정">
-        {editTarget && (
-          <form onSubmit={handleEdit} className="space-y-4">
-            <input type="hidden" name="classId" value={editTarget.id} />
-            <input type="hidden" name="is_active" value={String(editTarget.is_active)} />
-            <InputField label="반 이름" name="name"     defaultValue={editTarget.name}     required />
-            <InputField label="과목"   name="subject"  defaultValue={editTarget.subject}  required />
-            <InputField label="학년"   name="grade"    defaultValue={editTarget.grade}    required />
-            <InputField label="수업 일정" name="schedule" defaultValue={editTarget.schedule ?? ''} />
-            <div className="flex items-center gap-2">
-              <input
-                id="is_active_toggle"
-                type="checkbox"
-                name="is_active"
-                defaultChecked={editTarget.is_active}
-                onChange={(e) => setEditTarget((prev) => prev ? { ...prev, is_active: e.target.checked } : prev)}
-                className="h-4 w-4 rounded border-zinc-300 accent-zinc-900"
-              />
-              <label htmlFor="is_active_toggle" className="text-sm text-zinc-700">활성 상태</label>
-            </div>
-            {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>}
-            <div className="flex justify-end gap-2 pt-1">
-              <button type="button" onClick={() => setEditTarget(null)} className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50">
-                취소
-              </button>
-              <button type="submit" disabled={isPending} className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">
-                {isPending ? '저장 중…' : '저장'}
-              </button>
-            </div>
-          </form>
         )}
       </Modal>
     </>

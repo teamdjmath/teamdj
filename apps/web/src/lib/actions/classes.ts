@@ -6,6 +6,24 @@ import { revalidatePath } from 'next/cache'
 
 export type ActionResult = { success: true } | { success: false; error: string }
 
+const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
+
+function buildScheduleText(days: number[], startTime: string, endTime: string): string | null {
+  if (!days.length || !startTime || !endTime) return null
+  const dayStr = [...days].sort((a, b) => a - b).map((d) => DAY_NAMES[d]).join('')
+  return `${dayStr} ${startTime.slice(0, 5)}~${endTime.slice(0, 5)}`
+}
+
+function parseScheduleFields(formData: FormData) {
+  const day_of_week = formData.getAll('day_of_week').map(Number).filter((n) => !isNaN(n))
+  const start_time  = (formData.get('start_time') as string | null)?.trim() || null
+  const end_time    = (formData.get('end_time')   as string | null)?.trim() || null
+  const schedule    = (start_time && end_time && day_of_week.length)
+    ? buildScheduleText(day_of_week, start_time, end_time)
+    : null
+  return { day_of_week: day_of_week.length ? day_of_week : null, start_time, end_time, schedule }
+}
+
 // ── 분반 생성
 export async function createClass(formData: FormData): Promise<ActionResult> {
   const supabase      = await createClient()
@@ -17,24 +35,29 @@ export async function createClass(formData: FormData): Promise<ActionResult> {
   const role = user.user_metadata?.role as string | undefined
   if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
 
-  const name     = (formData.get('name')     as string).trim()
-  const subject  = (formData.get('subject')  as string).trim()
-  const grade    = (formData.get('grade')    as string).trim()
-  const schedule = (formData.get('schedule') as string | null)?.trim() ?? null
+  const name    = (formData.get('name')    as string).trim()
+  const subject = (formData.get('subject') as string).trim()
+  const grade   = (formData.get('grade')   as string).trim()
 
   if (!name || !subject || !grade) return { success: false, error: '필수 항목을 입력해주세요.' }
+
+  const { day_of_week, start_time, end_time, schedule } = parseScheduleFields(formData)
 
   const { error } = await adminSupabase.from('class_groups').insert({
     name,
     subject,
     grade,
     schedule,
+    day_of_week,
+    start_time,
+    end_time,
     teacher_id: user.id,
   })
 
   if (error) return { success: false, error: `분반 생성 실패: ${error.message}` }
 
   revalidatePath('/admin/classes')
+  revalidatePath('/admin/schedule')
   return { success: true }
 }
 
@@ -47,23 +70,25 @@ export async function updateClass(formData: FormData): Promise<ActionResult> {
   if (!user) return { success: false, error: '인증이 필요합니다.' }
 
   const classId  = formData.get('classId')  as string
-  const name     = (formData.get('name')     as string).trim()
-  const subject  = (formData.get('subject')  as string).trim()
-  const grade    = (formData.get('grade')    as string).trim()
-  const schedule = (formData.get('schedule') as string | null)?.trim() ?? null
+  const name     = (formData.get('name')    as string).trim()
+  const subject  = (formData.get('subject') as string).trim()
+  const grade    = (formData.get('grade')   as string).trim()
   const isActive = formData.get('is_active') === 'true'
 
   if (!classId || !name || !subject || !grade) return { success: false, error: '필수 항목을 입력해주세요.' }
 
+  const { day_of_week, start_time, end_time, schedule } = parseScheduleFields(formData)
+
   const { error } = await adminSupabase
     .from('class_groups')
-    .update({ name, subject, grade, schedule, is_active: isActive })
+    .update({ name, subject, grade, schedule, day_of_week, start_time, end_time, is_active: isActive })
     .eq('id', classId)
 
   if (error) return { success: false, error: `분반 수정 실패: ${error.message}` }
 
   revalidatePath('/admin/classes')
   revalidatePath(`/admin/classes/${classId}`)
+  revalidatePath('/admin/schedule')
   return { success: true }
 }
 
