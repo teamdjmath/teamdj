@@ -23,7 +23,7 @@ jobs:
       - name: pnpm 설치
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 10.33.2
 
       - name: pnpm store 경로 캐시
         uses: actions/cache@v4
@@ -68,7 +68,7 @@ jobs:
       - name: pnpm 설치
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 10.33.2
 
       - name: pnpm store 경로 캐시
         uses: actions/cache@v4
