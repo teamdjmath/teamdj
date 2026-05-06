@@ -2,52 +2,58 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { withAction } from '@/lib/actions'
+import type { ActionResult } from '@/lib/actions'
 
 export async function sendMessage(data: {
   classId: string | null
   studentId: string | null
   content: string
-}) {
+}): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('인증 필요')
-  if (!data.content.trim()) throw new Error('내용을 입력하세요')
-  if (!data.classId && !data.studentId) throw new Error('발송 대상을 선택하세요')
 
-  const { error } = await supabase
-    .from('push_messages')
-    .insert({
-      sender_id: user.id,
-      class_id: data.classId ?? null,
+  return withAction('sendMessage', user?.id, async () => {
+    if (!user) return { success: false, error: '인증이 필요합니다.' }
+    if (!data.content.trim()) return { success: false, error: '내용을 입력하세요.' }
+    if (!data.classId && !data.studentId) return { success: false, error: '발송 대상을 선택하세요.' }
+
+    const { error } = await supabase.from('push_messages').insert({
+      sender_id:  user.id,
+      class_id:   data.classId ?? null,
       student_id: data.studentId ?? null,
-      content: data.content.trim(),
+      content:    data.content.trim(),
     })
+    if (error) throw error
 
-  if (error) throw new Error(error.message)
-  revalidatePath('/admin/messages')
+    revalidatePath('/admin/messages')
+    return { success: true }
+  })
 }
 
-export async function markAllAsRead() {
+export async function markAllAsRead(): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: '인증 필요' }
 
-  // 소속 반 ID 목록 가져오기 (반 전체 발송 메시지도 읽음 처리하기 위해)
-  const { data: memberships } = await supabase
-    .from('class_members')
-    .select('class_id')
-    .eq('student_id', user.id)
-    .eq('is_active', true)
-  
-  const classIds = (memberships ?? []).map(m => m.class_id)
+  return withAction('markAllAsRead', user?.id, async () => {
+    if (!user) return { success: false, error: '인증이 필요합니다.' }
 
-  const { error } = await supabase
-    .from('push_messages')
-    .update({ is_read: true })
-    .or(`student_id.eq.${user.id}${classIds.length > 0 ? `,class_id.in.(${classIds.join(',')})` : ''}`)
-    .eq('is_read', false)
+    const { data: memberships } = await supabase
+      .from('class_members')
+      .select('class_id')
+      .eq('student_id', user.id)
+      .eq('is_active', true)
 
-  if (error) return { error: error.message }
-  revalidatePath('/dashboard')
-  return { success: true }
+    const classIds = (memberships ?? []).map((m) => m.class_id)
+
+    const { error } = await supabase
+      .from('push_messages')
+      .update({ is_read: true })
+      .or(`student_id.eq.${user.id}${classIds.length > 0 ? `,class_id.in.(${classIds.join(',')})` : ''}`)
+      .eq('is_read', false)
+    if (error) throw error
+
+    revalidatePath('/dashboard')
+    return { success: true }
+  })
 }

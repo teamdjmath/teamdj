@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { GoogleGenAI } from '@google/genai'
+import { logger } from '@/lib/logger'
 
 export async function assignQuestion(questionId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
@@ -111,7 +112,7 @@ export async function generateAiDraft(
             })
           }
         } catch (e) {
-          console.warn('[generateAiDraft] Failed to fetch student image:', url, e)
+          logger.warn('generateAiDraft:image-fetch-failed', { action: 'generateAiDraft', userId: user.id, error: e })
         }
       }
     }
@@ -152,7 +153,7 @@ export async function generateAiDraft(
     
     return { draft, mediaUrls }
   } catch (err: unknown) {
-    console.error('[generateAiDraft] Error:', err)
+    logger.error('generateAiDraft:error', { action: 'generateAiDraft', userId: user.id, error: err })
     
     let errorMsg = 'AI 초안 생성 중 오류가 발생했습니다.'
     

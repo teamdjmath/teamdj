@@ -108,35 +108,29 @@ export function ExamResultsClient({
     }
 
     startTransition(async () => {
-      try {
-        await createExamResult({
-          studentId: form.studentId,
-          classId: form.classId,
-          examName: form.examName.trim(),
-          examType: form.examType,
-          examDate: form.examDate,
-          score,
-          maxScore,
-          gradeCuts,
-          studySuggestion: form.studySuggestion,
-        })
-        setCreateOpen(false)
-        resetForm()
-      } catch (e) {
-        setError(e instanceof Error ? e.message : '오류가 발생했습니다')
-      }
+      const res = await createExamResult({
+        studentId: form.studentId,
+        classId: form.classId,
+        examName: form.examName.trim(),
+        examType: form.examType,
+        examDate: form.examDate,
+        score,
+        maxScore,
+        gradeCuts,
+        studySuggestion: form.studySuggestion,
+      })
+      if (!res.success) { setError(res.error); return }
+      setCreateOpen(false)
+      resetForm()
     })
   }
 
   function handleDelete(id: string) {
     if (!confirm('이 결과를 삭제하시겠습니까?')) return
     startTransition(async () => {
-      try {
-        await deleteExamResult(id)
-        setDetailResult(null)
-      } catch (e) {
-        alert(e instanceof Error ? e.message : '삭제 실패')
-      }
+      const res = await deleteExamResult(id)
+      if (!res.success) { alert(res.error); return }
+      setDetailResult(null)
     })
   }
 

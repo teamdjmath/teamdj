@@ -68,12 +68,9 @@ export function StaffClient({
   function handleStatusChange(status: StaffStatus) {
     setError(null)
     startTransition(async () => {
-      try {
-        await updateStaffStatus(status)
-        setMyStatus(status)
-      } catch (e) {
-        setError(e instanceof Error ? e.message : '오류가 발생했습니다')
-      }
+      const res = await updateStaffStatus(status)
+      if (!res.success) { setError(res.error); return }
+      setMyStatus(status)
     })
   }
 

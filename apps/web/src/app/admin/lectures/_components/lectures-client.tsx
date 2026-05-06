@@ -130,7 +130,7 @@ export function LecturesClient({ classOptions, courses }: Props) {
     startTransition(async () => {
       const res = await syncYouTubePlaylistToCourse(modal.courseName, syncUrl.trim())
       if (!res.success) { setErr(res.error); return }
-      setSyncResult(`${res.synced}개 영상 동기화 완료`)
+      setSyncResult(`${res.data?.synced ?? 0}개 영상 동기화 완료`)
       router.refresh()
     })
   }

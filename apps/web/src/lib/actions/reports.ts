@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { logger } from '@/lib/logger'
 
 export type ReportContent = {
   studyContent: string
@@ -94,7 +95,10 @@ export async function saveReport(data: {
     .select('id')
     .single()
 
-  if (reportError) return { error: '리포트 저장에 실패했습니다.' }
+  if (reportError) {
+    logger.error('saveReport:db-error', { action: 'saveReport', userId: user.id, error: reportError })
+    return { error: '리포트 저장에 실패했습니다.' }
+  }
 
   revalidatePath('/admin/reports')
   return { id: report.id as string, imageUrl: publicUrl }

@@ -123,7 +123,7 @@ export function AttendanceClient({
       if (!res.success) {
         setSaveResult(`오류: ${res.error}`)
       } else {
-        setSaveResult(`✓ ${res.savedCount}명 저장 완료`)
+        setSaveResult(`✓ ${res.data?.savedCount ?? 0}명 저장 완료`)
         router.refresh()
       }
     })

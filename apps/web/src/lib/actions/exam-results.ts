@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { withAction } from '@/lib/actions'
+import type { ActionResult } from '@/lib/actions'
 
 export async function createExamResult(data: {
   studentId: string
@@ -13,40 +15,43 @@ export async function createExamResult(data: {
   maxScore: number
   gradeCuts: Record<string, number>
   studySuggestion: string
-}) {
+}): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('인증 필요')
 
-  const { error } = await supabase
-    .from('exam_results')
-    .insert({
-      student_id: data.studentId,
-      class_id: data.classId,
-      exam_name: data.examName,
-      exam_type: data.examType,
-      exam_date: data.examDate,
-      score: data.score,
-      max_score: data.maxScore,
-      grade_cuts: data.gradeCuts as unknown as Record<string, unknown>,
+  return withAction('createExamResult', user?.id, async () => {
+    if (!user) return { success: false, error: '인증이 필요합니다.' }
+
+    const { error } = await supabase.from('exam_results').insert({
+      student_id:       data.studentId,
+      class_id:         data.classId,
+      exam_name:        data.examName,
+      exam_type:        data.examType,
+      exam_date:        data.examDate,
+      score:            data.score,
+      max_score:        data.maxScore,
+      grade_cuts:       data.gradeCuts as unknown as Record<string, unknown>,
       study_suggestion: data.studySuggestion || null,
-      created_by: user.id,
+      created_by:       user.id,
     })
+    if (error) throw error
 
-  if (error) throw new Error(error.message)
-  revalidatePath('/admin/exam-results')
+    revalidatePath('/admin/exam-results')
+    return { success: true }
+  })
 }
 
-export async function deleteExamResult(id: string) {
+export async function deleteExamResult(id: string): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('인증 필요')
 
-  const { error } = await supabase
-    .from('exam_results')
-    .delete()
-    .eq('id', id)
+  return withAction('deleteExamResult', user?.id, async () => {
+    if (!user) return { success: false, error: '인증이 필요합니다.' }
 
-  if (error) throw new Error(error.message)
-  revalidatePath('/admin/exam-results')
+    const { error } = await supabase.from('exam_results').delete().eq('id', id)
+    if (error) throw error
+
+    revalidatePath('/admin/exam-results')
+    return { success: true }
+  })
 }

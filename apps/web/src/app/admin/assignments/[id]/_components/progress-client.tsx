@@ -65,7 +65,7 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
         setResultMsg(result.error)
       } else {
         setIsError(false)
-        setResultMsg(`${result.savedCount}명 저장 완료`)
+        setResultMsg(`${result.data?.savedCount ?? 0}명 저장 완료`)
         router.refresh()
       }
     })

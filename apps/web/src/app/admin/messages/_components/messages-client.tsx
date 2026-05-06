@@ -51,18 +51,15 @@ export function MessagesClient({
     setError(null)
     setSuccess(false)
     startTransition(async () => {
-      try {
-        await sendMessage({
-          classId: targetType === 'class' ? classId : null,
-          studentId: targetType === 'student' ? studentId : null,
-          content,
-        })
-        setContent('')
-        setSuccess(true)
-        setTimeout(() => setSuccess(false), 3000)
-      } catch (e) {
-        setError(e instanceof Error ? e.message : '오류가 발생했습니다')
-      }
+      const res = await sendMessage({
+        classId: targetType === 'class' ? classId : null,
+        studentId: targetType === 'student' ? studentId : null,
+        content,
+      })
+      if (!res.success) { setError(res.error); return }
+      setContent('')
+      setSuccess(true)
+      setTimeout(() => setSuccess(false), 3000)
     })
   }
 

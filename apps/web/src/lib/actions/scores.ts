@@ -3,8 +3,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
-
-export type ActionResult = { success: true } | { success: false; error: string }
+import { withAction } from '@/lib/actions'
+import type { ActionResult } from '@/lib/actions'
+import { logger } from '@/lib/logger'
 
 export type GradeCuts = {
   '1': number; '2': number; '3': number; '4': number; '5': number
@@ -39,113 +40,106 @@ export type BulkResult = {
   failed: Array<{ name: string; reason: string }>
 }
 
-type StaffResult =
-  | { ok: false; error: string }
-  | { ok: true; user: import('@supabase/supabase-js').User }
-
-async function assertStaff(): Promise<StaffResult> {
+export async function createTest(data: TestFormData): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { ok: false, error: '인증이 필요합니다.' }
-  const role = user.user_metadata?.role as string | undefined
-  if (role !== 'teacher' && role !== 'ta') return { ok: false, error: '권한이 없습니다.' }
-  return { ok: true, user }
-}
 
-// ── 테스트 생성
-export async function createTest(data: TestFormData): Promise<ActionResult> {
-  const auth = await assertStaff()
-  if (!auth.ok) return { success: false, error: auth.error }
-  const adminSupabase = createAdminClient()
+  return withAction('createTest', user?.id, async () => {
+    if (!user) return { success: false, error: '인증이 필요합니다.' }
+    const role = user.user_metadata?.role as string | undefined
+    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
 
-  const { error } = await adminSupabase.from('tests').insert({
-    class_id:   data.classId,
-    title:      data.title,
-    exam_type:  data.examType,
-    test_date:  data.testDate,
-    total_q:    data.totalQ    ?? null,
-    obj_q:      data.objQ      ?? null,
-    subj_q:     data.subjQ     ?? null,
-    difficulty: data.difficulty || null,
-    max_score:  data.maxScore  ?? 100,
-    grade_cuts: data.gradeCuts ?? null,
-    created_by: auth.user.id,
+    const adminSupabase = createAdminClient()
+    const { error } = await adminSupabase.from('tests').insert({
+      class_id:   data.classId,
+      title:      data.title,
+      exam_type:  data.examType,
+      test_date:  data.testDate,
+      total_q:    data.totalQ    ?? null,
+      obj_q:      data.objQ      ?? null,
+      subj_q:     data.subjQ     ?? null,
+      difficulty: data.difficulty || null,
+      max_score:  data.maxScore  ?? 100,
+      grade_cuts: data.gradeCuts ?? null,
+      created_by: user.id,
+    })
+    if (error) throw error
+
+    revalidatePath('/admin/scores')
+    return { success: true }
   })
-
-  if (error) return { success: false, error: `테스트 생성 실패: ${error.message}` }
-  revalidatePath('/admin/scores')
-  return { success: true }
 }
 
-// ── 테스트 삭제 (test_scores 는 CASCADE)
 export async function deleteTest(id: string): Promise<ActionResult> {
-  const auth = await assertStaff()
-  if (!auth.ok) return { success: false, error: auth.error }
-  const adminSupabase = createAdminClient()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  const { error } = await adminSupabase.from('tests').delete().eq('id', id)
-  if (error) return { success: false, error: `삭제 실패: ${error.message}` }
-  revalidatePath('/admin/scores')
-  return { success: true }
+  return withAction('deleteTest', user?.id, async () => {
+    if (!user) return { success: false, error: '인증이 필요합니다.' }
+    const role = user.user_metadata?.role as string | undefined
+    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+
+    const adminSupabase = createAdminClient()
+    const { error } = await adminSupabase.from('tests').delete().eq('id', id)
+    if (error) throw error
+
+    revalidatePath('/admin/scores')
+    return { success: true }
+  })
 }
 
-// ── 학생별 점수 저장 (수동 입력)
-export async function saveTestScores(
-  testId: string,
-  entries: ScoreEntry[],
-): Promise<ActionResult> {
-  const auth = await assertStaff()
-  if (!auth.ok) return { success: false, error: auth.error }
-  const adminSupabase = createAdminClient()
+export async function saveTestScores(testId: string, entries: ScoreEntry[]): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: test } = await adminSupabase
-    .from('tests')
-    .select('class_id, test_date, total_q, obj_q, subj_q, difficulty')
-    .eq('id', testId)
-    .single()
+  return withAction('saveTestScores', user?.id, async () => {
+    if (!user) return { success: false, error: '인증이 필요합니다.' }
+    const role = user.user_metadata?.role as string | undefined
+    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
 
-  if (!test) return { success: false, error: '테스트를 찾을 수 없습니다.' }
+    const adminSupabase = createAdminClient()
+    const { data: test } = await adminSupabase
+      .from('tests')
+      .select('class_id, test_date, total_q, obj_q, subj_q, difficulty')
+      .eq('id', testId)
+      .single()
 
-  if (entries.length === 0) return { success: true }
+    if (!test) return { success: false, error: '테스트를 찾을 수 없습니다.' }
+    if (entries.length === 0) return { success: true }
 
-  const studentIds = entries.map((e) => e.studentId)
+    const studentIds = entries.map((e) => e.studentId)
+    await adminSupabase.from('test_scores').delete().eq('test_id', testId).in('student_id', studentIds)
 
-  // 기존 점수 삭제 후 재삽입 (partial index upsert 대신)
-  await adminSupabase
-    .from('test_scores')
-    .delete()
-    .eq('test_id', testId)
-    .in('student_id', studentIds)
+    const rows = entries.map((e) => ({
+      test_id: testId, class_id: test.class_id, student_id: e.studentId,
+      test_date: test.test_date, score: e.score,
+      total_q: test.total_q ?? null, obj_q: test.obj_q ?? null,
+      subj_q: test.subj_q ?? null, difficulty: test.difficulty ?? null,
+      input_method: 'manual' as const,
+    }))
 
-  const rows = entries.map((e) => ({
-    test_id:      testId,
-    class_id:     test.class_id,
-    student_id:   e.studentId,
-    test_date:    test.test_date,
-    score:        e.score,
-    total_q:      test.total_q   ?? null,
-    obj_q:        test.obj_q     ?? null,
-    subj_q:       test.subj_q    ?? null,
-    difficulty:   test.difficulty ?? null,
-    input_method: 'manual' as const,
-  }))
+    const { error } = await adminSupabase.from('test_scores').insert(rows)
+    if (error) throw error
 
-  const { error } = await adminSupabase.from('test_scores').insert(rows)
-  if (error) return { success: false, error: `점수 저장 실패: ${error.message}` }
-
-  revalidatePath(`/admin/scores/${testId}`)
-  return { success: true }
+    revalidatePath(`/admin/scores/${testId}`)
+    return { success: true }
+  })
 }
 
-// ── OMR 엑셀 일괄 저장
-export async function bulkSaveTestScores(
-  testId: string,
-  rows: BulkScoreRow[],
-): Promise<BulkResult> {
-  const auth = await assertStaff()
-  if (!auth.ok) {
-    return { succeeded: 0, failed: [{ name: '전체', reason: auth.error }] }
+// bulkSaveTestScores는 복잡한 BulkResult 타입이라 withAction 외부에서 로깅 처리
+export async function bulkSaveTestScores(testId: string, rows: BulkScoreRow[]): Promise<BulkResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { succeeded: 0, failed: [{ name: '전체', reason: '인증이 필요합니다.' }] }
   }
+
+  const role = user.user_metadata?.role as string | undefined
+  if (role !== 'teacher' && role !== 'ta') {
+    return { succeeded: 0, failed: [{ name: '전체', reason: '권한이 없습니다.' }] }
+  }
+
   const adminSupabase = createAdminClient()
 
   const { data: test } = await adminSupabase
@@ -179,20 +173,14 @@ export async function bulkSaveTestScores(
 
   for (const row of rows) {
     const studentId = nameToId.get(row.name)
-    if (!studentId) {
-      failed.push({ name: row.name, reason: '학생을 찾을 수 없음' })
-      continue
-    }
+    if (!studentId) { failed.push({ name: row.name, reason: '학생을 찾을 수 없음' }); continue }
     toInsert.push({
-      test_id:      testId,
-      class_id:     test.class_id as string,
-      student_id:   studentId,
-      test_date:    test.test_date as string,
-      score:        row.score,
-      total_q:      (test.total_q   as number | null) ?? null,
-      obj_q:        (test.obj_q     as number | null) ?? null,
-      subj_q:       (test.subj_q    as number | null) ?? null,
-      difficulty:   (test.difficulty as string | null) ?? null,
+      test_id: testId, class_id: test.class_id as string, student_id: studentId,
+      test_date: test.test_date as string, score: row.score,
+      total_q: (test.total_q as number | null) ?? null,
+      obj_q: (test.obj_q as number | null) ?? null,
+      subj_q: (test.subj_q as number | null) ?? null,
+      difficulty: (test.difficulty as string | null) ?? null,
       input_method: 'omr',
     })
   }
@@ -202,22 +190,14 @@ export async function bulkSaveTestScores(
     return { succeeded: 0, failed }
   }
 
-  // 기존 점수 삭제 후 재삽입
-  await adminSupabase
-    .from('test_scores')
-    .delete()
-    .eq('test_id', testId)
-    .in('student_id', toInsert.map((r) => r.student_id))
+  await adminSupabase.from('test_scores').delete().eq('test_id', testId).in('student_id', toInsert.map((r) => r.student_id))
 
   const { error } = await adminSupabase.from('test_scores').insert(toInsert)
-
   revalidatePath(`/admin/scores/${testId}`)
 
   if (error) {
-    return {
-      succeeded: 0,
-      failed: [...failed, { name: '전체', reason: `저장 실패: ${error.message}` }],
-    }
+    logger.error('bulkSaveTestScores:error', { action: 'bulkSaveTestScores', userId: user.id, error })
+    return { succeeded: 0, failed: [...failed, { name: '전체', reason: `저장 실패: ${error.message}` }] }
   }
 
   return { succeeded: toInsert.length, failed }
