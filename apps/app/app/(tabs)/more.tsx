@@ -10,11 +10,11 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { supabase } from '@/lib/supabase'
+import { router } from 'expo-router'
+import { useAuth } from '@/contexts/AuthContext'
 
 const LS_NOTIFICATIONS = 'teamdj_notifications'
 const LS_MARKETING = 'teamdj_marketing'
@@ -43,6 +43,7 @@ const FAQ_ITEMS = [
 ]
 
 export default function MoreScreen() {
+  const { signOut } = useAuth()
   const [notifications, setNotifications] = useState(true)
   const [marketing, setMarketing] = useState(false)
   const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(null)
@@ -51,6 +52,7 @@ export default function MoreScreen() {
   const [inquiryText, setInquiryText] = useState('')
   const [inquiryDone, setInquiryDone] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
+  const [logoutConfirm, setLogoutConfirm] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -72,19 +74,6 @@ export default function MoreScreen() {
     AsyncStorage.setItem(LS_MARKETING, String(v))
   }
 
-  async function handleLogout() {
-    Alert.alert('로그아웃', '정말 로그아웃 하시겠습니까?', [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '로그아웃',
-        style: 'destructive',
-        onPress: async () => {
-          await supabase.auth.signOut()
-          // _layout.tsx의 onAuthStateChange가 /login으로 리다이렉트 처리
-        },
-      },
-    ])
-  }
 
   function handleInquirySubmit() {
     if (!inquiryText.trim()) return
@@ -150,9 +139,31 @@ export default function MoreScreen() {
         </View>
 
         {/* 로그아웃 */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-          <Text style={styles.logoutText}>로그아웃</Text>
-        </TouchableOpacity>
+        {logoutConfirm ? (
+          <View style={styles.logoutConfirmBox}>
+            <Text style={styles.logoutConfirmText}>정말 로그아웃 하시겠습니까?</Text>
+            <View style={styles.logoutConfirmRow}>
+              <TouchableOpacity
+                style={styles.logoutCancelBtn}
+                onPress={() => setLogoutConfirm(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.logoutCancelText}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.logoutConfirmBtn}
+                onPress={() => { signOut(); router.replace('/login') }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.logoutConfirmBtnText}>로그아웃</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.logoutBtn} onPress={() => setLogoutConfirm(true)} activeOpacity={0.8}>
+            <Text style={styles.logoutText}>로그아웃</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       {/* FAQ 모달 */}
@@ -339,6 +350,24 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#f8f8fa', marginTop: 8,
   },
   logoutText: { fontSize: 16, color: '#ef4444', fontWeight: '600' },
+
+  logoutConfirmBox: {
+    backgroundColor: '#fff', borderRadius: 24,
+    borderWidth: 1, borderColor: '#fee2e2', marginTop: 8,
+    padding: 20, gap: 14,
+  },
+  logoutConfirmText: { fontSize: 14, color: '#3f3f46', textAlign: 'center' },
+  logoutConfirmRow:  { flexDirection: 'row', gap: 10 },
+  logoutCancelBtn: {
+    flex: 1, paddingVertical: 13, borderRadius: 16, alignItems: 'center',
+    backgroundColor: '#f4f4f5',
+  },
+  logoutCancelText:      { fontSize: 14, fontWeight: '600', color: '#71717a' },
+  logoutConfirmBtn: {
+    flex: 1, paddingVertical: 13, borderRadius: 16, alignItems: 'center',
+    backgroundColor: '#ef4444',
+  },
+  logoutConfirmBtnText:  { fontSize: 14, fontWeight: '600', color: '#fff' },
 
   modalSafe: { flex: 1, backgroundColor: '#fff' },
   modalHeader: {

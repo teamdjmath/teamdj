@@ -11,17 +11,15 @@ function RootLayoutNav() {
   useEffect(() => {
     if (isLoading) return
 
-    const rootSegment = segments[0] as string
-    const inTabs = rootSegment === '(tabs)'
-    const isLogin = rootSegment === 'login'
+    const isLogin = (segments[0] as string) === 'login'
 
+    // 비로그인 상태인데 로그인 화면이 아니면 → 로그인으로
     if (!user && !isLogin) {
       router.replace('/login')
-    } else if (user && isLogin) {
-      router.replace('/')
-    } else if (user && !inTabs) {
-      router.replace('/')
     }
+    // 로그인 화면에서 user && isLogin 으로 되돌리는 가드를 제거한다.
+    // 로그인 성공 후 이동은 login.tsx 자체에서 router.replace('/')로 처리한다.
+    // 이 가드가 남아 있으면 로그아웃 직후 race condition으로 다시 탭으로 튕겨 나간다.
   }, [user, isLoading, segments])
 
   if (isLoading) {

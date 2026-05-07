@@ -47,7 +47,7 @@ function diffDays(t: string) {
 
 // ────── 메인 컴포넌트 ──────
 export default function HomeScreen() {
-  const { user, isStaff } = useAuth()
+  const { user, isStaff, role } = useAuth()
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
@@ -66,7 +66,7 @@ export default function HomeScreen() {
     id: string; title: string; is_pinned: boolean; created_at: string
   }[]>([])
   const [questions, setQuestions] = useState<{
-    id: string; content: string; status: string
+    id: string; title: string; status: string
   }[]>([])
 
   // ── 스태프 상태 ──
@@ -123,7 +123,7 @@ export default function HomeScreen() {
         .select('id, title, is_pinned, created_at, class_id')
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
-        .limit(5),
+        .limit(3),
       supabase.from('qna_questions').select('status').limit(1000),
     ])
 
@@ -131,10 +131,25 @@ export default function HomeScreen() {
     setAllClasses(allRows.map((c) => ({ id: c.id as string, name: c.name as string })))
 
     // 오늘 수업 분반 필터 (day_of_week 배열에 TODAY_DOW 포함)
-    const todayRows = allRows.filter((c) => {
+    let todayRows = allRows.filter((c) => {
       const dow = c.day_of_week as number[] | null
       return dow?.includes(TODAY_DOW)
     })
+
+    // TA면 ta_class_access 기준 추가 필터링
+    if (role === 'ta') {
+      const { data: access } = await supabase
+        .from('ta_class_access')
+        .select('class_id, is_all_classes')
+        .eq('ta_id', user!.id)
+      const hasAll = (access ?? []).some((a) => a.is_all_classes)
+      if (!hasAll) {
+        const allowed = new Set(
+          (access ?? []).map((a) => a.class_id as string).filter(Boolean),
+        )
+        todayRows = todayRows.filter((c) => allowed.has(c.id as string))
+      }
+    }
 
     if (todayRows.length > 0) {
       const ids = todayRows.map((c) => c.id as string)
@@ -208,7 +223,7 @@ export default function HomeScreen() {
         : supabase.from('notices').select('id, title, is_pinned, created_at')
             .is('class_id', null).order('is_pinned', { ascending: false })
             .order('created_at', { ascending: false }).limit(3),
-      supabase.from('qna_questions').select('id, content, status')
+      supabase.from('qna_questions').select('id, title, status')
         .eq('student_id', userId).order('created_at', { ascending: false }).limit(3),
     ])
 
@@ -221,7 +236,7 @@ export default function HomeScreen() {
       pct: progressMap[a.id as string] ?? 0,
     })))
     setStudentNotices(noticeRes.data ?? [])
-    setQuestions((qna ?? []).map((q) => ({ id: q.id as string, content: q.content as string, status: q.status as string })))
+    setQuestions((qna ?? []).map((q) => ({ id: q.id as string, title: q.title as string, status: q.status as string })))
   }
 
   // ── 공지 저장 ──
@@ -341,23 +356,30 @@ export default function HomeScreen() {
                 <Text style={styles.smallBtnText}>+ 작성</Text>
               </TouchableOpacity>
             </View>
-            {staffNotices.length === 0 ? (
-              <Text style={styles.empty}>등록된 공지가 없습니다.</Text>
-            ) : (
-              staffNotices.map((n, i) => (
-                <View key={n.id} style={[styles.noticeItem, i < staffNotices.length - 1 && styles.noticeBorder]}>
-                  {n.is_pinned && (
-                    <View style={styles.pinBadge}>
-                      <Text style={styles.pinBadgeText}>고정</Text>
+            {(() => {
+              const classNameMap = Object.fromEntries(allClasses.map((c) => [c.id, c.name]))
+              return staffNotices.length === 0 ? (
+                <Text style={styles.empty}>등록된 공지가 없습니다.</Text>
+              ) : (
+                staffNotices.map((n, i) => {
+                  const target = n.class_id ? (classNameMap[n.class_id] ?? '분반') : '전체'
+                  return (
+                    <View key={n.id} style={[styles.noticeItem, i < staffNotices.length - 1 && styles.noticeBorder]}>
+                      {n.is_pinned && (
+                        <View style={styles.pinBadge}>
+                          <Text style={styles.pinBadgeText}>고정</Text>
+                        </View>
+                      )}
+                      <Text style={styles.noticeTitle} numberOfLines={1}>{n.title}</Text>
+                      <Text style={styles.noticeTarget}>{target}</Text>
+                      <Text style={styles.noticeDate}>
+                        {new Date(n.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                      </Text>
                     </View>
-                  )}
-                  <Text style={styles.noticeTitle} numberOfLines={1}>{n.title}</Text>
-                  <Text style={styles.noticeDate}>
-                    {new Date(n.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-                  </Text>
-                </View>
-              ))
-            )}
+                  )
+                })
+              )
+            })()}
           </View>
 
           {/* C. Q&A 현황 */}
@@ -375,10 +397,6 @@ export default function HomeScreen() {
               <View style={styles.qnaChip}>
                 <Text style={styles.qnaNum}>{qnaStats.answered}</Text>
                 <Text style={styles.qnaLabel}>답변완료</Text>
-              </View>
-              <View style={[styles.qnaChip, styles.qnaChipTotal]}>
-                <Text style={styles.qnaNum}>{qnaStats.open + qnaStats.in_progress + qnaStats.answered}</Text>
-                <Text style={styles.qnaLabel}>전체</Text>
               </View>
             </View>
           </View>
@@ -626,7 +644,7 @@ export default function HomeScreen() {
               const s = QNA_STATUS[q.status] ?? QNA_STATUS.open
               return (
                 <View key={q.id} style={[styles.noticeItem, i < questions.length - 1 && styles.noticeBorder]}>
-                  <Text style={styles.noticeTitle} numberOfLines={1}>{q.content.slice(0, 50)}</Text>
+                  <Text style={styles.noticeTitle} numberOfLines={1}>{q.title}</Text>
                   <View style={[styles.statusBadge, { backgroundColor: s.bg }]}>
                     <Text style={[styles.statusBadgeText, { color: s.text }]}>{s.label}</Text>
                   </View>
@@ -685,8 +703,9 @@ const styles = StyleSheet.create({
   // 공지
   noticeItem:  { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 8 },
   noticeBorder:{ borderBottomWidth: 1, borderBottomColor: '#f1f1f4' },
-  noticeTitle: { flex: 1, fontSize: 14, fontWeight: '500', color: '#09090b' },
-  noticeDate:  { fontSize: 11, color: '#a1a1aa' },
+  noticeTitle:  { flex: 1, fontSize: 14, fontWeight: '500', color: '#09090b' },
+  noticeTarget: { fontSize: 10, color: '#a1a1aa', backgroundColor: '#f4f4f5', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2 },
+  noticeDate:   { fontSize: 11, color: '#a1a1aa' },
   pinBadge:    { backgroundColor: '#09090b', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   pinBadgeText:{ fontSize: 9, color: '#fff', fontWeight: '600' },
 
@@ -698,7 +717,6 @@ const styles = StyleSheet.create({
   qnaRow:      { flexDirection: 'row', gap: 8 },
   qnaChip:     { flex: 1, backgroundColor: '#ffffff', borderRadius: 16, paddingVertical: 14, alignItems: 'center', gap: 4 },
   qnaChipDark: { backgroundColor: '#09090b' },
-  qnaChipTotal:{ backgroundColor: '#f4f4f5' },
   qnaNum:      { fontSize: 22, fontWeight: '700', color: '#09090b' },
   qnaNumLight: { color: '#ffffff' },
   qnaLabel:    { fontSize: 10, color: '#a1a1aa' },

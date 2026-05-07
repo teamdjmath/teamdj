@@ -21,6 +21,13 @@ export default function TabLayout() {
   const { user, userName, isStaff, isLoading } = useAuth()
   const [unreadCount, setUnreadCount] = useState(0)
 
+  // 로그아웃/세션 만료 시 로그인으로 이동 — Stack 안쪽에서 호출해야 확실히 동작
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace('/login')
+    }
+  }, [user, isLoading])
+
   // 학생/학부모만 수신 쪽지 미읽음 수 조회
   useEffect(() => {
     if (!user || isStaff) return

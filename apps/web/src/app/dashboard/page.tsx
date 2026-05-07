@@ -108,7 +108,7 @@ export default async function DashboardPage() {
   // 최근 질문
   const { data: questions } = await supabase
     .from('qna_questions')
-    .select('id, content, status, created_at')
+    .select('id, title, status, created_at')
     .eq('student_id', userId)
     .order('created_at', { ascending: false })
     .limit(3)
@@ -252,7 +252,7 @@ export default async function DashboardPage() {
                     href={`/dashboard/qna/${q.id}`}
                     className="flex items-center justify-between gap-3 py-3 hover:bg-zinc-50 px-2 rounded-xl transition-colors"
                   >
-                    <span className="flex-1 truncate text-sm text-zinc-800 font-medium">{(q.content as string).slice(0, 50)}</span>
+                    <span className="flex-1 truncate text-sm text-zinc-800 font-medium">{q.title as string}</span>
                     <StatusBadge status={q.status as string} />
                   </Link>
                 </li>

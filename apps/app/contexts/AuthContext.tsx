@@ -8,6 +8,7 @@ interface AuthState {
   userName: string
   isStaff: boolean
   isLoading: boolean
+  signOut: () => void
 }
 
 const AuthContext = createContext<AuthState>({
@@ -16,6 +17,7 @@ const AuthContext = createContext<AuthState>({
   userName: '',
   isStaff: false,
   isLoading: true,
+  signOut: () => {},
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -35,12 +37,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => listener.subscription.unsubscribe()
   }, [])
 
+  // user를 즉시 null로 세팅하고 Supabase 세션은 백그라운드에서 정리한다.
+  // await로 블로킹하면 네트워크가 느리거나 실패할 때 navigation이 막힌다.
+  function signOut() {
+    setUser(null)
+    supabase.auth.signOut().catch(() => {})
+  }
+
   const role = (user?.user_metadata?.role as string) ?? null
   const userName = (user?.user_metadata?.name as string) || user?.email?.split('@')[0] || ''
   const isStaff = role === 'teacher' || role === 'ta'
 
   return (
-    <AuthContext.Provider value={{ user, role, userName, isStaff, isLoading }}>
+    <AuthContext.Provider value={{ user, role, userName, isStaff, isLoading, signOut }}>
       {children}
     </AuthContext.Provider>
   )
