@@ -113,7 +113,7 @@ export default function TabLayout() {
           name="learning/index"
           options={
             isStaff
-              ? { href: null, tabBarButton: () => null }
+              ? { href: null }
               : {
                   title: '학습',
                   tabBarIcon: ({ focused }) => <TabIcon name="book" focused={focused} />,
@@ -124,7 +124,7 @@ export default function TabLayout() {
           name="qna/index"
           options={
             isStaff
-              ? { href: null, tabBarButton: () => null }
+              ? { href: null }
               : {
                   title: 'Q&A',
                   tabBarIcon: ({ focused }) => (
@@ -137,7 +137,7 @@ export default function TabLayout() {
           name="report"
           options={
             isStaff
-              ? { href: null, tabBarButton: () => null }
+              ? { href: null }
               : {
                   title: '리포트',
                   tabBarIcon: ({ focused }) => <TabIcon name="bar-chart" focused={focused} />,
@@ -154,7 +154,7 @@ export default function TabLayout() {
                   title: '근무',
                   tabBarIcon: ({ focused }) => <TabIcon name="briefcase" focused={focused} />,
                 }
-              : { href: null, tabBarButton: () => null }
+              : { href: null }
           }
         />
         <Tabs.Screen
@@ -165,7 +165,7 @@ export default function TabLayout() {
                   title: '쪽지',
                   tabBarIcon: ({ focused }) => <TabIcon name="mail" focused={focused} />,
                 }
-              : { href: null, tabBarButton: () => null }
+              : { href: null }
           }
         />
 
