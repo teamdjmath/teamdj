@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
-import type { ActionResult } from '@/lib/actions'
+import type { ActionResult } from '@/lib/types/actions'
 import { asJson } from '@/types/db'
 
 export async function createExamResult(data: {

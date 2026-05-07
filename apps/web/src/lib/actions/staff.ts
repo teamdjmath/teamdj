@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
-import type { ActionResult } from '@/lib/actions'
+import type { ActionResult } from '@/lib/types/actions'
 
 export type StaffStatus = 'online' | 'busy' | 'offline'
 

@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
-import type { ActionResult } from '@/lib/actions'
+import type { ActionResult } from '@/lib/types/actions'
 
 export type { ActionResult }
 

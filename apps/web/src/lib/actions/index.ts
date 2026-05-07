@@ -1,10 +1,9 @@
 'use server'
 
 import { logger, parseSupabaseError } from '@/lib/logger'
+import type { ActionResult } from '../types/actions'
 
-export type ActionResult<T = void> =
-  | { success: true; data?: T }
-  | { success: false; error: string }
+export type { ActionResult }
 
 export async function withAction<T = void>(
   actionName: string,

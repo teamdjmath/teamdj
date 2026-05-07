@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
-import type { ActionResult } from '@/lib/actions'
+import type { ActionResult } from '@/lib/types/actions'
 
 export async function createTodo(content: string): Promise<ActionResult> {
   const supabase = await createClient()

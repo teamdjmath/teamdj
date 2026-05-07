@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { ClassesClient } from './_components/classes-client'
 
+export const revalidate = 0
+
 export default async function ClassesPage() {
   const supabase = await createClient()
 

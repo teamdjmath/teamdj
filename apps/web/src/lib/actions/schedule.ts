@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
-import type { ActionResult } from '@/lib/actions'
+import type { ActionResult } from '@/lib/types/actions'
 
 export async function createExtraSchedule(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient()
