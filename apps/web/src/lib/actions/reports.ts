@@ -74,6 +74,9 @@ export async function saveReport(data: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: '인증이 필요합니다.' }
 
+  const role = user.user_metadata?.role as string | undefined
+  if (role !== 'teacher' && role !== 'ta') return { error: '권한이 없습니다.' }
+
   const admin = createAdminClient()
   const { error: uploadErr, publicUrl } = await uploadReportImage(
     admin, data.studentId, data.reportDate, data.imageBase64,

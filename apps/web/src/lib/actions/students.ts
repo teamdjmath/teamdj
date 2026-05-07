@@ -36,6 +36,9 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
   return withAction('createStudent', caller?.id, async () => {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
 
+    const role = caller.user_metadata?.role as string | undefined
+    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+
     const name        = (formData.get('name')     as string).trim()
     const phone       = (formData.get('phone')    as string).trim()
     const password    = formData.get('password') as string

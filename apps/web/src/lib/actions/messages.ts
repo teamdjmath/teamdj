@@ -15,6 +15,10 @@ export async function sendMessage(data: {
 
   return withAction('sendMessage', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
+
+    const role = user.user_metadata?.role as string | undefined
+    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+
     if (!data.content.trim()) return { success: false, error: '내용을 입력하세요.' }
     if (!data.classId && !data.studentId) return { success: false, error: '발송 대상을 선택하세요.' }
 

@@ -83,6 +83,9 @@ export async function generateAiDraft(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: '인증이 필요합니다.' }
 
+  const role = user.user_metadata?.role as string | undefined
+  if (role !== 'teacher' && role !== 'ta') return { error: '권한이 없습니다.' }
+
   try {
     const ai = new GoogleGenAI({ apiKey })
 
