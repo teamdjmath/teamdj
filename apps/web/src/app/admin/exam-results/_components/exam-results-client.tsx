@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { createExamResult, deleteExamResult } from '@/lib/actions/exam-results'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface ClassOption { id: string; name: string }
 interface StudentOption { id: string; name: string; classId: string }
@@ -184,8 +185,8 @@ export function ExamResultsClient({
 
       {/* 시험별 그룹 통계 + 목록 */}
       {Object.entries(examGroups).length === 0 && (
-        <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-8 text-center text-sm text-zinc-400">
-          등록된 시험 결과가 없습니다.
+        <div className="rounded-2xl border border-zinc-200 bg-white">
+          <EmptyState message="등록된 시험 결과가 없습니다." description="시험 결과 추가 버튼으로 등록하세요." />
         </div>
       )}
       {Object.entries(examGroups).map(([key, rows]) => {

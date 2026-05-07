@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Modal } from '@/components/ui/modal'
 import { InputField } from '@/components/ui/form-field'
 import { createClass, updateClass, deleteClass, hardDeleteClass } from '@/lib/actions/classes'
@@ -156,8 +157,8 @@ export function ClassesClient({ classes }: { classes: ClassRow[] }) {
           <tbody className="divide-y divide-zinc-100">
             {classes.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-sm text-zinc-400">
-                  등록된 분반이 없습니다.
+                <td colSpan={7}>
+                  <EmptyState message="등록된 분반이 없습니다." description="분반 추가 버튼으로 새 반을 만드세요." />
                 </td>
               </tr>
             ) : (

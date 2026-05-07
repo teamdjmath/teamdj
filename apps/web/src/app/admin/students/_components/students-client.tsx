@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { InputField } from '@/components/ui/form-field'
 import { StudentFormModal } from './student-form-modal'
 import { ExcelImportModal } from './excel-import-modal'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type StudentRow = {
   id: string
@@ -23,13 +25,40 @@ type ClassOption = { id: string; label: string }
 export function StudentsClient({
   students,
   classOptions,
+  totalCount,
+  page,
+  totalPages,
+  q,
 }: {
   students: StudentRow[]
   classOptions: ClassOption[]
+  totalCount: number
+  page: number
+  totalPages: number
+  q: string
 }) {
+  const router = useRouter()
+  const [, startTransition] = useTransition()
   const [createOpen, setCreateOpen] = useState(false)
   const [excelOpen, setExcelOpen]   = useState(false)
-  const [query, setQuery]           = useState('')
+  const [inputValue, setInputValue] = useState(q)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function pushParams(newQ: string, newPage: number) {
+    const params = new URLSearchParams()
+    if (newQ) params.set('q', newQ)
+    if (newPage > 1) params.set('page', String(newPage))
+    startTransition(() => {
+      router.push(`/admin/students${params.size ? `?${params}` : ''}`)
+    })
+  }
+
+  function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value
+    setInputValue(val)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => pushParams(val, 1), 350)
+  }
 
   async function handleSampleDownload() {
     const XLSX = await import('xlsx')
@@ -44,20 +73,13 @@ export function StudentsClient({
     XLSX.writeFile(wb, '학생_일괄등록_샘플.xlsx')
   }
 
-  const filtered = students.filter(
-    (s) =>
-      s.name.includes(query) ||
-      s.phone.includes(query) ||
-      (s.className ?? '').includes(query),
-  )
-
   return (
     <>
       {/* 헤더 */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold text-zinc-950">학생 관리</h1>
-          <p className="mt-0.5 text-sm text-zinc-400">총 {students.length}명</p>
+          <p className="mt-0.5 text-sm text-zinc-400">총 {totalCount}명</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -88,9 +110,9 @@ export function StudentsClient({
       <div className="mb-4 max-w-sm">
         <InputField
           type="search"
-          placeholder="이름, 전화번호, 반 이름으로 검색"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          placeholder="이름, 전화번호로 검색"
+          value={inputValue}
+          onChange={handleSearchChange}
         />
       </div>
 
@@ -108,14 +130,17 @@ export function StudentsClient({
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
-            {filtered.length === 0 ? (
+            {students.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-12 text-center text-sm text-zinc-400">
-                  {query ? '검색 결과가 없습니다.' : '등록된 학생이 없습니다.'}
+                <td colSpan={6}>
+                  <EmptyState
+                    message={q ? '검색 결과가 없습니다.' : '등록된 학생이 없습니다.'}
+                    description={q ? `"${q}" 에 일치하는 학생이 없습니다.` : '학생 등록 버튼으로 추가하세요.'}
+                  />
                 </td>
               </tr>
             ) : (
-              filtered.map((s) => (
+              students.map((s) => (
                 <tr key={s.id} className="hover:bg-zinc-50 transition-colors">
                   <td className="px-5 py-3.5">
                     <div className="font-medium text-zinc-900">{s.name}</div>
@@ -158,6 +183,56 @@ export function StudentsClient({
         </table>
       </div>
 
+      {/* 페이지네이션 */}
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between text-sm text-zinc-500">
+          <span>{PAGE_SIZE * (page - 1) + 1}–{Math.min(PAGE_SIZE * page, totalCount)} / 총 {totalCount}명</span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => pushParams(q, page - 1)}
+              className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              이전
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+              .reduce<(number | '...')[]>((acc, p, i, arr) => {
+                if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('...')
+                acc.push(p)
+                return acc
+              }, [])
+              .map((p, i) =>
+                p === '...' ? (
+                  <span key={`ellipsis-${i}`} className="px-1">…</span>
+                ) : (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => pushParams(q, p as number)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                      p === page
+                        ? 'bg-zinc-950 text-white'
+                        : 'border border-zinc-200 hover:bg-zinc-50'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ),
+              )}
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => pushParams(q, page + 1)}
+              className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              다음
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 개별 등록 모달 */}
       <StudentFormModal
         open={createOpen}
@@ -173,3 +248,5 @@ export function StudentsClient({
     </>
   )
 }
+
+const PAGE_SIZE = 50

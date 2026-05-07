@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { Modal } from '@/components/ui/modal'
+import { EmptyState } from '@/components/ui/empty-state'
 import { InputField, SelectField, TextareaField } from '@/components/ui/form-field'
 import { createNotice, updateNotice, deleteNotice } from '@/lib/actions/notices'
 
@@ -141,8 +142,8 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
       </div>
 
       {notices.length === 0 ? (
-        <div className="rounded-xl border border-zinc-200 bg-white py-16 text-center text-sm text-zinc-400">
-          등록된 공지사항이 없습니다.
+        <div className="rounded-xl border border-zinc-200 bg-white">
+          <EmptyState message="등록된 공지사항이 없습니다." description="공지사항 추가 버튼으로 새 공지를 작성하세요." />
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white divide-y divide-zinc-50">

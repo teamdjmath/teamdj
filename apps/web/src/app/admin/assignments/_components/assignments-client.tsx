@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Modal } from '@/components/ui/modal'
+import { EmptyState } from '@/components/ui/empty-state'
 import { InputField, SelectField } from '@/components/ui/form-field'
 import { createAssignment, updateAssignment, deleteAssignment, createCategory } from '@/lib/actions/assignments'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -176,8 +177,8 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
 
       {/* 과제 목록 */}
       {assignments.length === 0 ? (
-        <div className="rounded-xl border border-zinc-200 bg-white py-16 text-center text-sm text-zinc-400">
-          등록된 과제가 없습니다.
+        <div className="rounded-xl border border-zinc-200 bg-white">
+          <EmptyState message="등록된 과제가 없습니다." description="과제 추가 버튼으로 새 과제를 등록하세요." />
         </div>
       ) : (
         <div className="space-y-6">

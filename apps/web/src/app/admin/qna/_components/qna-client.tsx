@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type ClassOption = { id: string; name: string }
 type Question = {
@@ -134,8 +135,8 @@ export function QnaClient({ classOptions, selectedStatus, selectedClassId, quest
 
       {/* 질문 목록 */}
       {questions.length === 0 ? (
-        <div className="rounded-xl border border-zinc-200 bg-white py-16 text-center text-sm text-zinc-400">
-          질문이 없습니다.
+        <div className="rounded-xl border border-zinc-200 bg-white">
+          <EmptyState message="질문이 없습니다." description="학생들이 질문을 등록하면 여기에 나타납니다." />
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white">

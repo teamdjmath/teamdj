@@ -3,6 +3,7 @@
 import { useState, useTransition, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveAttendance, type AttendanceStatus } from '@/lib/actions/attendance'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type Student = { id: string; name: string; phone: string }
 type ClassOption = { id: string; label: string }
@@ -198,8 +199,8 @@ export function AttendanceClient({
           )}
 
           {students.length === 0 ? (
-            <div className="rounded-2xl border border-zinc-200 bg-white py-16 text-center">
-              <p className="text-sm text-zinc-400">소속 학생이 없습니다.</p>
+            <div className="rounded-2xl border border-zinc-200 bg-white">
+              <EmptyState message="소속 학생이 없습니다." description="분반을 먼저 선택하거나 학생을 등록하세요." />
             </div>
           ) : (
             <>

@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { EmptyState } from '@/components/ui/empty-state'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { Modal } from '@/components/ui/modal'
@@ -229,8 +230,8 @@ export function LecturesClient({ classOptions, courses }: Props) {
 
       {/* 강좌 목록 */}
       {courses.length === 0 ? (
-        <div className="rounded-xl border border-zinc-200 bg-white py-20 text-center text-sm text-zinc-400">
-          등록된 강좌가 없습니다.
+        <div className="rounded-xl border border-zinc-200 bg-white">
+          <EmptyState message="등록된 강좌가 없습니다." description="강좌 추가 버튼으로 새 강좌를 만드세요." />
         </div>
       ) : (
         <div className="space-y-4">

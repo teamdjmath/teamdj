@@ -1,30 +1,19 @@
 import { createClient } from '@/lib/supabase/server'
 import { StudentsClient } from './_components/students-client'
 
-export default async function StudentsPage() {
+const PAGE_SIZE = 50
+
+export default async function StudentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; q?: string }>
+}) {
+  const { page: pageParam = '1', q = '' } = await searchParams
+  const page = Math.max(1, parseInt(pageParam) || 1)
+  const from = (page - 1) * PAGE_SIZE
+  const to   = from + PAGE_SIZE - 1
+
   const supabase = await createClient()
-
-  // 학생 목록 + 소속 반 + 학부모 연결 여부
-  // 학생 목록 및 분반 목록 동시 페칭
-  const [studentsRes, classesRes] = await Promise.all([
-    supabase
-      .from('users')
-      .select(`
-        id, name, phone, is_active, school, grade,
-        class_members!student_id(class_id, is_active, class_groups(name)),
-        parent_links!student_id(id)
-      `)
-      .eq('role', 'student')
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('class_groups')
-      .select('id, name, subject, grade')
-      .eq('is_active', true)
-      .order('name')
-  ])
-
-  const students = studentsRes.data
-  const classes = classesRes.data
 
   type ClassMember = {
     class_id: string
@@ -32,9 +21,35 @@ export default async function StudentsPage() {
     class_groups: { name: string } | null
   }
 
-  const rows = (students ?? []).map((s) => {
-    const activeClass = (s.class_members as ClassMember[])
-      .find((m) => m.is_active)
+  let studentsQuery = supabase
+    .from('users')
+    .select(`
+      id, name, phone, is_active, school, grade,
+      class_members!student_id(class_id, is_active, class_groups(name)),
+      parent_links!student_id(id)
+    `, { count: 'exact' })
+    .eq('role', 'student')
+    .order('name')
+    .range(from, to)
+
+  if (q) {
+    studentsQuery = studentsQuery.or(`name.ilike.%${q}%,phone.ilike.%${q}%`) as typeof studentsQuery
+  }
+
+  const [studentsRes, classesRes] = await Promise.all([
+    studentsQuery,
+    supabase
+      .from('class_groups')
+      .select('id, name, subject, grade')
+      .eq('is_active', true)
+      .order('name'),
+  ])
+
+  const totalCount = studentsRes.count ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+
+  const rows = (studentsRes.data ?? []).map((s) => {
+    const activeClass = (s.class_members as ClassMember[]).find((m) => m.is_active)
     return {
       id:           s.id,
       name:         s.name,
@@ -48,10 +63,19 @@ export default async function StudentsPage() {
     }
   })
 
-  const classOptions = (classes ?? []).map((c) => ({
-    id:      c.id,
-    label:   `${c.name} (${c.subject} · ${c.grade})`,
+  const classOptions = (classesRes.data ?? []).map((c) => ({
+    id:    c.id,
+    label: `${c.name} (${c.subject} · ${c.grade})`,
   }))
 
-  return <StudentsClient students={rows} classOptions={classOptions} />
+  return (
+    <StudentsClient
+      students={rows}
+      classOptions={classOptions}
+      totalCount={totalCount}
+      page={page}
+      totalPages={totalPages}
+      q={q}
+    />
+  )
 }

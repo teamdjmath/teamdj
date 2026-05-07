@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Modal } from '@/components/ui/modal'
 import { InputField } from '@/components/ui/form-field'
 import { createExtraSchedule, deleteExtraSchedule } from '@/lib/actions/schedule'
+import { EmptyState } from '@/components/ui/empty-state'
 
 // ── 상수
 const START_HOUR = 9
@@ -278,8 +279,8 @@ export function ScheduleClient({ classes, extraSchedules }: Props) {
         </div>
 
         {extraSchedules.length === 0 ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-8 text-center text-sm text-zinc-400">
-            이번 주 등록된 추가 근무가 없습니다.
+          <div className="rounded-2xl border border-zinc-200 bg-white">
+            <EmptyState message="이번 주 등록된 추가 근무가 없습니다." />
           </div>
         ) : (
           <div className="space-y-2">

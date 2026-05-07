@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Modal } from '@/components/ui/modal'
 import { InputField, SelectField } from '@/components/ui/form-field'
 import { createTest, deleteTest } from '@/lib/actions/scores'
@@ -183,8 +184,8 @@ export function ScoresClient({ classOptions, selectedClassId, selectedDate, test
 
       {/* 테스트 목록 */}
       {tests.length === 0 ? (
-        <div className="rounded-xl border border-zinc-200 bg-white py-16 text-center text-sm text-zinc-400">
-          등록된 테스트가 없습니다.
+        <div className="rounded-xl border border-zinc-200 bg-white">
+          <EmptyState message="등록된 테스트가 없습니다." description="테스트 추가 버튼으로 새 시험을 등록하세요." />
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
