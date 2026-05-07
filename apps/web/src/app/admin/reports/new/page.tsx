@@ -2,7 +2,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { ReportFormClient } from './_components/report-form-client'
-import type { ReportContent } from '@/lib/actions/reports'
+import { fromJson } from '@/types/db'
+import type { ReportContent, TestScoreJoin } from '@/types/db'
 
 export default async function NewReportPage({
   searchParams,
@@ -137,18 +138,17 @@ export default async function NewReportPage({
         const sid = row.student_id ?? ''
         const tid = row.test_id ?? ''
         if (!sid || !tid) continue
-        type TestJoin = { title: string; exam_type: string; total_q: number; obj_q: number; subj_q: number; difficulty: string; test_date: string }
-        const t = row.tests as unknown as TestJoin
+        const t = fromJson<TestScoreJoin>(row.tests)
         if (!scoreMap[sid]) scoreMap[sid] = {}
         scoreMap[sid][tid] = {
           score:        row.score ?? 0,
           title:        t.title,
           examType:     t.exam_type,
           date:         t.test_date,
-          totalQ:       t.total_q,
-          objQ:         t.obj_q,
-          subjQ:        t.subj_q,
-          difficulty:   t.difficulty,
+          totalQ:       t.total_q    ?? undefined,
+          objQ:         t.obj_q      ?? undefined,
+          subjQ:        t.subj_q     ?? undefined,
+          difficulty:   t.difficulty ?? undefined,
           classAverage: testStats[tid]?.count
             ? Math.round(testStats[tid].sum / testStats[tid].count)
             : 0,
@@ -194,10 +194,12 @@ export default async function NewReportPage({
     // 기존 리포트 맵 (병렬로 이미 받은 existingReports 처리)
     const existingMap: Record<string, ReportContent> = {}
     for (const r of existingReports ?? []) {
-      if (r.student_id) existingMap[r.student_id] = r.content_json as unknown as ReportContent
+      if (r.student_id) existingMap[r.student_id] = fromJson<ReportContent>(r.content_json)
     }
 
-    const firstReport = existingReports?.[0]?.content_json as unknown as ReportContent | undefined
+    const firstReport = existingReports?.[0]?.content_json
+      ? fromJson<ReportContent>(existingReports[0].content_json)
+      : undefined
     const initialCommon = firstReport
       ? {
           studyContent: firstReport.studyContent,

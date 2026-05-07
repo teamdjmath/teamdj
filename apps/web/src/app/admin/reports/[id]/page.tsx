@@ -2,7 +2,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ReportDetailClient } from './_components/report-detail-client'
-import type { ReportContent } from '@/lib/actions/reports'
+import { fromJson } from '@/types/db'
+import type { ReportContent } from '@/types/db'
 
 export default async function ReportDetailPage({
   params,
@@ -34,7 +35,7 @@ export default async function ReportDetailPage({
     report_date: r.report_date as string,
     image_url: (r.image_url ?? null) as string | null,
     kakao_sent_at: (r.kakao_sent_at ?? null) as string | null,
-    content_json: (r.content_json ?? {}) as unknown as ReportContent,
+    content_json: fromJson<ReportContent>(r.content_json ?? {}),
     created_at: r.created_at as string,
     updated_at: r.created_at as string,
     studentName: ((r.student as { name?: string } | null)?.name   ?? '') as string,

@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/actions'
-import type { Json } from '@/types/supabase'
+import { asJson } from '@/types/db'
 
 export async function createExamResult(data: {
   studentId: string
@@ -34,7 +34,7 @@ export async function createExamResult(data: {
       exam_date:        data.examDate,
       score:            data.score,
       max_score:        data.maxScore,
-      grade_cuts:       data.gradeCuts as unknown as Json,
+      grade_cuts:       asJson(data.gradeCuts),
       study_suggestion: data.studySuggestion || null,
       created_by:       user.id,
     })

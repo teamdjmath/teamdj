@@ -4,29 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { logger } from '@/lib/logger'
-import type { Json } from '@/types/supabase'
-
-export type ReportContent = {
-  studyContent: string
-  homework: string
-  announcement: string
-  notes: string
-  todayAttendance: 'present' | 'late' | 'absent' | null
-  recentScore: {
-    score: number
-    title: string
-    examType: string
-    date: string
-    totalQ?: number
-    objQ?: number
-    subjQ?: number
-    difficulty?: string
-    classAverage?: number
-  } | null
-  avgAssignmentPct: number
-  absenceReason?: string
-  lastAssignmentTitle?: string
-}
+import { asJson } from '@/types/db'
+export type { ReportContent } from '@/types/db'
+import type { ReportContent } from '@/types/db' // used in function signatures below
 
 async function assertStaff() {
   const supabase = await createClient()
@@ -91,7 +71,7 @@ export async function saveReport(data: {
       student_id:         data.studentId,
       report_date:        data.reportDate,
       class_session_date: data.reportDate,
-      content_json:       data.contentJson as unknown as Json,
+      content_json:       asJson(data.contentJson),
       image_url:          publicUrl,
     }, {
       onConflict: 'class_id, student_id, report_date'
@@ -137,7 +117,7 @@ export async function saveBatchReports(
         student_id:         item.studentId,
         report_date:        item.sessionDate,
         class_session_date: item.sessionDate,
-        content_json:       item.contentJson as unknown as Json,
+        content_json:       asJson(item.contentJson),
         image_url:          publicUrl,
       }, {
         onConflict: 'class_id, student_id, report_date'
