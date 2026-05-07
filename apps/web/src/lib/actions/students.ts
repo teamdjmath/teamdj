@@ -7,8 +7,6 @@ import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
 import { logger } from '@/lib/logger'
 
-export type { ActionResult }
-
 export type StudentBulkRow = {
   name: string
   phone: string

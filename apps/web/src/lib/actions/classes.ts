@@ -6,8 +6,6 @@ import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
 
-export type { ActionResult }
-
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
 
 function buildScheduleText(days: number[], startTime: string, endTime: string): string | null {
