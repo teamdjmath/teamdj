@@ -1,4 +1,3 @@
-// Next.js 16: middleware.ts → proxy.ts (named export `proxy`)
 import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from './lib/supabase/middleware'
 
@@ -8,7 +7,7 @@ const PUBLIC_PATHS = ['/', '/intro', '/login', '/register']
 // teacher / ta 전용 경로
 const ADMIN_PATH_PREFIX = '/admin'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // 1. Supabase 세션 갱신

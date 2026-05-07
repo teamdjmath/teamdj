@@ -36,7 +36,12 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
       />
       {/* 모달 패널 컨테이너 (스크롤 가능하게 함) */}
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className={`relative w-full ${SIZE[size]} rounded-2xl border border-zinc-200 bg-white shadow-xl my-8`}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+          className={`relative w-full ${SIZE[size]} rounded-2xl border border-zinc-200 bg-white shadow-xl my-8`}
+        >
           {/* 헤더 */}
           <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
             <h2 className="text-base font-semibold text-zinc-900">{title}</h2>
