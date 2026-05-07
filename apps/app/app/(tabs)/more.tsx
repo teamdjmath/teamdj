@@ -14,7 +14,6 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { router } from 'expo-router'
 import { supabase } from '@/lib/supabase'
 
 const LS_NOTIFICATIONS = 'teamdj_notifications'
@@ -53,20 +52,13 @@ export default function MoreScreen() {
   const [inquiryDone, setInquiryDone] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
 
-  const [userName, setUserName] = useState('')
-
-  // AsyncStorage 및 사용자 정보 로드
   useEffect(() => {
     Promise.all([
       AsyncStorage.getItem(LS_NOTIFICATIONS),
       AsyncStorage.getItem(LS_MARKETING),
-      supabase.auth.getUser()
-    ]).then(([n, m, { data }]) => {
+    ]).then(([n, m]) => {
       if (n !== null) setNotifications(n === 'true')
       if (m !== null) setMarketing(m === 'true')
-      if (data.user) {
-        setUserName(data.user.user_metadata?.name || data.user.email?.split('@')[0] || '')
-      }
     })
   }, [])
 
@@ -88,7 +80,7 @@ export default function MoreScreen() {
         style: 'destructive',
         onPress: async () => {
           await supabase.auth.signOut()
-          router.replace('/login')
+          // _layout.tsx의 onAuthStateChange가 /login으로 리다이렉트 처리
         },
       },
     ])
@@ -111,7 +103,6 @@ export default function MoreScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-
         {/* 지원 메뉴 */}
         <View style={styles.card}>
           <MenuRow label="1:1 문의" onPress={() => setInquiryOpen(true)} />
@@ -165,7 +156,12 @@ export default function MoreScreen() {
       </ScrollView>
 
       {/* FAQ 모달 */}
-      <Modal visible={faqOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setFaqOpen(false)}>
+      <Modal
+        visible={faqOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setFaqOpen(false)}
+      >
         <SafeAreaView style={styles.modalSafe}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>자주 묻는 질문</Text>
@@ -183,13 +179,9 @@ export default function MoreScreen() {
               >
                 <View style={styles.faqQ}>
                   <Text style={styles.faqQText}>{item.q}</Text>
-                  <Text style={styles.faqChevron}>
-                    {openFaqIdx === idx ? '∧' : '›'}
-                  </Text>
+                  <Text style={styles.faqChevron}>{openFaqIdx === idx ? '∧' : '›'}</Text>
                 </View>
-                {openFaqIdx === idx && (
-                  <Text style={styles.faqAText}>{item.a}</Text>
-                )}
+                {openFaqIdx === idx && <Text style={styles.faqAText}>{item.a}</Text>}
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -197,7 +189,12 @@ export default function MoreScreen() {
       </Modal>
 
       {/* 1:1 문의 모달 */}
-      <Modal visible={inquiryOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setInquiryOpen(false)}>
+      <Modal
+        visible={inquiryOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setInquiryOpen(false)}
+      >
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -243,7 +240,12 @@ export default function MoreScreen() {
       </Modal>
 
       {/* 약관 모달 */}
-      <Modal visible={termsOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setTermsOpen(false)}>
+      <Modal
+        visible={termsOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setTermsOpen(false)}
+      >
         <SafeAreaView style={styles.modalSafe}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>약관 및 이용동의</Text>
@@ -298,24 +300,14 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: { flex: 1 },
   content: { padding: 20, gap: 12, paddingBottom: 40 },
-  header: { paddingVertical: 16, marginBottom: 12 },
-  welcome: { fontSize: 13, color: '#a1a1aa', fontWeight: '400' },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
-  userName: { fontSize: 28, fontWeight: '600', color: '#09090b', letterSpacing: -0.5 },
-  roleBadge: { backgroundColor: '#f8f8fa', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: '#e4e4e7' },
-  roleBadgeText: { fontSize: 10, fontWeight: '500', color: '#71717a', textTransform: 'uppercase' },
 
-  card: {
-    backgroundColor: '#f8f8fa', borderRadius: 24,
-    marginBottom: 16, overflow: 'hidden',
-  },
+  card: { backgroundColor: '#f8f8fa', borderRadius: 24, marginBottom: 4, overflow: 'hidden' },
   sectionLabel: {
     fontSize: 12, fontWeight: '600', color: '#a1a1aa',
     textTransform: 'uppercase', letterSpacing: 0.5,
     paddingHorizontal: 20, paddingTop: 18, paddingBottom: 6,
   },
 
-  // 메뉴 행
   menuRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 22, paddingVertical: 20,
@@ -324,7 +316,6 @@ const styles = StyleSheet.create({
   menuLabel: { fontSize: 16, fontWeight: '500', color: '#09090b' },
   menuChevron: { fontSize: 22, color: '#d4d4d8' },
 
-  // 토글
   toggleRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 22, paddingVertical: 16,
@@ -335,7 +326,6 @@ const styles = StyleSheet.create({
   toggleLabel: { fontSize: 16, fontWeight: '500', color: '#09090b' },
   toggleSub: { fontSize: 12, color: '#a1a1aa' },
 
-  // 버전 정보
   versionRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 22, paddingVertical: 20,
@@ -343,19 +333,13 @@ const styles = StyleSheet.create({
   versionLabel: { fontSize: 16, fontWeight: '500', color: '#09090b' },
   versionValue: { fontSize: 15, color: '#a1a1aa', fontWeight: '400' },
 
-  // 로그아웃
-  logoutBtn: { 
-    paddingVertical: 20, 
-    alignItems: 'center', 
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#f8f8fa',
-    marginTop: 8,
+  logoutBtn: {
+    paddingVertical: 20, alignItems: 'center',
+    backgroundColor: '#fff', borderRadius: 24,
+    borderWidth: 1, borderColor: '#f8f8fa', marginTop: 8,
   },
   logoutText: { fontSize: 16, color: '#ef4444', fontWeight: '600' },
 
-  // 모달 공통
   modalSafe: { flex: 1, backgroundColor: '#fff' },
   modalHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
@@ -366,7 +350,6 @@ const styles = StyleSheet.create({
   modalClose: { fontSize: 14, color: '#a1a1aa' },
   modalBody: { padding: 20, gap: 0 },
 
-  // FAQ
   faqItem: { paddingVertical: 14, gap: 8 },
   faqBorder: { borderBottomWidth: 1, borderBottomColor: '#f4f4f5' },
   faqQ: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
@@ -374,7 +357,6 @@ const styles = StyleSheet.create({
   faqChevron: { fontSize: 16, color: '#a1a1aa' },
   faqAText: { fontSize: 13, color: '#71717a', lineHeight: 20 },
 
-  // 1:1 문의
   inquiryForm: { gap: 12 },
   inquiryInput: {
     minHeight: 140, borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 12,
@@ -390,6 +372,5 @@ const styles = StyleSheet.create({
   inquiryDoneTitle: { fontSize: 16, fontWeight: '600', color: '#09090b' },
   inquiryDoneSub: { fontSize: 13, color: '#a1a1aa' },
 
-  // 약관
   termsText: { fontSize: 13, color: '#52525b', lineHeight: 22 },
 })

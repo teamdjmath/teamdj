@@ -4,56 +4,52 @@ import { useEffect, useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { supabase } from '@/lib/supabase'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useAuth } from '@/contexts/AuthContext'
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   return (
-    <Ionicons 
-      name={focused ? (name as any) : (`${name}-outline` as any)} 
-      size={22} 
-      color={focused ? '#09090b' : '#a1a1aa'} 
+    <Ionicons
+      name={focused ? (name as any) : (`${name}-outline` as any)}
+      size={22}
+      color={focused ? '#09090b' : '#a1a1aa'}
     />
   )
 }
 
 export default function TabLayout() {
   const router = useRouter()
-  const [role, setRole] = useState<string | null>(null)
-  const [userName, setUserName] = useState<string>('')
+  const { user, userName, isStaff, isLoading } = useAuth()
   const [unreadCount, setUnreadCount] = useState(0)
-  const [loading, setLoading] = useState(true)
 
+  // 학생/학부모만 수신 쪽지 미읽음 수 조회
   useEffect(() => {
-    async function init() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        setLoading(false)
-        return
-      }
+    if (!user || isStaff) return
 
-      setRole(user.user_metadata?.role || 'student')
-      setUserName(user.user_metadata?.name || user.email?.split('@')[0] || '')
-
+    async function fetchUnread() {
       const { data: memberships } = await supabase
         .from('class_members')
         .select('class_id')
-        .eq('student_id', user.id)
+        .eq('student_id', user!.id)
         .eq('is_active', true)
-      
-      const classIds = (memberships ?? []).map(m => m.class_id)
-      
+
+      const classIds = (memberships ?? []).map((m) => m.class_id as string)
+
       const { count } = await supabase
         .from('push_messages')
         .select('*', { count: 'exact', head: true })
-        .or(`student_id.eq.${user.id}${classIds.length > 0 ? `,class_id.in.(${classIds.join(',')})` : ''}`)
+        .or(
+          `student_id.eq.${user!.id}${
+            classIds.length > 0 ? `,class_id.in.(${classIds.join(',')})` : ''
+          }`,
+        )
         .eq('is_read', false)
 
       setUnreadCount(count ?? 0)
-      setLoading(false)
     }
-    init()
-  }, [])
+    fetchUnread()
+  }, [user, isStaff])
 
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
         <ActivityIndicator color="#09090b" />
@@ -61,27 +57,26 @@ export default function TabLayout() {
     )
   }
 
-  const isStaff = role === 'teacher' || role === 'ta'
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#ffffff' }} edges={['top']}>
-      {/* Global Header */}
+      {/* 전역 헤더 */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.logoText}>TeamDJ</Text>
-        </View>
+        <Text style={styles.logoText}>TeamDJ</Text>
         <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={styles.msgBtn}
-            onPress={() => router.push('/(tabs)/messages')}
-          >
-            <Text style={styles.msgIcon}>✉</Text>
-            {unreadCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          {/* 학생만 수신함 버튼 노출 */}
+          {!isStaff && (
+            <TouchableOpacity
+              style={styles.msgBtn}
+              onPress={() => router.push('/(tabs)/messages')}
+            >
+              <Text style={styles.msgIcon}>✉</Text>
+              {unreadCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
           <Text style={styles.userName}>{userName}</Text>
         </View>
       </View>
@@ -104,7 +99,7 @@ export default function TabLayout() {
           tabBarItemStyle: { flex: 1 },
         }}
       >
-        {/* 학생 전용 탭 */}
+        {/* 공통 — 홈 */}
         <Tabs.Screen
           name="index"
           options={{
@@ -112,43 +107,83 @@ export default function TabLayout() {
             tabBarIcon: ({ focused }) => <TabIcon name="home" focused={focused} />,
           }}
         />
+
+        {/* 학생/학부모 전용 */}
         <Tabs.Screen
           name="learning/index"
-          options={{
-            title: '학습',
-            tabBarIcon: ({ focused }) => <TabIcon name="book" focused={focused} />,
-          }}
+          options={
+            isStaff
+              ? { href: null, tabBarButton: () => null }
+              : {
+                  title: '학습',
+                  tabBarIcon: ({ focused }) => <TabIcon name="book" focused={focused} />,
+                }
+          }
         />
         <Tabs.Screen
           name="qna/index"
-          options={{
-            title: 'Q&A',
-            tabBarIcon: ({ focused }) => <TabIcon name="chatbubble-ellipses" focused={focused} />,
-          }}
+          options={
+            isStaff
+              ? { href: null, tabBarButton: () => null }
+              : {
+                  title: 'Q&A',
+                  tabBarIcon: ({ focused }) => (
+                    <TabIcon name="chatbubble-ellipses" focused={focused} />
+                  ),
+                }
+          }
         />
         <Tabs.Screen
           name="report"
-          options={{
-            title: '리포트',
-            tabBarIcon: ({ focused }) => <TabIcon name="bar-chart" focused={focused} />,
-          }}
+          options={
+            isStaff
+              ? { href: null, tabBarButton: () => null }
+              : {
+                  title: '리포트',
+                  tabBarIcon: ({ focused }) => <TabIcon name="bar-chart" focused={focused} />,
+                }
+          }
         />
 
-        {/* 공통 탭 */}
+        {/* 선생님/조교 전용 */}
+        <Tabs.Screen
+          name="work"
+          options={
+            isStaff
+              ? {
+                  title: '근무',
+                  tabBarIcon: ({ focused }) => <TabIcon name="briefcase" focused={focused} />,
+                }
+              : { href: null, tabBarButton: () => null }
+          }
+        />
+        <Tabs.Screen
+          name="messages"
+          options={
+            isStaff
+              ? {
+                  title: '쪽지',
+                  tabBarIcon: ({ focused }) => <TabIcon name="mail" focused={focused} />,
+                }
+              : { href: null, tabBarButton: () => null }
+          }
+        />
+
+        {/* 공통 — 더보기 */}
         <Tabs.Screen
           name="more"
           options={{
             title: '더보기',
-            tabBarIcon: ({ focused }) => <TabIcon name="ellipsis-horizontal" focused={focused} />,
+            tabBarIcon: ({ focused }) => (
+              <TabIcon name="ellipsis-horizontal" focused={focused} />
+            ),
           }}
         />
 
-        {/* 숨겨진 탭 (네비게이션용) */}
+        {/* 숨겨진 라우트 (탭바 미노출) */}
         <Tabs.Screen name="learning/[courseName]" options={{ href: null }} />
         <Tabs.Screen name="qna/new" options={{ href: null }} />
         <Tabs.Screen name="qna/[id]" options={{ href: null }} />
-        <Tabs.Screen name="messages" options={{ href: null }} />
-        <Tabs.Screen name="work" options={{ href: null }} />
         <Tabs.Screen name="notices" options={{ href: null }} />
       </Tabs>
     </SafeAreaView>
@@ -165,9 +200,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#f4f4f5',
-  },
-  headerLeft: {
-    justifyContent: 'center',
   },
   logoText: {
     fontSize: 16,
@@ -188,10 +220,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f8fa',
     borderRadius: 12,
   },
-  msgIcon: {
-    fontSize: 18,
-    color: '#09090b',
-  },
+  msgIcon: { fontSize: 18, color: '#09090b' },
   badge: {
     position: 'absolute',
     top: -2,
@@ -206,14 +235,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#ffffff',
   },
-  badgeText: {
-    color: '#ffffff',
-    fontSize: 9,
-    fontWeight: 'bold',
-  },
-  userName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#52525b',
-  },
+  badgeText: { color: '#ffffff', fontSize: 9, fontWeight: 'bold' },
+  userName: { fontSize: 14, fontWeight: '600', color: '#52525b' },
 })

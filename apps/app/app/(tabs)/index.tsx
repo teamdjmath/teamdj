@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 
 const TODAY = new Date().toISOString().split('T')[0]
 const CSAT_DEFAULT = '2026-11-19'
@@ -37,6 +38,8 @@ function diffDays(targetDate: string) {
 }
 
 export default function HomeScreen() {
+  const { user } = useAuth()
+
   const [targetDate, setTargetDate] = useState(CSAT_DEFAULT)
   const [ddayTitle, setDdayTitle] = useState('수능까지')
   const [editingDday, setEditingDday] = useState(false)
@@ -57,7 +60,6 @@ export default function HomeScreen() {
     id: string; content: string; status: string
   }[]>([])
 
-  // D-day 로드
   useEffect(() => {
     AsyncStorage.getItem(LS_DDAY).then((v) => {
       if (v) { setTargetDate(v); setDdayInput(v) }
@@ -67,16 +69,12 @@ export default function HomeScreen() {
     })
   }, [])
 
-  const [userName, setUserName] = useState('')
-
-  // 데이터 fetch
   useEffect(() => {
+    if (!user) return
+
     async function load() {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-        const userId = user.id
-        setUserName(user.user_metadata?.name || user.email?.split('@')[0] || '')
+        const userId = user!.id
 
         const { data: memberships } = await supabase
           .from('class_members')
@@ -154,7 +152,7 @@ export default function HomeScreen() {
       }
     }
     load()
-  }, [])
+  }, [user])
 
   function saveDday() {
     setTargetDate(ddayInput)
@@ -182,7 +180,6 @@ export default function HomeScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-
         {/* D-day 카드 */}
         <View style={[styles.card, styles.ddayCard]}>
           <View style={styles.ddayRow}>
@@ -214,10 +211,7 @@ export default function HomeScreen() {
             </View>
             <TouchableOpacity
               style={styles.ddayEditBtn}
-              onPress={() => {
-                if (editingDday) saveDday()
-                else setEditingDday(true)
-              }}
+              onPress={() => { if (editingDday) saveDday(); else setEditingDday(true) }}
               activeOpacity={0.8}
             >
               <Text style={styles.ddayEditText}>{editingDday ? '저장' : '설정'}</Text>
@@ -228,11 +222,9 @@ export default function HomeScreen() {
               value={new Date(ddayInput)}
               mode="date"
               display="default"
-              onChange={(event: any, selectedDate?: Date) => {
+              onChange={(_: any, selectedDate?: Date) => {
                 setShowDatePicker(false)
-                if (selectedDate) {
-                  setDdayInput(selectedDate.toISOString().split('T')[0])
-                }
+                if (selectedDate) setDdayInput(selectedDate.toISOString().split('T')[0])
               }}
             />
           )}
@@ -247,7 +239,9 @@ export default function HomeScreen() {
           ) : (
             assignments.map((a) => {
               const isOverdue = a.due_date && a.due_date < TODAY && a.pct < 100
-              const catColor = a.category ? (CAT_COLORS[a.category] ?? { bg: '#f4f4f5', text: '#52525b' }) : { bg: '#f4f4f5', text: '#52525b' }
+              const catColor = a.category
+                ? (CAT_COLORS[a.category] ?? { bg: '#f4f4f5', text: '#52525b' })
+                : { bg: '#f4f4f5', text: '#52525b' }
               return (
                 <View key={a.id} style={styles.asgnItem}>
                   <View style={styles.asgnRow}>
@@ -277,7 +271,8 @@ export default function HomeScreen() {
                   </View>
                   {a.due_date && (
                     <Text style={[styles.dueDateText, isOverdue && styles.overdueDue]}>
-                      마감 {new Date(a.due_date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                      마감{' '}
+                      {new Date(a.due_date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
                       {isOverdue ? ' · 밀린 과제' : ''}
                     </Text>
                   )}
@@ -347,40 +342,20 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffff' },
   scroll: { flex: 1 },
   content: { padding: 20, gap: 12, paddingBottom: 40 },
-  header: { paddingVertical: 16, marginBottom: 12 },
-  welcome: { fontSize: 13, color: '#a1a1aa', fontWeight: '400' },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
-  userName: { fontSize: 28, fontWeight: '600', color: '#09090b', letterSpacing: -0.5 },
-  roleBadge: { backgroundColor: '#f8f8fa', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: '#e4e4e7' },
-  roleBadgeText: { fontSize: 10, fontWeight: '500', color: '#71717a', textTransform: 'uppercase' },
 
-  card: {
-    backgroundColor: '#f8f8fa',
-    borderRadius: 24,
-    padding: 20,
-    gap: 12,
-  },
+  card: { backgroundColor: '#f8f8fa', borderRadius: 24, padding: 20, gap: 12 },
   cardTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#a1a1aa',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
+    fontSize: 12, fontWeight: '600', color: '#a1a1aa',
+    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4,
   },
 
-  // D-day 카드
   ddayCard: { gap: 12, backgroundColor: '#09090b' },
   ddayRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   ddayLabel: { fontSize: 12, color: 'rgba(255,255,255,0.6)' },
-  ddayTitleInput: { 
-    fontSize: 12, 
-    color: '#ffffff', 
-    borderBottomWidth: 1, 
-    borderBottomColor: 'rgba(255,255,255,0.4)', 
-    paddingBottom: 2, 
-    marginBottom: 2,
-    minWidth: 100
+  ddayTitleInput: {
+    fontSize: 12, color: '#ffffff',
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.4)',
+    paddingBottom: 2, marginBottom: 2, minWidth: 100,
   },
   ddayCount: { fontSize: 44, fontWeight: '600', color: '#ffffff', letterSpacing: -1, marginTop: 2 },
   ddaySub: { fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
@@ -390,18 +365,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 6,
   },
   ddayEditText: { fontSize: 12, color: 'rgba(255,255,255,0.6)' },
-  ddayEditRow: { flexDirection: 'row', gap: 8 },
-  ddayInput: {
-    flex: 1, height: 40, backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 10, paddingHorizontal: 12, fontSize: 14, color: '#ffffff',
-  },
-  ddaySaveBtn: {
-    backgroundColor: '#ffffff', borderRadius: 10, paddingHorizontal: 14,
-    justifyContent: 'center',
-  },
-  ddaySaveBtnText: { fontSize: 13, fontWeight: '600', color: '#000' },
 
-  // 과제
   asgnItem: { gap: 8 },
   asgnRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   catBadge: { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 },
@@ -414,10 +378,7 @@ const styles = StyleSheet.create({
   dueDateText: { fontSize: 11, color: '#a1a1aa' },
   overdueDue: { color: '#f87171' },
 
-  // 리스트
-  listItem: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 8,
-  },
+  listItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 8 },
   listBorder: { borderBottomWidth: 1, borderBottomColor: '#f1f1f4' },
   listItemTitle: { flex: 1, fontSize: 14, fontWeight: '500', color: '#09090b' },
   listItemDate: { fontSize: 11, color: '#a1a1aa' },

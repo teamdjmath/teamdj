@@ -7,17 +7,16 @@ import {
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
-  Linking,
-  Image,
   TextInput,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 
 const TODAY = new Date().toISOString().split('T')[0]
 
 const CAT_COLORS: Record<string, { bg: string; text: string }> = {
-  '매월승리': { bg: '#09090b', text: '#fff' }, // 수정대상
+  '매월승리': { bg: '#09090b', text: '#fff' },
   'KBS':      { bg: '#3f3f46', text: '#fff' },
   'EB-Schema':{ bg: '#a1a1aa', text: '#fff' },
 }
@@ -51,25 +50,25 @@ interface Todo {
 
 export default function LearningScreen() {
   const router = useRouter()
+  const { user } = useAuth()
   const [courses, setCourses] = useState<Course[]>([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [todos, setTodos] = useState<Todo[]>([])
   const [newTodo, setNewTodo] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [userName, setUserName] = useState('')
 
   useEffect(() => {
+    if (!user) return
+
     async function load() {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-        setUserName(user.user_metadata?.name || user.email?.split('@')[0] || '')
+        const userId = user!.id
 
         const { data: memberships } = await supabase
           .from('class_members')
           .select('class_id')
-          .eq('student_id', user.id)
+          .eq('student_id', userId)
           .eq('is_active', true)
 
         const classIds = (memberships ?? []).map((m) => m.class_id as string)
@@ -109,13 +108,11 @@ export default function LearningScreen() {
           supabase
             .from('student_todos')
             .select('*')
-            .eq('student_id', user.id)
-            .order('created_at', { ascending: false })
+            .eq('student_id', userId)
+            .order('created_at', { ascending: false }),
         ])
 
-        // 강좌별 그룹화 (lectures 데이터에서 course_name 추출)
         const courseMap: Record<string, Lecture[]> = {}
-        
         for (const row of lecRes.data ?? []) {
           const cn = (row.course_name as string) || '기타 강좌'
           if (!courseMap[cn]) courseMap[cn] = []
@@ -126,18 +123,14 @@ export default function LearningScreen() {
             orderNum: row.order_num as number,
           })
         }
-        
-        setCourses(courseNames.map(cn => ({ 
-          courseName: cn, 
-          lectures: courseMap[cn] ?? [] 
-        })))
+        setCourses(courseNames.map((cn) => ({ courseName: cn, lectures: courseMap[cn] ?? [] })))
 
         const asgnIds = (asgnRes.data ?? []).map((a) => a.id as string)
         const { data: prog } = asgnIds.length
           ? await supabase
               .from('assignment_progress')
               .select('assignment_id, completion_pct')
-              .eq('student_id', user.id)
+              .eq('student_id', userId)
               .in('assignment_id', asgnIds)
           : { data: [] }
 
@@ -164,9 +157,8 @@ export default function LearningScreen() {
       }
     }
     load()
-  }, [])
+  }, [user])
 
-  // 주차별 그룹핑
   const weekGroups: Record<number, Assignment[]> = {}
   for (const a of assignments) {
     const wk = a.week_num ?? 0
@@ -176,21 +168,17 @@ export default function LearningScreen() {
   const sortedWeeks = Object.keys(weekGroups).map(Number).sort((a, b) => b - a)
 
   const handleAddTodo = async () => {
-    if (!newTodo.trim()) return
+    if (!newTodo.trim() || !user) return
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
       const { data, error } = await supabase
         .from('student_todos')
         .insert({ student_id: user.id, content: newTodo.trim() })
         .select()
         .single()
-      
       if (error) throw error
       setTodos([data, ...todos])
       setNewTodo('')
-    } catch (e) {
+    } catch {
       alert('할 일을 추가하지 못했습니다.')
     }
   }
@@ -201,24 +189,19 @@ export default function LearningScreen() {
         .from('student_todos')
         .update({ is_completed: !completed })
         .eq('id', id)
-      
       if (error) throw error
-      setTodos(todos.map(t => t.id === id ? { ...t, is_completed: !completed } : t))
-    } catch (e) {
+      setTodos(todos.map((t) => (t.id === id ? { ...t, is_completed: !completed } : t)))
+    } catch {
       alert('상태를 변경하지 못했습니다.')
     }
   }
 
   const handleDeleteTodo = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('student_todos')
-        .delete()
-        .eq('id', id)
-      
+      const { error } = await supabase.from('student_todos').delete().eq('id', id)
       if (error) throw error
-      setTodos(todos.filter(t => t.id !== id))
-    } catch (e) {
+      setTodos(todos.filter((t) => t.id !== id))
+    } catch {
       alert('삭제하지 못했습니다.')
     }
   }
@@ -240,7 +223,7 @@ export default function LearningScreen() {
       >
         {error && <Text style={styles.errorText}>{error}</Text>}
 
-        {/* 강의 영상 (강좌 목록) */}
+        {/* 강의 영상 */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>강의 영상</Text>
           {courses.length === 0 ? (
@@ -251,10 +234,10 @@ export default function LearningScreen() {
                 <TouchableOpacity
                   key={course.courseName}
                   style={styles.courseItemLink}
-                onPress={() => {
-                  // @ts-ignore
-                  router.push(`/(tabs)/learning/${encodeURIComponent(course.courseName)}`)
-                }}
+                  onPress={() => {
+                    // @ts-ignore
+                    router.push(`/(tabs)/learning/${encodeURIComponent(course.courseName)}`)
+                  }}
                   activeOpacity={0.7}
                 >
                   <View style={styles.courseInfo}>
@@ -279,7 +262,7 @@ export default function LearningScreen() {
               placeholder="오늘 할 일을 계획해보세요"
               placeholderTextColor="#a1a1aa"
             />
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.todoAddBtn, !newTodo.trim() && styles.todoAddBtnDisabled]}
               onPress={handleAddTodo}
               disabled={!newTodo.trim()}
@@ -287,14 +270,13 @@ export default function LearningScreen() {
               <Text style={styles.todoAddBtnText}>추가</Text>
             </TouchableOpacity>
           </View>
-
           {todos.length === 0 ? (
             <Text style={styles.empty}>아직 계획된 할 일이 없습니다.</Text>
           ) : (
             <View style={styles.todoList}>
               {todos.map((t) => (
                 <View key={t.id} style={styles.todoItem}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.todoLeft}
                     onPress={() => handleToggleTodo(t.id, t.is_completed)}
                   >
@@ -314,7 +296,7 @@ export default function LearningScreen() {
           )}
         </View>
 
-        {/* 주간 과제 */}
+        {/* 과제 목록 */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>과제 목록</Text>
           {sortedWeeks.length === 0 ? (
@@ -384,17 +366,8 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffff' },
   scroll: { flex: 1 },
   content: { padding: 20, gap: 12, paddingBottom: 40 },
-  header: { paddingVertical: 16, marginBottom: 12 },
-  welcome: { fontSize: 13, color: '#a1a1aa', fontWeight: '400' },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
-  userName: { fontSize: 28, fontWeight: '600', color: '#09090b', letterSpacing: -0.5 },
-  roleBadge: { backgroundColor: '#f8f8fa', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: '#e4e4e7' },
-  roleBadgeText: { fontSize: 10, fontWeight: '500', color: '#71717a', textTransform: 'uppercase' },
 
-  card: {
-    backgroundColor: '#f8f8fa', borderRadius: 24,
-    padding: 20, gap: 16, marginBottom: 16,
-  },
+  card: { backgroundColor: '#f8f8fa', borderRadius: 24, padding: 20, gap: 16, marginBottom: 4 },
   cardTitle: {
     fontSize: 12, fontWeight: '600', color: '#a1a1aa',
     textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4,
@@ -402,9 +375,8 @@ const styles = StyleSheet.create({
   empty: { fontSize: 14, color: '#a1a1aa', textAlign: 'center', paddingVertical: 12 },
   errorText: { fontSize: 12, color: '#ef4444', textAlign: 'center' },
 
-  // 강좌 리스트
   courseList: { gap: 12 },
-  courseItemLink: { 
+  courseItemLink: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: '#ffffff', borderRadius: 18, padding: 16,
   },
@@ -413,7 +385,6 @@ const styles = StyleSheet.create({
   lecCountBadge: { fontSize: 11, color: '#a1a1aa', fontWeight: '500' },
   chevron: { fontSize: 16, color: '#d1d1d6' },
 
-  // 할 일
   todoInputRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
   todoInput: {
     flex: 1, height: 48, backgroundColor: '#ffffff', borderRadius: 14,
@@ -438,9 +409,11 @@ const styles = StyleSheet.create({
   todoTextDone: { color: '#d1d1d6', textDecorationLine: 'line-through' },
   todoDelete: { fontSize: 16, color: '#d1d1d6', padding: 4 },
 
-  // 과제
   weekGroup: { gap: 10 },
-  weekLabel: { fontSize: 11, fontWeight: '700', color: '#d1d1d6', textTransform: 'uppercase', letterSpacing: 0.8 },
+  weekLabel: {
+    fontSize: 11, fontWeight: '700', color: '#d1d1d6',
+    textTransform: 'uppercase', letterSpacing: 0.8,
+  },
   asgnList: { gap: 12 },
   asgnItem: { gap: 6 },
   asgnRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },

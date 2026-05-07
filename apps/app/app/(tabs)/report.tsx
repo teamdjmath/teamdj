@@ -13,6 +13,7 @@ import * as FileSystem from 'expo-file-system'
 import * as MediaLibrary from 'expo-media-library'
 import { LineChart } from 'react-native-gifted-charts'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface Score {
   id: string
@@ -29,30 +30,28 @@ interface ReportItem {
 }
 
 export default function ReportScreen() {
+  const { user } = useAuth()
   const [scores, setScores] = useState<Score[]>([])
   const [reports, setReports] = useState<ReportItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [userName, setUserName] = useState('')
 
   useEffect(() => {
+    if (!user) return
+
     async function load() {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-        setUserName(user.user_metadata?.name || user.email?.split('@')[0] || '')
-
         const [scoreRes, reportRes] = await Promise.all([
           supabase
             .from('test_scores')
             .select('id, score, max_score, subject, test_date')
-            .eq('student_id', user.id)
+            .eq('student_id', user!.id)
             .order('test_date', { ascending: false })
             .limit(10),
           supabase
             .from('reports')
             .select('id, created_at, image_url')
-            .eq('student_id', user.id)
+            .eq('student_id', user!.id)
             .order('created_at', { ascending: false })
             .limit(10),
         ])
@@ -80,7 +79,7 @@ export default function ReportScreen() {
       }
     }
     load()
-  }, [])
+  }, [user])
 
   const handleDownload = async (imageUrl: string) => {
     try {
@@ -89,20 +88,17 @@ export default function ReportScreen() {
         Alert.alert('권한 필요', '이미지를 저장하려면 갤러리 접근 권한이 필요합니다.')
         return
       }
-
       const filename = `report_${Date.now()}.jpg`
       // @ts-ignore
       const fileUri = `${FileSystem.cacheDirectory}${filename}`
-      
       const downloadRes = await FileSystem.downloadAsync(imageUrl, fileUri)
-      
       if (downloadRes.status === 200) {
         await MediaLibrary.saveToLibraryAsync(downloadRes.uri)
         Alert.alert('저장 완료', '학습 리포트가 갤러리에 저장되었습니다.')
       } else {
         throw new Error('다운로드 실패')
       }
-    } catch (e) {
+    } catch {
       Alert.alert('오류', '이미지를 저장하는 중 문제가 발생했습니다.')
     }
   }
@@ -122,9 +118,8 @@ export default function ReportScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-
         {error && <Text style={styles.errorText}>{error}</Text>}
- 
+
         {/* 성적 히스토리 차트 */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>성적 히스토리</Text>
@@ -133,9 +128,11 @@ export default function ReportScreen() {
           ) : (
             <View style={styles.chartContainer}>
               <LineChart
-                data={scores.slice().reverse().map(s => ({
+                data={scores.slice().reverse().map((s) => ({
                   value: s.score,
-                  label: new Date(s.testDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
+                  label: new Date(s.testDate).toLocaleDateString('ko-KR', {
+                    month: 'short', day: 'numeric',
+                  }),
                 }))}
                 height={180}
                 noOfSections={4}
@@ -156,13 +153,11 @@ export default function ReportScreen() {
                   pointerStripWidth: 2,
                   pointerColor: 'lightgray',
                   radius: 4,
-                  pointerLabelComponent: (items: any) => {
-                    return (
-                      <View style={styles.tooltip}>
-                        <Text style={styles.tooltipText}>{items[0].value}</Text>
-                      </View>
-                    )
-                  }
+                  pointerLabelComponent: (items: any) => (
+                    <View style={styles.tooltip}>
+                      <Text style={styles.tooltipText}>{items[0].value}</Text>
+                    </View>
+                  ),
                 }}
               />
             </View>
@@ -186,7 +181,8 @@ export default function ReportScreen() {
                   <Text style={styles.reportDate}>
                     {new Date(r.createdAt).toLocaleDateString('ko-KR', {
                       year: 'numeric', month: 'long', day: 'numeric',
-                    })} 리포트
+                    })}{' '}
+                    리포트
                   </Text>
                   <Text style={styles.reportSub}>
                     {r.imageUrl ? '탭하여 이미지 저장' : '이미지 없음'}
@@ -211,59 +207,19 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffff' },
   scroll: { flex: 1 },
   content: { padding: 20, gap: 12, paddingBottom: 40 },
-  header: { paddingVertical: 16, marginBottom: 12 },
-  welcome: { fontSize: 13, color: '#a1a1aa', fontWeight: '400' },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
-  userName: { fontSize: 28, fontWeight: '600', color: '#09090b', letterSpacing: -0.5 },
-  roleBadge: { backgroundColor: '#f8f8fa', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: '#e4e4e7' },
-  roleBadgeText: { fontSize: 10, fontWeight: '500', color: '#71717a', textTransform: 'uppercase' },
 
-  card: {
-    backgroundColor: '#f8f8fa', borderRadius: 24,
-    padding: 20, gap: 16, marginBottom: 16,
-  },
+  card: { backgroundColor: '#f8f8fa', borderRadius: 24, padding: 20, gap: 16, marginBottom: 4 },
   cardTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#a1a1aa',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
+    fontSize: 12, fontWeight: '600', color: '#a1a1aa',
+    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4,
   },
   empty: { fontSize: 14, color: '#a1a1aa', textAlign: 'center', paddingVertical: 12 },
   errorText: { fontSize: 12, color: '#ef4444', textAlign: 'center' },
 
-  // 차트
-  chartContainer: { 
-    marginTop: 10, 
-    marginLeft: -20, 
-    backgroundColor: '#f8f8fa',
-  },
-  tooltip: {
-    backgroundColor: '#09090b',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  tooltipText: {
-    color: '#ffffff',
-    fontSize: 10,
-    fontWeight: '700',
-  },
+  chartContainer: { marginTop: 10, marginLeft: -20, backgroundColor: '#f8f8fa' },
+  tooltip: { backgroundColor: '#09090b', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  tooltipText: { color: '#ffffff', fontSize: 10, fontWeight: '700' },
 
-  // 성적 (이전 스타일 - 일부 호환 위해 유지)
-  scoreItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, gap: 12 },
-  scoreBorder: { borderBottomWidth: 1, borderBottomColor: '#f1f1f4' },
-  scoreLeft: { gap: 2 },
-  scoreSubject: { fontSize: 14, fontWeight: '500', color: '#09090b' },
-  scoreDate: { fontSize: 12, color: '#a1a1aa' },
-  scoreRight: { alignItems: 'flex-end', gap: 6 },
-  scoreValue: { fontSize: 16, fontWeight: '600', color: '#09090b' },
-  scoreMax: { fontSize: 13, fontWeight: '400', color: '#a1a1aa' },
-  scoreBar: { width: 80, height: 4, borderRadius: 99, backgroundColor: '#e4e4e7', overflow: 'hidden' },
-  scoreBarFill: { height: 4, borderRadius: 99, backgroundColor: '#09090b' },
-
-  // 리포트
   reportItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, gap: 8 },
   reportBorder: { borderBottomWidth: 1, borderBottomColor: '#f1f1f4' },
   reportLeft: { flex: 1, gap: 2 },
@@ -271,8 +227,7 @@ const styles = StyleSheet.create({
   reportSub: { fontSize: 12, color: '#a1a1aa' },
   downloadIconWrap: {
     width: 32, height: 32, borderRadius: 16, backgroundColor: '#ffffff',
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: '#f1f1f4',
+    justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#f1f1f4',
   },
   downloadIcon: { fontSize: 18, color: '#09090b', marginTop: -2 },
 })
