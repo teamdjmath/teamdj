@@ -1,4 +1,4 @@
-'use server'
+
 
 import { logger, parseSupabaseError } from '@/lib/logger'
 import type { ActionResult } from '@/lib/types/actions'
