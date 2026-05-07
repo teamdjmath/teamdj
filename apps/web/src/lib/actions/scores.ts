@@ -160,7 +160,7 @@ export async function bulkSaveTestScores(testId: string, rows: BulkScoreRow[]): 
 
   const nameToId = new Map<string, string>()
   for (const m of members ?? []) {
-    const u = m.users as unknown as { name: string } | null
+    const u = m.users as { name: string } | null
     if (u?.name) nameToId.set(u.name, m.student_id as string)
   }
 

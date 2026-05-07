@@ -19,7 +19,7 @@ export default async function AssignmentProgressPage({
 
   if (!assignment) notFound()
 
-  const className = ((assignment.class_groups as unknown as { name: string } | null))?.name ?? ''
+  const className = (assignment.class_groups as { name: string } | null)?.name ?? ''
 
   const { data: members } = await supabase
     .from('class_members')
@@ -29,7 +29,7 @@ export default async function AssignmentProgressPage({
 
   const students = (members ?? []).map((m) => ({
     id: m.student_id as string,
-    name: ((m.users as unknown as { name: string } | null)?.name ?? '') as string,
+    name: (m.users as { name: string } | null)?.name ?? '',
   })).sort((a, b) => a.name.localeCompare(b.name, 'ko'))
 
   const { data: progressRows } = await supabase

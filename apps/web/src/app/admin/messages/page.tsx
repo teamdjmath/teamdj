@@ -41,7 +41,7 @@ export default async function MessagesPage() {
     const sid = m.student_id as string
     if (seen.has(sid)) continue
     seen.add(sid)
-    const u = m.users as unknown as { name: string } | null
+    const u = m.users as { name: string } | null
     if (u?.name) {
       students.push({ id: sid, name: u.name, classId: m.class_id as string })
     }
@@ -49,8 +49,8 @@ export default async function MessagesPage() {
   students.sort((a, b) => a.name.localeCompare(b.name, 'ko'))
 
   const messages = (messagesResult.data ?? []).map((m) => {
-    const cg = m.class_groups as unknown as { name: string } | null
-    const u = m.users as unknown as { name: string } | null
+    const cg = m.class_groups as { name: string } | null
+    const u = m.users as { name: string } | null
     const targetLabel = cg?.name
       ? `분반: ${cg.name}`
       : u?.name

@@ -18,21 +18,24 @@ export default async function ReportPage() {
       .limit(10),
     supabase
       .from('test_scores')
-      .select('score, max_score, subject, test_date')
+      .select('score, tests!test_id(test_date, max_score, title)')
       .eq('student_id', userId)
-      .order('test_date', { ascending: true })
+      .order('tests(test_date)', { ascending: true })
       .limit(10),
   ])
 
   const reports = reportsResult.data ?? []
   const scores = scoresResult.data ?? []
 
-  const scoreData = scores.map((s) => ({
-    date: s.test_date as string,
-    score: s.score as number,
-    maxScore: s.max_score as number,
-    subject: s.subject as string,
-  }))
+  const scoreData = scores.map((s) => {
+    const t = s.tests as { test_date: string; max_score: number; title: string } | null
+    return {
+      date:     t?.test_date ?? '',
+      score:    s.score ?? 0,
+      maxScore: t?.max_score ?? 100,
+      subject:  t?.title ?? '',
+    }
+  })
 
   const reportItems = reports.map((r) => ({
     id: r.id as string,

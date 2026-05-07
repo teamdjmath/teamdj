@@ -24,7 +24,7 @@ export default async function NewReportPage({
     .eq('is_active', true)
     .order('name')
 
-  const classOptions = (classes ?? []).map((c) => ({ id: c.id as string, name: c.name as string }))
+  const classOptions = (classes ?? []).map((c) => ({ id: c.id, name: c.name }))
   const className    = classOptions.find((c) => c.id === selectedClassId)?.name ?? ''
 
   type StudentData = {
@@ -34,7 +34,6 @@ export default async function NewReportPage({
     grade: string
     attendance: 'present' | 'late' | 'absent' | null
     absenceReason: string
-    // 모든 테스트 점수 저장 (클라이언트에서 선택 가능하도록)
     scores: Record<string, {
       score: number
       title: string
@@ -46,7 +45,6 @@ export default async function NewReportPage({
       difficulty?: string
       classAverage?: number
     }>
-    // 모든 과제 정보
     assignments: Array<{ title: string; completionPct: number }>
     avgAssignmentPct: number
   }
@@ -55,6 +53,7 @@ export default async function NewReportPage({
   let testOptions: Array<{ id: string; title: string; date: string }> = []
 
   if (selectedClassId && selectedSessionDate) {
+    // Step 1: 학생 목록 확보 (studentIds 필요)
     const { data: members } = await admin
       .from('class_members')
       .select('student_id, users!student_id(name, school, grade)')
@@ -63,9 +62,9 @@ export default async function NewReportPage({
 
     const memberList = (members ?? [])
       .map((m) => {
-        const u = m.users as unknown as { name: string; school: string; grade: string } | null
+        const u = m.users as { name: string; school: string; grade: string } | null
         return {
-          id:     m.student_id as string,
+          id:     m.student_id,
           name:   u?.name   ?? '',
           school: u?.school ?? '',
           grade:  u?.grade  ?? '',
@@ -76,130 +75,139 @@ export default async function NewReportPage({
 
     const studentIds = memberList.map((m) => m.id)
 
-    // 1. 테스트 목록 및 점수
-    const scoreMap: Record<string, StudentData['scores']> = {}
-    if (studentIds.length > 0) {
-      const { data: tests } = await admin
+    // Step 2: 독립적인 4개 쿼리를 병렬 실행
+    const [
+      { data: tests },
+      { data: assignments },
+      { data: attRows },
+      { data: existingReports },
+    ] = await Promise.all([
+      admin
         .from('tests')
         .select('id, title, test_date')
         .eq('class_id', selectedClassId)
         .order('test_date', { ascending: false })
-        .limit(10)
-      
-      testOptions = (tests ?? []).map(t => ({ id: t.id, title: t.title, date: t.test_date }))
-
-      if (testOptions.length > 0) {
-        const testIds = testOptions.map(t => t.id)
-        
-        const { data: allScores } = await admin
-          .from('test_scores')
-          .select('student_id, test_id, score, tests!test_id(title, exam_type, total_q, obj_q, subj_q, difficulty, test_date)')
-          .in('test_id', testIds)
-
-        const testStats: Record<string, { sum: number, count: number }> = {}
-        for (const s of allScores ?? []) {
-          const tid = s.test_id as string
-          if (!testStats[tid]) testStats[tid] = { sum: 0, count: 0 }
-          testStats[tid].sum += (s.score as number)
-          testStats[tid].count++
-        }
-
-        for (const row of allScores ?? []) {
-          const sid = row.student_id as string
-          const tid = row.test_id as string
-          const t = row.tests as unknown as { title: string; exam_type: string; total_q: number; obj_q: number; subj_q: number; difficulty: string; test_date: string }
-          if (!scoreMap[sid]) scoreMap[sid] = {}
-          
-          scoreMap[sid][tid] = {
-            score:        row.score as number,
-            title:        t.title,
-            examType:     t.exam_type,
-            date:         t.test_date,
-            totalQ:       t.total_q,
-            objQ:         t.obj_q,
-            subjQ:        t.subj_q,
-            difficulty:   t.difficulty,
-            classAverage: Math.round(testStats[tid].sum / testStats[tid].count)
-          }
-        }
-      }
-    }
-
-    // 2. 과제 목록 및 진행도
-    const studentAssignments: Record<string, StudentData['assignments']> = {}
-    const assignmentPctMap: Record<string, number> = {}
-    if (studentIds.length > 0) {
-      const { data: assignments } = await admin
+        .limit(10),
+      admin
         .from('assignments')
         .select('id, title')
         .eq('class_id', selectedClassId)
         .order('created_at', { ascending: false })
-        .limit(5)
+        .limit(5),
+      // attRows: studentIds 의존이지만 빈 배열이면 limit(0)으로 안전하게 처리
+      studentIds.length > 0
+        ? admin
+            .from('attendance_logs')
+            .select('student_id, status, absence_reason')
+            .eq('class_id', selectedClassId)
+            .eq('session_date', selectedSessionDate)
+            .in('student_id', studentIds)
+        : admin
+            .from('attendance_logs')
+            .select('student_id, status, absence_reason')
+            .limit(0),
+      admin
+        .from('reports')
+        .select('student_id, content_json')
+        .eq('class_id', selectedClassId)
+        .eq('report_date', selectedSessionDate),
+    ])
 
-      if (assignments && assignments.length > 0) {
-        const aIds = assignments.map(a => a.id)
-        const { data: progress } = await admin
-          .from('assignment_progress')
-          .select('student_id, assignment_id, completion_pct')
-          .in('assignment_id', aIds)
-          .in('student_id', studentIds)
+    testOptions = (tests ?? []).map((t) => ({ id: t.id, title: t.title, date: t.test_date }))
 
-        for (const row of progress ?? []) {
-          const sid = row.student_id as string
-          const aid = row.assignment_id as string
-          const title = assignments.find(a => a.id === aid)?.title ?? ''
-          if (!studentAssignments[sid]) studentAssignments[sid] = []
-          studentAssignments[sid].push({ title, completionPct: row.completion_pct as number })
-        }
+    // Step 3: allScores — testIds 필요로 순차 처리
+    const scoreMap: Record<string, StudentData['scores']> = {}
+    if (studentIds.length > 0 && testOptions.length > 0) {
+      const testIds = testOptions.map((t) => t.id)
+      const { data: allScores } = await admin
+        .from('test_scores')
+        .select('student_id, test_id, score, tests!test_id(title, exam_type, total_q, obj_q, subj_q, difficulty, test_date)')
+        .in('test_id', testIds)
 
-        for (const sid of studentIds) {
-          const items = studentAssignments[sid] ?? []
-          if (items.length > 0) {
-            assignmentPctMap[sid] = Math.round(items.reduce((a, b) => a + b.completionPct, 0) / items.length)
-          }
+      const testStats: Record<string, { sum: number; count: number }> = {}
+      for (const s of allScores ?? []) {
+        const tid = s.test_id ?? ''
+        if (!tid) continue
+        if (!testStats[tid]) testStats[tid] = { sum: 0, count: 0 }
+        testStats[tid].sum += s.score ?? 0
+        testStats[tid].count++
+      }
+
+      for (const row of allScores ?? []) {
+        const sid = row.student_id ?? ''
+        const tid = row.test_id ?? ''
+        if (!sid || !tid) continue
+        type TestJoin = { title: string; exam_type: string; total_q: number; obj_q: number; subj_q: number; difficulty: string; test_date: string }
+        const t = row.tests as unknown as TestJoin
+        if (!scoreMap[sid]) scoreMap[sid] = {}
+        scoreMap[sid][tid] = {
+          score:        row.score ?? 0,
+          title:        t.title,
+          examType:     t.exam_type,
+          date:         t.test_date,
+          totalQ:       t.total_q,
+          objQ:         t.obj_q,
+          subjQ:        t.subj_q,
+          difficulty:   t.difficulty,
+          classAverage: testStats[tid]?.count
+            ? Math.round(testStats[tid].sum / testStats[tid].count)
+            : 0,
         }
       }
     }
 
-    // 3. 출석
-    const attendanceMap: Record<string, { status: 'present' | 'late' | 'absent'; reason: string }> = {}
-    if (studentIds.length > 0) {
-      const { data: attRows } = await admin
-        .from('attendance_logs')
-        .select('student_id, status, absence_reason')
-        .eq('class_id', selectedClassId)
-        .eq('session_date', selectedSessionDate)
+    // Step 4: progress — aIds 필요로 순차 처리
+    const studentAssignments: Record<string, StudentData['assignments']> = {}
+    const assignmentPctMap: Record<string, number> = {}
+    if (studentIds.length > 0 && assignments && assignments.length > 0) {
+      const aIds = assignments.map((a) => a.id)
+      const { data: progress } = await admin
+        .from('assignment_progress')
+        .select('student_id, assignment_id, completion_pct')
+        .in('assignment_id', aIds)
         .in('student_id', studentIds)
 
-      for (const row of attRows ?? []) {
-        attendanceMap[row.student_id as string] = {
-          status: row.status as 'present' | 'late' | 'absent',
-          reason: row.absence_reason ?? ''
+      for (const row of progress ?? []) {
+        const sid = row.student_id
+        const aid = row.assignment_id
+        const title = assignments.find((a) => a.id === aid)?.title ?? ''
+        if (!studentAssignments[sid]) studentAssignments[sid] = []
+        studentAssignments[sid].push({ title, completionPct: row.completion_pct })
+      }
+      for (const sid of studentIds) {
+        const items = studentAssignments[sid] ?? []
+        if (items.length > 0) {
+          assignmentPctMap[sid] = Math.round(items.reduce((a, b) => a + b.completionPct, 0) / items.length)
         }
       }
     }
 
-    // 4. 기존 리포트
-    const { data: existingReports } = await admin
-      .from('reports')
-      .select('student_id, content_json')
-      .eq('class_id', selectedClassId)
-      .eq('report_date', selectedSessionDate)
+    // 출석 맵 (병렬로 이미 받은 attRows 처리)
+    const attendanceMap: Record<string, { status: 'present' | 'late' | 'absent'; reason: string }> = {}
+    for (const row of attRows ?? []) {
+      attendanceMap[row.student_id] = {
+        status: row.status as 'present' | 'late' | 'absent',
+        reason: row.absence_reason ?? '',
+      }
+    }
 
+    // 기존 리포트 맵 (병렬로 이미 받은 existingReports 처리)
     const existingMap: Record<string, ReportContent> = {}
     for (const r of existingReports ?? []) {
       if (r.student_id) existingMap[r.student_id] = r.content_json as unknown as ReportContent
     }
 
     const firstReport = existingReports?.[0]?.content_json as unknown as ReportContent | undefined
-    const initialCommon = firstReport ? {
-      studyContent: firstReport.studyContent,
-      homework: firstReport.homework,
-      announcement: firstReport.announcement,
-    } : null
+    const initialCommon = firstReport
+      ? {
+          studyContent: firstReport.studyContent,
+          homework:     firstReport.homework,
+          announcement: firstReport.announcement,
+        }
+      : null
 
     students = memberList.map((m) => {
-      const att = attendanceMap[m.id]
+      const att      = attendanceMap[m.id]
       const existing = existingMap[m.id]
       return {
         id:               m.id,
@@ -207,7 +215,7 @@ export default async function NewReportPage({
         school:           m.school,
         grade:            m.grade,
         attendance:       (existing?.todayAttendance ?? att?.status) ?? null,
-        absenceReason:    att?.reason || (existing?.absenceReason) || '-',
+        absenceReason:    att?.reason || existing?.absenceReason || '-',
         scores:           scoreMap[m.id] ?? {},
         assignments:      studentAssignments[m.id] ?? [],
         avgAssignmentPct: assignmentPctMap[m.id] ?? 0,

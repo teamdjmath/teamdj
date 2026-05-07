@@ -37,7 +37,7 @@ export default async function AttendancePage({ searchParams }: PageProps) {
 
     type MemberUser = { id: string; name: string; phone: string }
     students = (members ?? [])
-      .map((m) => m.users as unknown as MemberUser)
+      .map((m) => m.users as MemberUser)
       .filter(Boolean)
   }
 

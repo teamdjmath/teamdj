@@ -38,7 +38,7 @@ export default async function ScoresPage({
     maxScore:  t.max_score as number,
     gradeCuts: t.grade_cuts as Record<string, number> | null,
     classId:   t.class_id  as string,
-    className: ((t.class_groups as unknown as { name: string } | null)?.name ?? '') as string,
+    className: (t.class_groups as { name: string } | null)?.name ?? '',
   }))
 
   return (

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { logger } from '@/lib/logger'
+import type { Json } from '@/types/supabase'
 
 export type ReportContent = {
   studyContent: string
@@ -90,7 +91,7 @@ export async function saveReport(data: {
       student_id:         data.studentId,
       report_date:        data.reportDate,
       class_session_date: data.reportDate,
-      content_json:       data.contentJson as unknown as Record<string, unknown>,
+      content_json:       data.contentJson as unknown as Json,
       image_url:          publicUrl,
     }, {
       onConflict: 'class_id, student_id, report_date'
@@ -136,7 +137,7 @@ export async function saveBatchReports(
         student_id:         item.studentId,
         report_date:        item.sessionDate,
         class_session_date: item.sessionDate,
-        content_json:       item.contentJson as unknown as Record<string, unknown>,
+        content_json:       item.contentJson as unknown as Json,
         image_url:          publicUrl,
       }, {
         onConflict: 'class_id, student_id, report_date'

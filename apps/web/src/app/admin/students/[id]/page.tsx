@@ -52,23 +52,27 @@ export default async function StudentDetailPage({
   type ParentUser = { id: string; name: string; phone: string }
   type ParentLinkData = { id: string; users: ParentUser | null }
 
-  const currentClass = membership
+  const m = membership as MembershipData | null
+  const currentClass = m
     ? {
-        memberId:   (membership as unknown as MembershipData).id,
-        classId:    (membership as unknown as MembershipData).class_id,
-        className:  (membership as unknown as MembershipData).class_groups?.name ?? '',
-        subject:    (membership as unknown as MembershipData).class_groups?.subject ?? '',
-        grade:      (membership as unknown as MembershipData).class_groups?.grade ?? '',
-        enrolledAt: (membership as unknown as MembershipData).enrolled_at,
+        memberId:   m.id,
+        classId:    m.class_id,
+        className:  m.class_groups?.name ?? '',
+        subject:    m.class_groups?.subject ?? '',
+        grade:      m.class_groups?.grade ?? '',
+        enrolledAt: m.enrolled_at,
       }
     : null
 
-  const parents = (parentLinks ?? []).map((pl) => ({
-    linkId: (pl as unknown as ParentLinkData).id,
-    id:     (pl as unknown as ParentLinkData).users?.id ?? '',
-    name:   (pl as unknown as ParentLinkData).users?.name ?? '',
-    phone:  (pl as unknown as ParentLinkData).users?.phone ?? '',
-  }))
+  const parents = (parentLinks ?? []).map((pl) => {
+    const p = pl as ParentLinkData
+    return {
+      linkId: p.id,
+      id:     p.users?.id ?? '',
+      name:   p.users?.name ?? '',
+      phone:  p.users?.phone ?? '',
+    }
+  })
 
   const classOptions = (allClasses ?? []).map((c) => ({
     id:    c.id,

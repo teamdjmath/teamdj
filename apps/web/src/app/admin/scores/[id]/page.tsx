@@ -20,7 +20,7 @@ export default async function TestDetailPage({
   if (!test) notFound()
 
   const classId   = test.class_id  as string
-  const className = (test.class_groups as unknown as { name: string } | null)?.name ?? ''
+  const className = (test.class_groups as { name: string } | null)?.name ?? ''
 
   // 해당 분반의 활성 학생 목록
   const { data: members } = await adminSupabase
@@ -32,7 +32,7 @@ export default async function TestDetailPage({
   const students = (members ?? [])
     .map((m) => ({
       id:   m.student_id as string,
-      name: ((m.users as unknown as { name: string } | null)?.name ?? '') as string,
+      name: (m.users as { name: string } | null)?.name ?? '',
     }))
     .filter((s) => s.name)
     .sort((a, b) => a.name.localeCompare(b.name, 'ko'))

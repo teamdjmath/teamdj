@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { Modal } from '@/components/ui/modal'
@@ -352,10 +353,11 @@ export function LecturesClient({ classOptions, courses }: Props) {
                             <td className="hidden sm:table-cell w-24 px-3 py-3">
                               {lec.videoId ? (
                                 <a href={ytUrl(lec.videoId)} target="_blank" rel="noopener noreferrer">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
+                                  <Image
                                     src={ytThumb(lec.videoId)}
                                     alt={lec.title}
+                                    width={80}
+                                    height={48}
                                     className="h-12 w-20 rounded object-cover border border-zinc-100 hover:opacity-80"
                                   />
                                 </a>
@@ -544,8 +546,7 @@ export function LecturesClient({ classOptions, courses }: Props) {
           <InputField label="순서" type="number" value={lectureForm.orderNum} onChange={(e) => setLectureForm((f) => ({ ...f, orderNum: e.target.value }))} />
           {lectureForm.videoId && (
             <div className="rounded-lg overflow-hidden border border-zinc-200">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={ytThumb(lectureForm.videoId)} alt="썸네일" className="w-full h-auto" />
+              <Image src={ytThumb(lectureForm.videoId)} alt="썸네일" width={320} height={180} className="w-full h-auto" />
             </div>
           )}
           {err && <p className="text-sm text-red-500">{err}</p>}

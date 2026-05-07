@@ -34,7 +34,7 @@ export default async function AssignmentsPage({
     due_date:  (a.due_date  ?? '') as string,
     week_num:  a.week_num as number | null,
     class_id:  a.class_id as string,
-    className: ((a.class_groups as unknown as { name: string } | null)?.name ?? '') as string,
+    className: (a.class_groups as { name: string } | null)?.name ?? '',
   }))
 
   const { data: catRows } = await adminSupabase

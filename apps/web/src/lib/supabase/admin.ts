@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/supabase'
 
 // RLS 우회 + Auth Admin API 접근용 (서버 전용)
 // SUPABASE_SECRET_KEY → Supabase 대시보드 Settings > API > service_role 키
@@ -13,7 +14,7 @@ export function createAdminClient() {
     )
   }
 
-  return createClient(url, key, {
+  return createClient<Database>(url, key, {
     auth: {
       autoRefreshToken: false,
       persistSession:   false,

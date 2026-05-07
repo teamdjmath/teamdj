@@ -41,7 +41,7 @@ export function StaffClient({
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
-      .channel('staff_status_changes')
+      .channel(`staff_status_${currentUserId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'staff_status' },

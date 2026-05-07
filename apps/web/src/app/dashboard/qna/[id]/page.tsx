@@ -27,6 +27,7 @@ export default async function QnaDetailPage({ params }: { params: Promise<{ id: 
 
   const question = {
     ...qData,
+    status: qData.status as 'open' | 'in_progress' | 'answered',
     assignedTaName: qData.ta?.name || null,
   }
 

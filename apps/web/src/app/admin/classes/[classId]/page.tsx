@@ -35,7 +35,7 @@ export default async function ClassDetailPage({
   const students = (members ?? []).map((m) => ({
     memberId:   m.id,
     enrolledAt: m.enrolled_at,
-    ...(m.users as unknown as MemberUser),
+    ...(m.users as MemberUser),
   }))
 
   return (

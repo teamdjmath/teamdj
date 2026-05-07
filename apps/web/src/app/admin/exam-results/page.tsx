@@ -34,7 +34,7 @@ export default async function ExamResultsPage() {
     const sid = m.student_id as string
     if (seen.has(sid)) continue
     seen.add(sid)
-    const u = m.users as unknown as { name: string } | null
+    const u = m.users as { name: string } | null
     if (u?.name) {
       students.push({ id: sid, name: u.name, classId: m.class_id as string })
     }
@@ -43,8 +43,8 @@ export default async function ExamResultsPage() {
 
   const results = (resultsResult.data ?? []).map((r) => ({
     id: r.id as string,
-    studentName: ((r.users as unknown as { name: string } | null)?.name ?? '') as string,
-    className: ((r.class_groups as unknown as { name: string } | null)?.name ?? '') as string,
+    studentName: (r.users as { name: string } | null)?.name ?? '',
+    className: (r.class_groups as { name: string } | null)?.name ?? '',
     examName: r.exam_name as string,
     examType: r.exam_type as string,
     examDate: r.exam_date as string,

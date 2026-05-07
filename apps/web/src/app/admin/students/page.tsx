@@ -33,18 +33,18 @@ export default async function StudentsPage() {
   }
 
   const rows = (students ?? []).map((s) => {
-    const activeClass = (s.class_members as unknown as ClassMember[])
+    const activeClass = (s.class_members as ClassMember[])
       .find((m) => m.is_active)
     return {
       id:           s.id,
       name:         s.name,
-      phone:        s.phone,
+      phone:        s.phone ?? '',
       school:       s.school,
       grade:        s.grade,
       is_active:    s.is_active,
       className:    activeClass?.class_groups?.name ?? null,
       classId:      activeClass?.class_id ?? null,
-      hasParent:    (s.parent_links as unknown as { id: string }[]).length > 0,
+      hasParent:    (s.parent_links as { id: string }[]).length > 0,
     }
   })
 

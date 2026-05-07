@@ -24,7 +24,7 @@ export default async function ClassesPage() {
     end_time:     c.end_time,
     day_of_week:  c.day_of_week,
     is_active:    c.is_active,
-    studentCount: (c.class_members as unknown as { count: number }[])[0]?.count ?? 0,
+    studentCount: (c.class_members as { count: number }[])[0]?.count ?? 0,
   }))
 
   return (

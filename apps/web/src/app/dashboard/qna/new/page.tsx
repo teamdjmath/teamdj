@@ -21,7 +21,7 @@ export default async function NewQuestionPage() {
 
   const classes = (memberships || [])
     .map(m => m.class_groups)
-    .filter(Boolean) as unknown as { id: string; name: string; subject: string }[]
+    .filter(Boolean) as { id: string; name: string; subject: string }[]
 
   return (
     <div className="space-y-6">
