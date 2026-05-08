@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
+import { createClient } from '@/lib/supabase/client'
 import { assignQuestion, submitAnswer, generateAiDraft, updateAnswer, cancelAnswer } from '@/lib/actions/qna'
 
 type Question = {
@@ -57,7 +58,8 @@ function formatDatetime(iso: string) {
 
 function AnswerEditor({
   content, onContentChange,
-  mediaUrls, mediaInput, onMediaInputChange, onAddMedia, onRemoveMedia,
+  mediaUrls, onRemoveMedia,
+  files, onFileChange, onRemoveFile,
   tab, onTabChange,
   aiLoading, aiErr, onAiDraft,
   errMsg, onSubmit, submitLabel, isPending, onCancel,
@@ -65,10 +67,10 @@ function AnswerEditor({
   content: string
   onContentChange: (v: string) => void
   mediaUrls: string[]
-  mediaInput: string
-  onMediaInputChange: (v: string) => void
-  onAddMedia: () => void
   onRemoveMedia: (i: number) => void
+  files: File[]
+  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onRemoveFile: (i: number) => void
   tab: 'write' | 'preview'
   onTabChange: (t: 'write' | 'preview') => void
   aiLoading?: boolean
@@ -152,28 +154,55 @@ function AnswerEditor({
         </div>
       )}
 
-      {/* 미디어 URL */}
-      <div>
-        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-zinc-400">이미지 / 동영상 URL 첨부</label>
-        <div className="flex gap-2">
-          <input
-            type="url"
-            value={mediaInput}
-            onChange={(e) => onMediaInputChange(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onAddMedia() } }}
-            placeholder="https://..."
-            className="flex-1 rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 focus:outline-none transition-all"
-          />
-          <button type="button" onClick={onAddMedia}
-            className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-100 transition-all">
-            추가
-          </button>
-        </div>
+      {/* 첨부 파일 */}
+      <div className="space-y-2">
+        <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400">파일 첨부 (이미지/동영상)</label>
+        <input
+          type="file"
+          accept="image/*,video/*"
+          multiple
+          onChange={onFileChange}
+          className="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200 cursor-pointer transition-all"
+          disabled={isPending}
+        />
+        
+        {/* 업로드 대기 중인 파일들 */}
+        {files.length > 0 && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {files.map((file, i) => (
+              <div key={i} className="relative group">
+                <div className="h-16 w-16 rounded-xl border border-zinc-200 overflow-hidden bg-zinc-50">
+                  {file.type.startsWith('image/') ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={URL.createObjectURL(file)} alt="preview" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <svg className="h-6 w-6 text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onRemoveFile(i)}
+                  className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 이미 업로드된(기존) 미디어 URLs */}
         {mediaUrls.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 pt-1">
             {mediaUrls.map((url, i) => (
-              <div key={i} className="flex items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-[11px] font-medium text-white">
-                <span className="max-w-[200px] truncate">{url}</span>
+              <div key={i} className="flex items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-[11px] font-medium text-white group">
+                <span className="max-w-[150px] truncate">{url.split('/').pop()}</span>
                 <button type="button" onClick={() => onRemoveMedia(i)} className="text-zinc-400 hover:text-white transition-colors">
                   <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -212,6 +241,7 @@ function AnswerEditor({
 }
 
 export function QnaDetailClient({ question, answers, currentUserId }: Props) {
+  const supabase = createClient()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [errMsg, setErrMsg] = useState('')
@@ -219,7 +249,7 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
   const [content, setContent] = useState('')
   const [tab, setTab] = useState<'write' | 'preview'>('write')
   const [mediaUrls, setMediaUrls] = useState<string[]>([])
-  const [mediaInput, setMediaInput] = useState('')
+  const [files, setFiles] = useState<File[]>([])
   const [aiLoading, setAiLoading] = useState(false)
   const [aiErr, setAiErr] = useState('')
 
@@ -227,7 +257,7 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
   const [editContent, setEditContent] = useState('')
   const [editTab, setEditTab] = useState<'write' | 'preview'>('write')
   const [editMediaUrls, setEditMediaUrls] = useState<string[]>([])
-  const [editMediaInput, setEditMediaInput] = useState('')
+  const [editFiles, setEditFiles] = useState<File[]>([])
   const [editErr, setEditErr] = useState('')
 
   const isAssigned = question.assigned_ta_id === currentUserId
@@ -256,11 +286,33 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
     if (!content.trim()) { setErrMsg('답변 내용을 입력하세요.'); return }
     setErrMsg('')
     startTransition(async () => {
-      const res = await submitAnswer({ questionId: question.id, content: content.trim(), mediaUrls, isAiDraft: false })
-      if (res.error) { setErrMsg(res.error); return }
-      setContent('')
-      setMediaUrls([])
-      router.refresh()
+      try {
+        const uploadedUrls: string[] = []
+        for (const file of files) {
+          const fileExt = file.name.split('.').pop()
+          const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`
+          const filePath = `answers/${question.id}/${fileName}`
+          const { error: uploadError, data } = await supabase.storage.from('qna-images').upload(filePath, file)
+          if (uploadError) throw new Error('파일 업로드 중 오류가 발생했습니다.')
+          const { data: { publicUrl } } = supabase.storage.from('qna-images').getPublicUrl(data.path)
+          uploadedUrls.push(publicUrl)
+        }
+
+        const allMediaUrls = [...mediaUrls, ...uploadedUrls]
+        const res = await submitAnswer({ questionId: question.id, content: content.trim(), mediaUrls: allMediaUrls, isAiDraft: false })
+        if (res.error) { setErrMsg(res.error); return }
+        
+        setContent('')
+        setMediaUrls([])
+        setFiles([])
+        router.refresh()
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          setErrMsg(err.message || '답변 등록 중 오류가 발생했습니다.')
+        } else {
+          setErrMsg('답변 등록 중 오류가 발생했습니다.')
+        }
+      }
     })
   }
 
@@ -268,7 +320,7 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
     setEditingAnswerId(a.id)
     setEditContent(a.content)
     setEditMediaUrls([...a.media_urls])
-    setEditMediaInput('')
+    setEditFiles([])
     setEditTab('write')
     setEditErr('')
   }
@@ -278,10 +330,32 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
     if (!editContent.trim()) { setEditErr('답변 내용을 입력하세요.'); return }
     setEditErr('')
     startTransition(async () => {
-      const res = await updateAnswer({ answerId: editingAnswerId, questionId: question.id, content: editContent.trim(), mediaUrls: editMediaUrls })
-      if (res.error) { setEditErr(res.error); return }
-      setEditingAnswerId(null)
-      router.refresh()
+      try {
+        const uploadedUrls: string[] = []
+        for (const file of editFiles) {
+          const fileExt = file.name.split('.').pop()
+          const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`
+          const filePath = `answers/${question.id}/${fileName}`
+          const { error: uploadError, data } = await supabase.storage.from('qna-images').upload(filePath, file)
+          if (uploadError) throw new Error('파일 업로드 중 오류가 발생했습니다.')
+          const { data: { publicUrl } } = supabase.storage.from('qna-images').getPublicUrl(data.path)
+          uploadedUrls.push(publicUrl)
+        }
+
+        const allMediaUrls = [...editMediaUrls, ...uploadedUrls]
+        const res = await updateAnswer({ answerId: editingAnswerId, questionId: question.id, content: editContent.trim(), mediaUrls: allMediaUrls })
+        if (res.error) { setEditErr(res.error); return }
+
+        setEditingAnswerId(null)
+        setEditFiles([])
+        router.refresh()
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          setEditErr(err.message || '답변 수정 중 오류가 발생했습니다.')
+        } else {
+          setEditErr('답변 수정 중 오류가 발생했습니다.')
+        }
+      }
     })
   }
 
@@ -347,10 +421,15 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
                 </div>
                 <AnswerEditor
                   content={editContent} onContentChange={setEditContent}
-                  mediaUrls={editMediaUrls} mediaInput={editMediaInput}
-                  onMediaInputChange={setEditMediaInput}
-                  onAddMedia={() => { const u = editMediaInput.trim(); if (!u) return; setEditMediaUrls(p => [...p, u]); setEditMediaInput('') }}
+                  mediaUrls={editMediaUrls}
                   onRemoveMedia={(i) => setEditMediaUrls(p => p.filter((_, idx) => idx !== i))}
+                  files={editFiles}
+                  onFileChange={(e) => {
+                    if (e.target.files) {
+                      setEditFiles(prev => [...prev, ...Array.from(e.target.files!)])
+                    }
+                  }}
+                  onRemoveFile={(i) => setEditFiles(p => p.filter((_, idx) => idx !== i))}
                   tab={editTab} onTabChange={setEditTab}
                   errMsg={editErr} onSubmit={handleUpdateAnswer}
                   submitLabel="수정 완료" isPending={pending}
@@ -405,10 +484,15 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
           </h2>
           <AnswerEditor
             content={content} onContentChange={setContent}
-            mediaUrls={mediaUrls} mediaInput={mediaInput}
-            onMediaInputChange={setMediaInput}
-            onAddMedia={() => { const u = mediaInput.trim(); if (!u) return; setMediaUrls(p => [...p, u]); setMediaInput('') }}
+            mediaUrls={mediaUrls}
             onRemoveMedia={(i) => setMediaUrls(p => p.filter((_, idx) => idx !== i))}
+            files={files}
+            onFileChange={(e) => {
+              if (e.target.files) {
+                setFiles(prev => [...prev, ...Array.from(e.target.files!)])
+              }
+            }}
+            onRemoveFile={(i) => setFiles(p => p.filter((_, idx) => idx !== i))}
             tab={tab} onTabChange={setTab}
             aiLoading={aiLoading} aiErr={aiErr} onAiDraft={handleAiDraft}
             errMsg={errMsg} onSubmit={handleSubmit}
