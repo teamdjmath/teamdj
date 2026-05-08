@@ -1,5 +1,9 @@
 import { useEffect } from 'react'
-import { ActivityIndicator, View } from 'react-native'
+import { ActivityIndicator, View, LogBox } from 'react-native'
+
+// GoTrueClient가 만료된 refresh token을 내부적으로 갱신 실패할 때 발생하는
+// console.error를 억제. 실제 처리는 AuthContext의 SIGNED_OUT 핸들러가 담당.
+LogBox.ignoreLogs(['AuthApiError: Invalid Refresh Token'])
 import { Stack, router, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
