@@ -1,6 +1,5 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
@@ -23,8 +22,8 @@ export async function createExtraSchedule(formData: FormData): Promise<ActionRes
       return { success: false, error: '필수 항목을 입력해주세요.' }
     }
 
-    const admin = createAdminClient()
-    const { error } = await admin.from('extra_schedules').insert({
+    // 유저 세션 클라이언트 사용 — RLS 정책 (auth.uid() = user_id) 통과
+    const { error } = await supabase.from('extra_schedules').insert({
       user_id: user.id, title, scheduled_date, start_time, end_time, note,
     })
     if (error) throw error
@@ -41,8 +40,7 @@ export async function deleteExtraSchedule(id: string): Promise<ActionResult> {
   return withAction('deleteExtraSchedule', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
 
-    const admin = createAdminClient()
-    const { error } = await admin
+    const { error } = await supabase
       .from('extra_schedules')
       .delete()
       .eq('id', id)
