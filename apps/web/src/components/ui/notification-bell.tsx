@@ -56,7 +56,7 @@ export function NotificationBell({ placement = 'down' }: { placement?: 'up' | 'd
       </button>
 
       {open && (
-        <div className={`absolute right-0 ${placement === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'} min-w-80 w-80 rounded-2xl border border-zinc-200 bg-white shadow-xl z-50 overflow-hidden`}>
+        <div className={`absolute w-80 z-50 rounded-2xl border border-zinc-200 bg-white shadow-xl overflow-hidden ${placement === 'up' ? 'bottom-full mb-2 left-0' : 'top-full mt-2 right-0'}`}>
           {/* 헤더 */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
             <h3 className="text-sm font-semibold text-zinc-900">알림</h3>

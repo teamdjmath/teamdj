@@ -30,6 +30,7 @@ type Answer = {
 interface Props {
   question: Question
   answers: Answer[]
+  studentName: string
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -50,7 +51,22 @@ function formatDatetime(iso: string) {
 
 const mdPlugins = { remark: [remarkMath], rehype: [rehypeKatex] }
 
-export function StudentQnaDetail({ question, answers }: Props) {
+function buildStudentContent(content: string, studentName: string, taName: string): string {
+  const praiseMatch = content.match(/### 칭찬\n([\s\S]*?)(?=\n### |$)/)
+  const keyMatch = content.match(/### 핵심 포인트\n([\s\S]*?)(?=\n### |$)/)
+  const solutionMatch = content.match(/### 풀이\n([\s\S]*?)(?=\n### |$)/)
+
+  const body = (praiseMatch || keyMatch || solutionMatch)
+    ? [praiseMatch?.[1]?.trim(), keyMatch?.[1]?.trim(), solutionMatch?.[1]?.trim()]
+        .filter(Boolean)
+        .join('\n\n')
+    : content.trim()
+
+  const name = studentName ? `**${studentName}**` : '학생'
+  return `안녕하세요 ${name} 학생, **${taName}** 조교입니다.\n\n${body}\n\n---\n감사합니다. 더 궁금하신 내용이 있다면 언제든 질문해주시기 바랍니다. \n\n*26년 1월 22일부터 시행되는 인공지능 발전과 신뢰 기반 조성 등에 관한 기본법 (약칭 : 인공지능기본법)의 31조 2항에 따라, 본 답변은 AI가 초안을 생성 후 조교가 검수하여 수정을 거친 뒤 답변됨을 고지드립니다.`
+}
+
+export function StudentQnaDetail({ question, answers, studentName }: Props) {
   const [pending, startTransition] = useTransition()
   const [errMsg, setErrMsg] = useState('')
 
@@ -142,7 +158,7 @@ export function StudentQnaDetail({ question, answers }: Props) {
                 <CardContent>
                   <div className="prose prose-sm prose-zinc max-w-none text-[15px] font-medium leading-relaxed">
                     <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
-                      {a.content}
+                      {buildStudentContent(a.content, studentName, a.taName)}
                     </ReactMarkdown>
                   </div>
                   {a.media_urls.length > 0 && (

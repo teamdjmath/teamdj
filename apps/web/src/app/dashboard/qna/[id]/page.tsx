@@ -52,7 +52,11 @@ export default async function QnaDetailPage({ params }: { params: Promise<{ id: 
           &larr; 목록으로 돌아가기
         </Link>
       </div>
-      <StudentQnaDetail question={question} answers={answers} />
+      <StudentQnaDetail
+        question={question}
+        answers={answers}
+        studentName={(user.user_metadata?.name as string | undefined) ?? ''}
+      />
     </div>
   )
 }
