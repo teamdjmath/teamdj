@@ -14,7 +14,7 @@ import { supabase } from '@/lib/supabase'
 
 interface Question {
   id: string
-  content: string
+  title: string
   status: 'open' | 'in_progress' | 'answered'
   created_at: string
 }
@@ -39,7 +39,7 @@ export default function QnaListScreen() {
 
       const { data, error: qError } = await supabase
         .from('qna_questions')
-        .select('id, content, status, created_at')
+        .select('id, title, status, created_at')
         .eq('student_id', user.id)
         .order('created_at', { ascending: false })
 
@@ -126,7 +126,7 @@ export default function QnaListScreen() {
                     </Text>
                   </View>
                   <Text style={styles.itemContent} numberOfLines={2}>
-                    {q.content}
+                    {q.title}
                   </Text>
                 </TouchableOpacity>
               )

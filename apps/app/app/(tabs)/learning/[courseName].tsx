@@ -65,8 +65,8 @@ export default function CourseDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <Stack.Screen options={{ title: decodedCourseName, headerShown: true, headerBackTitle: '뒤로' }} />
-      
+      <Stack.Screen options={{ title: decodedCourseName, headerShown: false }} />
+
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Text style={styles.backText}>← 목록으로</Text>
