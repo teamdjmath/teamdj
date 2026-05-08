@@ -22,7 +22,7 @@ export async function updateStaffStatus(status: StaffStatus): Promise<ActionResu
       )
     if (error) throw error
 
-    revalidatePath('/admin/staff')
+    revalidatePath('/admin/schedule')
     return { success: true }
   })
 }

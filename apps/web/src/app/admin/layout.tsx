@@ -120,24 +120,13 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: '/admin/staff',
-    label: '근무 상태',
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <circle cx="12" cy="8" r="4" strokeLinecap="round" strokeLinejoin="round" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-        <circle cx="19" cy="7" r="2.5" fill="currentColor" className="text-emerald-400" stroke="none" />
-      </svg>
-    ),
-  },
-  {
     href: '/admin/schedule',
-    label: '시간표',
+    label: '근무',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
         <rect x="3" y="4" width="18" height="18" rx="2" strokeLinecap="round" strokeLinejoin="round" />
         <path strokeLinecap="round" strokeLinejoin="round" d="M16 2v4M8 2v4M3 10h18" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01" />
+        <circle cx="19" cy="7" r="2.5" fill="currentColor" className="text-emerald-400" stroke="none" />
       </svg>
     ),
   },

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import {
   View,
   Text,
@@ -7,20 +7,18 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   RefreshControl,
+  Modal,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 
-const START_HOUR = 9
-const END_HOUR   = 21
 const PX_PER_MIN = 0.65
-const TOTAL_H    = (END_HOUR - START_HOUR) * 60 * PX_PER_MIN
 const TIME_W     = 22
-const COL_W      = 52
+const COL_W      = 44
 
-const DAY_LABELS = ['월', '화', '수', '목', '금']
-const DOW_LIST   = [1, 2, 3, 4, 5]
+const DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일']
+const DOW_LIST   = [1, 2, 3, 4, 5, 6, 0]
 
 type WorkStatus = 'online' | 'busy' | 'offline'
 
@@ -63,13 +61,11 @@ type StaffMember = {
   status: WorkStatus
 }
 
+type PopupData = { cls: ClassRow; color: ReturnType<typeof getClassColor> }
+
 function timeToMin(t: string) {
   const [h, m] = t.split(':').map(Number)
   return h * 60 + m
-}
-
-function minToTop(min: number) {
-  return (min - START_HOUR * 60) * PX_PER_MIN
 }
 
 function getClassColor(idx: number) {
@@ -87,7 +83,7 @@ function getWeekDates() {
   const diff  = day === 0 ? -6 : 1 - day
   const mon   = new Date(today)
   mon.setDate(today.getDate() + diff)
-  return DOW_LIST.map((_, i) => {
+  return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(mon)
     d.setDate(mon.getDate() + i)
     return d
@@ -95,41 +91,31 @@ function getWeekDates() {
 }
 
 function ClassCard({
-  cls,
-  color,
-  isActive,
+  cls, color, top, height, onPress,
 }: {
   cls: ClassRow
   color: ReturnType<typeof getClassColor>
-  isActive: boolean
+  top: number; height: number
+  onPress: () => void
 }) {
-  const startMin = timeToMin(cls.start_time!)
-  const endMin   = timeToMin(cls.end_time!)
-  const top      = minToTop(startMin)
-  const height   = Math.max((endMin - startMin) * PX_PER_MIN, 18)
-
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={0.75}
+      onPress={onPress}
       style={[
         styles.classCard,
-        {
-          top,
-          height,
-          backgroundColor: color.bg,
-          borderLeftColor: color.border,
-        },
-        isActive && styles.classCardActive,
+        { top, height, backgroundColor: color.bg, borderLeftColor: color.border },
       ]}
     >
       <Text style={[styles.classCardName, { color: color.text }]} numberOfLines={1}>
         {cls.name}
       </Text>
-      {height >= 28 && (
+      {height >= 26 && (
         <Text style={[styles.classCardTime, { color: color.text }]} numberOfLines={1}>
           {cls.start_time!.slice(0, 5)}–{cls.end_time!.slice(0, 5)}
         </Text>
       )}
-    </View>
+    </TouchableOpacity>
   )
 }
 
@@ -141,6 +127,7 @@ export default function WorkScreen() {
   const [loading, setLoading]       = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [now, setNow]               = useState(new Date())
+  const [popup, setPopup]           = useState<PopupData | null>(null)
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30_000)
@@ -152,10 +139,7 @@ export default function WorkScreen() {
     try {
       // 내 근무 상태
       const { data: statusRow } = await supabase
-        .from('staff_status')
-        .select('status')
-        .eq('user_id', user.id)
-        .single()
+        .from('staff_status').select('status').eq('user_id', user.id).single()
       if (statusRow?.status) setWorkStatus(toWorkStatus(statusRow.status))
 
       // 시간표
@@ -167,9 +151,7 @@ export default function WorkScreen() {
 
       if (role === 'ta') {
         const { data: access } = await supabase
-          .from('ta_class_access')
-          .select('class_id, is_all_classes')
-          .eq('ta_id', user.id)
+          .from('ta_class_access').select('class_id, is_all_classes').eq('ta_id', user.id)
         const hasAll = (access ?? []).some((a) => a.is_all_classes)
         if (!hasAll) {
           const allowed = new Set(
@@ -182,25 +164,18 @@ export default function WorkScreen() {
 
       // 스태프 현황
       const { data: staffUsers } = await supabase
-        .from('users')
-        .select('id, name, role')
-        .in('role', ['teacher', 'ta'])
-        .eq('is_active', true)
-        .order('role')
-        .order('name')
+        .from('users').select('id, name, role')
+        .in('role', ['teacher', 'ta']).eq('is_active', true).order('role').order('name')
 
       const staffIds = (staffUsers ?? []).map((u) => u.id as string)
       const statusMap: Record<string, string> = {}
       if (staffIds.length > 0) {
         const { data: statusRows } = await supabase
-          .from('staff_status')
-          .select('user_id, status')
-          .in('user_id', staffIds)
+          .from('staff_status').select('user_id, status').in('user_id', staffIds)
         for (const row of statusRows ?? []) {
           statusMap[row.user_id as string] = row.status as string
         }
       }
-
       setStaffList(
         (staffUsers ?? []).map((u) => ({
           userId: u.id as string,
@@ -219,31 +194,20 @@ export default function WorkScreen() {
 
   useEffect(() => { load() }, [load])
 
-  // 스태프 상태 실시간 업데이트
+  // 스태프 상태 실시간
   useEffect(() => {
     if (!user) return
     const channel = supabase
       .channel('staff_status_work')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'staff_status' },
-        (payload) => {
-          const row = payload.new as { user_id: string; status: string } | undefined
-          if (!row) return
-          setStaffList((prev) =>
-            prev.map((s) =>
-              s.userId === row.user_id
-                ? { ...s, status: toWorkStatus(row.status) }
-                : s,
-            ),
-          )
-          if (row.user_id === user.id) {
-            setWorkStatus(toWorkStatus(row.status))
-          }
-        },
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_status' }, (payload) => {
+        const row = payload.new as { user_id: string; status: string } | undefined
+        if (!row) return
+        setStaffList((prev) =>
+          prev.map((s) => s.userId === row.user_id ? { ...s, status: toWorkStatus(row.status) } : s),
+        )
+        if (row.user_id === user.id) setWorkStatus(toWorkStatus(row.status))
+      })
       .subscribe()
-
     return () => { supabase.removeChannel(channel) }
   }, [user])
 
@@ -258,13 +222,32 @@ export default function WorkScreen() {
 
   const onRefresh = () => { setRefreshing(true); load() }
 
-  const weekDates  = getWeekDates()
-  const todayDow   = now.getDay()
-  const nowMin     = now.getHours() * 60 + now.getMinutes()
-  const nowTop     = minToTop(nowMin)
-  const sorted     = [...classes].sort((a, b) => a.name.localeCompare(b.name, 'ko'))
-  const colorMap   = Object.fromEntries(sorted.map((c, i) => [c.id, getClassColor(i)]))
-  const hours      = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i)
+  const weekDates = useMemo(() => getWeekDates(), [])
+  const todayDow  = now.getDay()
+  const nowMin    = now.getHours() * 60 + now.getMinutes()
+
+  const sorted   = useMemo(() => [...classes].sort((a, b) => a.name.localeCompare(b.name, 'ko')), [classes])
+  const colorMap = useMemo(
+    () => Object.fromEntries(sorted.map((c, i) => [c.id, getClassColor(i)])),
+    [sorted],
+  )
+
+  // 동적 시간 범위
+  const { dynStart, dynEnd } = useMemo(() => {
+    const timed = classes.filter((c) => c.start_time && c.end_time)
+    if (timed.length === 0) return { dynStart: 9, dynEnd: 21 }
+    const starts = timed.map((c) => Math.floor(timeToMin(c.start_time!) / 60))
+    const ends   = timed.map((c) => Math.ceil(timeToMin(c.end_time!) / 60))
+    return {
+      dynStart: Math.max(7,  Math.min(...starts) - 1),
+      dynEnd:   Math.min(24, Math.max(...ends)   + 1),
+    }
+  }, [classes])
+
+  const totalH   = (dynEnd - dynStart) * 60 * PX_PER_MIN
+  const minToTop = (min: number) => (min - dynStart * 60) * PX_PER_MIN
+  const hours    = Array.from({ length: dynEnd - dynStart }, (_, i) => dynStart + i)
+  const nowTop   = minToTop(nowMin)
 
   function isActive(cls: ClassRow) {
     if (!cls.day_of_week?.includes(todayDow)) return false
@@ -293,17 +276,21 @@ export default function WorkScreen() {
         {/* 주간 시간표 */}
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>주간 시간표</Text>
-
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View>
               {/* 요일 헤더 */}
               <View style={styles.ttHeaderRow}>
                 <View style={{ width: TIME_W }} />
                 {weekDates.map((d, i) => {
-                  const isToday = DOW_LIST[i] === todayDow
+                  const isToday   = DOW_LIST[i] === todayDow
+                  const isWeekend = i >= 5
                   return (
                     <View key={i} style={[styles.ttDayHeader, { width: COL_W }]}>
-                      <Text style={[styles.ttDayLabel, isToday && styles.ttDayLabelToday]}>
+                      <Text style={[
+                        styles.ttDayLabel,
+                        isToday && styles.ttDayLabelToday,
+                        isWeekend && !isToday && styles.ttDayLabelWeekend,
+                      ]}>
                         {DAY_LABELS[i]}
                       </Text>
                       <Text style={[styles.ttDayDate, isToday && styles.ttDayDateToday]}>
@@ -316,19 +303,14 @@ export default function WorkScreen() {
 
               {/* 그리드 */}
               <View style={styles.ttBody}>
-                {/* 시간 축 */}
-                <View style={{ width: TIME_W, height: TOTAL_H }}>
+                <View style={{ width: TIME_W, height: totalH }}>
                   {hours.map((h) => (
-                    <Text
-                      key={h}
-                      style={[styles.ttHourLabel, { top: minToTop(h * 60) - 5 }]}
-                    >
+                    <Text key={h} style={[styles.ttHourLabel, { top: minToTop(h * 60) - 5 }]}>
                       {h}
                     </Text>
                   ))}
                 </View>
 
-                {/* 요일 컬럼 */}
                 {DOW_LIST.map((dow, colIdx) => {
                   const isToday    = dow === todayDow
                   const dayClasses = classes.filter(
@@ -339,29 +321,34 @@ export default function WorkScreen() {
                       key={dow}
                       style={[
                         styles.ttDayCol,
-                        { width: COL_W, height: TOTAL_H },
+                        { width: COL_W, height: totalH },
                         isToday && styles.ttDayColToday,
                       ]}
                     >
                       {hours.map((h) => (
-                        <View
-                          key={h}
-                          style={[styles.ttGridLine, { top: minToTop(h * 60) }]}
-                        />
+                        <View key={h} style={[styles.ttGridLine, { top: minToTop(h * 60) }]} />
                       ))}
 
-                      {isToday && nowMin >= START_HOUR * 60 && nowMin < END_HOUR * 60 && (
+                      {isToday && nowMin >= dynStart * 60 && nowMin < dynEnd * 60 && (
                         <View style={[styles.ttNowLine, { top: nowTop }]} />
                       )}
 
-                      {dayClasses.map((cls) => (
-                        <ClassCard
-                          key={cls.id}
-                          cls={cls}
-                          color={colorMap[cls.id]}
-                          isActive={isActive(cls)}
-                        />
-                      ))}
+                      {dayClasses.map((cls) => {
+                        const top    = minToTop(timeToMin(cls.start_time!))
+                        const height = Math.max(
+                          (timeToMin(cls.end_time!) - timeToMin(cls.start_time!)) * PX_PER_MIN, 18,
+                        )
+                        return (
+                          <ClassCard
+                            key={cls.id}
+                            cls={cls}
+                            color={colorMap[cls.id]}
+                            top={top}
+                            height={height}
+                            onPress={() => setPopup({ cls, color: colorMap[cls.id] })}
+                          />
+                        )
+                      })}
                     </View>
                   )
                 })}
@@ -400,10 +387,7 @@ export default function WorkScreen() {
               return (
                 <View
                   key={member.userId}
-                  style={[
-                    styles.staffRow,
-                    i < staffList.length - 1 && styles.staffRowBorder,
-                  ]}
+                  style={[styles.staffRow, i < staffList.length - 1 && styles.staffRowBorder]}
                 >
                   <View style={[styles.staffDot, { backgroundColor: STATUS_DOT[member.status] }]} />
                   <View style={styles.staffInfo}>
@@ -415,8 +399,24 @@ export default function WorkScreen() {
                       {member.role === 'teacher' ? '선생님' : '조교'}
                     </Text>
                   </View>
-                  <View style={[styles.staffBadge, { backgroundColor: member.status === 'online' ? '#ecfdf5' : member.status === 'busy' ? '#fffbeb' : '#f4f4f5' }]}>
-                    <Text style={[styles.staffBadgeText, { color: member.status === 'online' ? '#059669' : member.status === 'busy' ? '#d97706' : '#a1a1aa' }]}>
+                  <View style={[
+                    styles.staffBadge,
+                    {
+                      backgroundColor:
+                        member.status === 'online' ? '#ecfdf5'
+                        : member.status === 'busy'  ? '#fffbeb'
+                        : '#f4f4f5',
+                    },
+                  ]}>
+                    <Text style={[
+                      styles.staffBadgeText,
+                      {
+                        color:
+                          member.status === 'online' ? '#059669'
+                          : member.status === 'busy'  ? '#d97706'
+                          : '#a1a1aa',
+                      },
+                    ]}>
                       {STATUS_LABEL[member.status]}
                     </Text>
                   </View>
@@ -426,6 +426,35 @@ export default function WorkScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* 수업 카드 팝업 */}
+      <Modal
+        visible={!!popup}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPopup(null)}
+      >
+        <TouchableOpacity
+          style={styles.popupOverlay}
+          activeOpacity={1}
+          onPress={() => setPopup(null)}
+        >
+          <View
+            style={[
+              styles.popupCard,
+              popup ? { borderLeftColor: popup.color.border } : undefined,
+            ]}
+          >
+            <Text style={styles.popupName}>{popup?.cls.name}</Text>
+            {popup?.cls.subject ? (
+              <Text style={styles.popupSubject}>{popup.cls.subject}</Text>
+            ) : null}
+            <Text style={styles.popupTime}>
+              {popup?.cls.start_time?.slice(0, 5)} – {popup?.cls.end_time?.slice(0, 5)}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -454,83 +483,61 @@ const styles = StyleSheet.create({
 
   ttHeaderRow: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e4e4e7',
+    borderBottomWidth: 1, borderBottomColor: '#e4e4e7',
     paddingBottom: 4,
   },
-  ttDayHeader:      { alignItems: 'center', paddingVertical: 3 },
-  ttDayLabel:       { fontSize: 10, fontWeight: '600', color: '#a1a1aa' },
-  ttDayLabelToday:  { color: '#09090b' },
-  ttDayDate:        { fontSize: 8, color: '#d4d4d8', marginTop: 1 },
-  ttDayDateToday:   { color: '#71717a', fontWeight: '600' },
+  ttDayHeader:         { alignItems: 'center', paddingVertical: 3 },
+  ttDayLabel:          { fontSize: 10, fontWeight: '600', color: '#a1a1aa' },
+  ttDayLabelToday:     { color: '#09090b' },
+  ttDayLabelWeekend:   { color: '#d4d4d8' },
+  ttDayDate:           { fontSize: 8, color: '#d4d4d8', marginTop: 1 },
+  ttDayDateToday:      { color: '#71717a', fontWeight: '600' },
 
-  ttBody:     { flexDirection: 'row' },
-  ttHourLabel: {
-    position: 'absolute',
-    right: 1,
-    fontSize: 8,
-    color: '#d4d4d8',
-    lineHeight: 11,
-  },
-  ttDayCol: {
-    position: 'relative',
-    borderLeftWidth: 1,
-    borderLeftColor: '#f1f1f4',
-  },
-  ttDayColToday:   { backgroundColor: 'rgba(9,9,11,0.025)' },
+  ttBody:      { flexDirection: 'row' },
+  ttHourLabel: { position: 'absolute', right: 1, fontSize: 8, color: '#d4d4d8', lineHeight: 11 },
+  ttDayCol:    { position: 'relative', borderLeftWidth: 1, borderLeftColor: '#f1f1f4' },
+  ttDayColToday: { backgroundColor: 'rgba(9,9,11,0.025)' },
   ttGridLine: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    borderTopWidth: 1,
-    borderTopColor: '#f1f1f4',
+    position: 'absolute', left: 0, right: 0,
+    borderTopWidth: 1, borderTopColor: '#f1f1f4',
   },
   ttNowLine: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    borderTopWidth: 2,
-    borderTopColor: '#ef4444',
-    zIndex: 20,
+    position: 'absolute', left: 0, right: 0,
+    borderTopWidth: 2, borderTopColor: '#ef4444', zIndex: 20,
   },
 
   classCard: {
-    position: 'absolute',
-    left: 1,
-    right: 1,
-    borderRadius: 3,
-    borderLeftWidth: 2,
-    paddingHorizontal: 2,
-    paddingVertical: 1,
-    overflow: 'hidden',
-    zIndex: 1,
-  },
-  classCardActive: {
-    zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
+    position: 'absolute', left: 1, right: 1,
+    borderRadius: 3, borderLeftWidth: 2,
+    paddingHorizontal: 2, paddingVertical: 1,
+    overflow: 'hidden', zIndex: 1,
   },
   classCardName: { fontSize: 7, fontWeight: '700', lineHeight: 10 },
   classCardTime: { fontSize: 6, lineHeight: 9, opacity: 0.7, marginTop: 1 },
 
   staffEmpty: { fontSize: 13, color: '#a1a1aa', textAlign: 'center', paddingVertical: 8 },
-  staffRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    gap: 10,
-  },
+  staffRow:   { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 10 },
   staffRowBorder: { borderBottomWidth: 1, borderBottomColor: '#f1f1f4' },
-  staffDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
-  staffInfo: { flex: 1 },
-  staffName: { fontSize: 13, fontWeight: '500', color: '#09090b' },
-  staffMe:   { fontSize: 11, fontWeight: '400', color: '#a1a1aa' },
-  staffRole: { fontSize: 11, color: '#a1a1aa', marginTop: 1 },
-  staffBadge: {
-    borderRadius: 20, paddingHorizontal: 9, paddingVertical: 3,
-  },
+  staffDot:   { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  staffInfo:  { flex: 1 },
+  staffName:  { fontSize: 13, fontWeight: '500', color: '#09090b' },
+  staffMe:    { fontSize: 11, fontWeight: '400', color: '#a1a1aa' },
+  staffRole:  { fontSize: 11, color: '#a1a1aa', marginTop: 1 },
+  staffBadge: { borderRadius: 20, paddingHorizontal: 9, paddingVertical: 3 },
   staffBadgeText: { fontSize: 11, fontWeight: '500' },
+
+  popupOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center', alignItems: 'center', padding: 32,
+  },
+  popupCard: {
+    backgroundColor: '#ffffff', borderRadius: 20,
+    padding: 20, minWidth: 200,
+    borderLeftWidth: 4, borderLeftColor: '#d4d4d8',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15, shadowRadius: 20, elevation: 10,
+  },
+  popupName:    { fontSize: 16, fontWeight: '700', color: '#09090b' },
+  popupSubject: { fontSize: 12, color: '#a1a1aa', marginTop: 2 },
+  popupTime:    { fontSize: 14, fontWeight: '600', color: '#52525b', marginTop: 10 },
 })
