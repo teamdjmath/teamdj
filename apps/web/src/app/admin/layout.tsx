@@ -4,6 +4,9 @@ import { redirect } from 'next/navigation'
 import { LogoutButton } from '@/components/ui/logout-button'
 import { MobileNav } from './_components/mobile-nav'
 import { SidebarNav } from './_components/sidebar-nav'
+import { NotificationsProvider } from '@/contexts/notifications-context'
+import { NotificationBell } from '@/components/ui/notification-bell'
+import { ToastContainer } from '@/components/ui/toast'
 
 const NAV_ITEMS = [
   {
@@ -146,43 +149,51 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const displayName = user.user_metadata?.name ?? user.email ?? ''
 
   return (
-    <div className="flex min-h-screen bg-zinc-50">
+    <NotificationsProvider userId={user.id}>
+      <div className="flex min-h-screen bg-zinc-50">
 
-      {/* 데스크탑 사이드바 */}
-      <aside className="hidden md:flex md:w-56 md:flex-col md:fixed md:inset-y-0 border-r border-zinc-200 bg-white">
-        {/* 로고 */}
-        <div className="flex h-14 items-center px-5 border-b border-zinc-100">
-          <span className="text-base font-bold tracking-tight text-zinc-950">TeamDJ</span>
-          <span className="ml-2 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 uppercase">
-            {role}
-          </span>
+        {/* 데스크탑 사이드바 */}
+        <aside className="hidden md:flex md:w-56 md:flex-col md:fixed md:inset-y-0 border-r border-zinc-200 bg-white">
+          {/* 로고 */}
+          <div className="flex h-14 items-center px-5 border-b border-zinc-100">
+            <span className="text-base font-bold tracking-tight text-zinc-950">TeamDJ</span>
+            <span className="ml-2 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 uppercase">
+              {role}
+            </span>
+          </div>
+
+          {/* 네비게이션 (클라이언트 — usePathname으로 활성 상태 처리) */}
+          <SidebarNav items={NAV_ITEMS} />
+
+          {/* 하단 유저 정보 */}
+          <div className="border-t border-zinc-100 px-4 py-4 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-medium text-zinc-700 truncate">{displayName}</p>
+              <NotificationBell />
+            </div>
+            <LogoutButton className="text-xs" />
+          </div>
+        </aside>
+
+        {/* 모바일 헤더 */}
+        <div className="md:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between border-b border-zinc-200 bg-white px-4 h-14">
+          <span className="text-base font-bold text-zinc-950">TeamDJ</span>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <span className="text-sm text-zinc-500">{displayName}</span>
+            <MobileNav items={NAV_ITEMS} />
+          </div>
         </div>
 
-        {/* 네비게이션 (클라이언트 — usePathname으로 활성 상태 처리) */}
-        <SidebarNav items={NAV_ITEMS} />
-
-        {/* 하단 유저 정보 */}
-        <div className="border-t border-zinc-100 px-4 py-4 space-y-2">
-          <p className="text-xs font-medium text-zinc-700 truncate">{displayName}</p>
-          <LogoutButton className="text-xs" />
+        {/* 본문 */}
+        <div className="flex-1 md:pl-56">
+          <main className="p-5 pt-20 md:pt-5 max-w-5xl">
+            {children}
+          </main>
         </div>
-      </aside>
 
-      {/* 모바일 헤더 */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between border-b border-zinc-200 bg-white px-4 h-14">
-        <span className="text-base font-bold text-zinc-950">TeamDJ</span>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-zinc-500">{displayName}</span>
-          <MobileNav items={NAV_ITEMS} />
-        </div>
+        <ToastContainer />
       </div>
-
-      {/* 본문 */}
-      <div className="flex-1 md:pl-56">
-        <main className="p-5 pt-20 md:pt-5 max-w-5xl">
-          {children}
-        </main>
-      </div>
-    </div>
+    </NotificationsProvider>
   )
 }

@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
 import { logger } from '@/lib/logger'
+import { createNotification } from '@/lib/actions/notifications'
 
 export async function createNotice(data: {
   title: string
@@ -45,6 +46,17 @@ export async function createNotice(data: {
             sender_id: user.id, student_id: m.student_id, content: `[공지] ${data.title}`,
           }))
           await adminSupabase.from('push_messages').insert(messages)
+          await Promise.all(
+            members.map((m) =>
+              createNotification(
+                m.student_id as string,
+                'notice_new',
+                '새 공지사항이 등록되었습니다',
+                data.title,
+                '/dashboard',
+              ),
+            ),
+          )
         }
       } else {
         const { data: students } = await adminSupabase.from('users').select('id').eq('role', 'student')
@@ -53,6 +65,17 @@ export async function createNotice(data: {
             sender_id: user.id, student_id: s.id, content: `[전체 공지] ${data.title}`,
           }))
           await adminSupabase.from('push_messages').insert(messages)
+          await Promise.all(
+            students.map((s) =>
+              createNotification(
+                s.id as string,
+                'notice_new',
+                '새 공지사항이 등록되었습니다',
+                data.title,
+                '/dashboard',
+              ),
+            ),
+          )
         }
       }
     } catch (err) {

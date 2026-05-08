@@ -1,9 +1,12 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
+import { createNotification } from '@/lib/actions/notifications'
+import { logger } from '@/lib/logger'
 
 export async function sendMessage(data: {
   classId: string | null
@@ -29,6 +32,44 @@ export async function sendMessage(data: {
       content:    data.content.trim(),
     })
     if (error) throw error
+
+    // 알림 생성 (실패해도 메인 동작에 영향 없음)
+    try {
+      const preview = data.content.trim().slice(0, 30) + (data.content.trim().length > 30 ? '...' : '')
+      const admin = createAdminClient()
+
+      if (data.studentId) {
+        await createNotification(
+          data.studentId,
+          'message_new',
+          '새 쪽지가 도착했습니다',
+          preview,
+          '/dashboard',
+        )
+      } else if (data.classId) {
+        const { data: members } = await admin
+          .from('class_members')
+          .select('student_id')
+          .eq('class_id', data.classId)
+          .eq('is_active', true)
+
+        if (members && members.length > 0) {
+          await Promise.all(
+            members.map((m) =>
+              createNotification(
+                m.student_id as string,
+                'message_new',
+                '새 쪽지가 도착했습니다',
+                preview,
+                '/dashboard',
+              ),
+            ),
+          )
+        }
+      }
+    } catch (err) {
+      logger.warn('sendMessage:notification-failed', { action: 'sendMessage', userId: user.id, error: err })
+    }
 
     revalidatePath('/admin/messages')
     return { success: true }

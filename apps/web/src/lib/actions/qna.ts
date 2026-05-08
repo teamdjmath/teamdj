@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { GoogleGenAI } from '@google/genai'
 import { logger } from '@/lib/logger'
+import { createNotification } from '@/lib/actions/notifications'
 
 export async function assignQuestion(questionId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
@@ -52,7 +53,7 @@ export async function submitAnswer(data: {
     .from('qna_questions')
     .update({ status: 'answered', assigned_ta_id: user.id })
     .eq('id', data.questionId)
-    .select('student_id')
+    .select('student_id, title')
     .single()
 
   if (qError) return { error: '질문 상태 업데이트에 실패했습니다.' }
@@ -63,6 +64,17 @@ export async function submitAnswer(data: {
       student_id: qData.student_id,
       content: '질문에 대한 답변이 등록되었습니다.',
     })
+    try {
+      await createNotification(
+        qData.student_id,
+        'qna_answered',
+        '질문에 답변이 등록되었습니다',
+        `${qData.title}에 답변이 달렸습니다`,
+        `/dashboard/qna/${data.questionId}`,
+      )
+    } catch (err) {
+      logger.warn('submitAnswer:notification-failed', { action: 'submitAnswer', userId: user.id, error: err })
+    }
   }
 
   revalidatePath('/admin/qna')
@@ -194,7 +206,9 @@ export async function createQuestion(data: {
 
   if (!user) return { error: '인증이 필요합니다.' }
 
-  const { error } = await supabase
+  const studentName = (user.user_metadata?.name as string | undefined) ?? '학생'
+
+  const { error, data: inserted } = await supabase
     .from('qna_questions')
     .insert({
       student_id: user.id,
@@ -204,9 +218,37 @@ export async function createQuestion(data: {
       image_urls: data.imageUrls,
       status: 'open',
     })
+    .select('id')
+    .single()
 
   if (error) {
     return { error: '질문 등록에 실패했습니다.' }
+  }
+
+  // 전체 선생님/조교에게 알림 전송
+  try {
+    const admin = createAdminClient()
+    const { data: staff } = await admin
+      .from('users')
+      .select('id')
+      .in('role', ['teacher', 'ta'])
+      .eq('is_active', true)
+
+    if (staff && staff.length > 0 && inserted?.id) {
+      await Promise.all(
+        staff.map((s) =>
+          createNotification(
+            s.id as string,
+            'qna_new',
+            '새 질문이 등록되었습니다',
+            `${studentName}: ${data.title}`,
+            `/admin/qna/${inserted.id}`,
+          ),
+        ),
+      )
+    }
+  } catch (err) {
+    logger.warn('createQuestion:notification-failed', { action: 'createQuestion', userId: user.id, error: err })
   }
 
   revalidatePath('/dashboard/qna')
