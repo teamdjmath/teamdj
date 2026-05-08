@@ -32,7 +32,21 @@
     },
     "plugins": [
       "expo-router",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "갤러리에 접근하여 리포트 이미지를 저장합니다.",
+          "savePhotosPermission": "리포트 이미지를 갤러리에 저장합니다.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "질문 첨부를 위해 사진 라이브러리에 접근합니다."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

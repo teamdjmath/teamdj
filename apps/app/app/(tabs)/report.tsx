@@ -84,7 +84,7 @@ export default function ReportScreen() {
 
   const handleDownload = async (imageUrl: string) => {
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync()
+      const { status } = await MediaLibrary.requestPermissionsAsync(false, ['photo'])
       if (status !== 'granted') {
         Alert.alert('권한 필요', '설정에서 사진 접근 권한을 허용해주세요.')
         return

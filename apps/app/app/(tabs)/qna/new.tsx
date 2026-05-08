@@ -120,7 +120,14 @@ export default function NewQuestionScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <Stack.Screen options={{ title: '새 질문 작성', headerShown: true, headerBackTitle: '뒤로' }} />
+      <Stack.Screen
+        options={{
+          title: '새 질문 작성',
+          headerShown: true,
+          headerBackTitle: '뒤로',
+          headerTitleStyle: { fontSize: 16, fontWeight: '600' },
+        }}
+      />
 
       <ScrollView
         style={styles.scroll}
