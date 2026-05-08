@@ -8,12 +8,6 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import { assignQuestion, submitAnswer, generateAiDraft, updateAnswer, cancelAnswer } from '@/lib/actions/qna'
 
-type Sections = {
-  praise: string
-  keyPoint: string
-  solution: string
-}
-
 type Question = {
   id: string
   title: string
@@ -54,88 +48,22 @@ const STATUS_BADGE: Record<string, string> = {
   answered: 'bg-zinc-100 text-zinc-500',
 }
 
-const SECTION_META: { key: keyof Sections; label: string; placeholder: string; rows: number }[] = [
-  {
-    key: 'praise',
-    label: '칭찬 / 공감',
-    placeholder: '학생의 노력을 칭찬하거나 질문에 공감하는 내용을 입력하세요.',
-    rows: 3,
-  },
-  {
-    key: 'keyPoint',
-    label: '핵심 포인트',
-    placeholder: '핵심 개념이나 포인트를 설명하세요. 마크다운과 LaTeX($...$)를 사용할 수 있습니다.',
-    rows: 5,
-  },
-  {
-    key: 'solution',
-    label: '풀이',
-    placeholder: '단계별 풀이를 입력하세요.\n\n마크다운: **굵게**, *기울임*, `코드`\nLaTeX: $x^2$ (인라인), $$\\frac{a}{b}$$ (블록)',
-    rows: 10,
-  },
-]
-
-function buildContent(s: Sections): string {
-  const parts = [
-    s.praise.trim() && `### 칭찬\n${s.praise.trim()}`,
-    s.keyPoint.trim() && `### 핵심 포인트\n${s.keyPoint.trim()}`,
-    s.solution.trim() && `### 풀이\n${s.solution.trim()}`,
-  ].filter(Boolean)
-  return parts.join('\n\n')
-}
-
-function parseSections(content: string): Sections {
-  const praiseMatch = content.match(/### 칭찬\n([\s\S]*?)(?=\n### |$)/)
-  const keyMatch = content.match(/### 핵심 포인트\n([\s\S]*?)(?=\n### |$)/)
-  const solutionMatch = content.match(/### 풀이\n([\s\S]*?)(?=\n### |$)/)
-  if (praiseMatch || keyMatch || solutionMatch) {
-    return {
-      praise: praiseMatch?.[1]?.trim() ?? '',
-      keyPoint: keyMatch?.[1]?.trim() ?? '',
-      solution: solutionMatch?.[1]?.trim() ?? '',
-    }
-  }
-  return { praise: '', keyPoint: '', solution: content }
-}
+const mdPlugins = { remark: [remarkMath], rehype: [rehypeKatex] }
 
 function formatDatetime(iso: string) {
   const d = new Date(iso)
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-const mdPlugins = { remark: [remarkMath], rehype: [rehypeKatex] }
-
-function AnswerPreview({ content }: { content: string }) {
-  return (
-    <div className="prose prose-sm prose-zinc max-w-none text-sm leading-relaxed">
-      <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
-        {content}
-      </ReactMarkdown>
-    </div>
-  )
-}
-
-function SectionEditor({
-  sections,
-  onChange,
-  mediaUrls,
-  mediaInput,
-  onMediaInputChange,
-  onAddMedia,
-  onRemoveMedia,
-  tab,
-  onTabChange,
-  aiLoading,
-  aiErr,
-  onAiDraft,
-  errMsg,
-  onSubmit,
-  submitLabel,
-  isPending,
-  onCancel,
+function AnswerEditor({
+  content, onContentChange,
+  mediaUrls, mediaInput, onMediaInputChange, onAddMedia, onRemoveMedia,
+  tab, onTabChange,
+  aiLoading, aiErr, onAiDraft,
+  errMsg, onSubmit, submitLabel, isPending, onCancel,
 }: {
-  sections: Sections
-  onChange: (key: keyof Sections, value: string) => void
+  content: string
+  onContentChange: (v: string) => void
   mediaUrls: string[]
   mediaInput: string
   onMediaInputChange: (v: string) => void
@@ -152,20 +80,18 @@ function SectionEditor({
   isPending: boolean
   onCancel?: () => void
 }) {
-  const previewContent = buildContent(sections)
-
   return (
-    <div className="space-y-4">
-      {/* AI 초안 + 탭 헤더 */}
-      <div className="flex items-center justify-between">
-        <div className="flex border-b border-zinc-100 -mb-px">
+    <div className="space-y-3">
+      {/* 탭 + AI 버튼 */}
+      <div className="flex items-center justify-between border-b border-zinc-100">
+        <div className="flex">
           {(['write', 'preview'] as const).map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => onTabChange(t)}
               className={[
-                'px-4 py-2 text-sm transition-colors border-b-2',
+                'px-4 py-2 text-sm transition-colors border-b-2 -mb-px',
                 tab === t
                   ? 'border-zinc-950 text-zinc-950 font-medium'
                   : 'border-transparent text-zinc-400 hover:text-zinc-700',
@@ -180,7 +106,7 @@ function SectionEditor({
             type="button"
             onClick={onAiDraft}
             disabled={aiLoading}
-            className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-50 mb-1"
           >
             {aiLoading ? (
               <>
@@ -205,33 +131,30 @@ function SectionEditor({
       {aiErr && <p className="text-xs text-red-500">{aiErr}</p>}
 
       {tab === 'write' ? (
-        <div className="space-y-3">
-          {SECTION_META.map(({ key, label, placeholder, rows }) => (
-            <div key={key}>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-zinc-400">{label}</label>
-              <textarea
-                rows={rows}
-                value={sections[key]}
-                onChange={(e) => onChange(key, e.target.value)}
-                placeholder={placeholder}
-                className="w-full resize-none rounded-xl border border-zinc-200 bg-white px-4 py-3 font-mono text-sm leading-relaxed text-zinc-900 placeholder:text-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 focus:outline-none transition-all"
-              />
-            </div>
-          ))}
-        </div>
+        <textarea
+          rows={12}
+          value={content}
+          onChange={(e) => onContentChange(e.target.value)}
+          placeholder={`답변 내용을 입력하세요.\n\n마크다운: **굵게**, *기울임*, \`코드\`, - 목록\nLaTeX 수식: $x^2$ (인라인), $$\\frac{a}{b}$$ (블록)`}
+          className="w-full resize-none rounded-xl border border-zinc-200 bg-white px-4 py-3 font-mono text-sm leading-relaxed text-zinc-900 placeholder:text-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 focus:outline-none transition-all"
+        />
       ) : (
-        <div className="min-h-[280px] rounded-xl border border-zinc-200 bg-white px-5 py-4 shadow-sm">
-          {previewContent ? (
-            <AnswerPreview content={previewContent} />
+        <div className="min-h-[280px] rounded-xl border border-zinc-200 bg-white px-5 py-4">
+          {content.trim() ? (
+            <div className="prose prose-sm prose-zinc max-w-none text-sm leading-relaxed">
+              <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
+                {content}
+              </ReactMarkdown>
+            </div>
           ) : (
             <p className="text-sm italic text-zinc-400">미리보기가 없습니다.</p>
           )}
         </div>
       )}
 
-      {/* 미디어 URL 첨부 */}
+      {/* 미디어 URL */}
       <div>
-        <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-400">이미지 / 동영상 URL 첨부</label>
+        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-zinc-400">이미지 / 동영상 URL 첨부</label>
         <div className="flex gap-2">
           <input
             type="url"
@@ -241,11 +164,8 @@ function SectionEditor({
             placeholder="https://..."
             className="flex-1 rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 focus:outline-none transition-all"
           />
-          <button
-            type="button"
-            onClick={onAddMedia}
-            className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-100 transition-all"
-          >
+          <button type="button" onClick={onAddMedia}
+            className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-100 transition-all">
             추가
           </button>
         </div>
@@ -269,21 +189,13 @@ function SectionEditor({
 
       <div className="flex items-center justify-end gap-3">
         {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isPending}
-            className="rounded-xl border border-zinc-200 px-5 py-2.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50 transition-colors disabled:opacity-50"
-          >
+          <button type="button" onClick={onCancel} disabled={isPending}
+            className="rounded-xl border border-zinc-200 px-5 py-2.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50 transition-colors disabled:opacity-50">
             취소
           </button>
         )}
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={isPending || !buildContent(sections).trim()}
-          className="inline-flex items-center gap-2 rounded-xl bg-zinc-950 px-6 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 disabled:opacity-50 transition-colors"
-        >
+        <button type="button" onClick={onSubmit} disabled={isPending || !content.trim()}
+          className="inline-flex items-center gap-2 rounded-xl bg-zinc-950 px-6 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 disabled:opacity-50 transition-colors">
           {isPending ? (
             <>
               <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -292,9 +204,7 @@ function SectionEditor({
               </svg>
               처리 중...
             </>
-          ) : (
-            submitLabel
-          )}
+          ) : submitLabel}
         </button>
       </div>
     </div>
@@ -306,18 +216,18 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
   const [pending, startTransition] = useTransition()
   const [errMsg, setErrMsg] = useState('')
 
+  const [content, setContent] = useState('')
   const [tab, setTab] = useState<'write' | 'preview'>('write')
-  const [sections, setSections] = useState<Sections>({ praise: '', keyPoint: '', solution: '' })
   const [mediaUrls, setMediaUrls] = useState<string[]>([])
   const [mediaInput, setMediaInput] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiErr, setAiErr] = useState('')
 
   const [editingAnswerId, setEditingAnswerId] = useState<string | null>(null)
-  const [editSections, setEditSections] = useState<Sections>({ praise: '', keyPoint: '', solution: '' })
+  const [editContent, setEditContent] = useState('')
+  const [editTab, setEditTab] = useState<'write' | 'preview'>('write')
   const [editMediaUrls, setEditMediaUrls] = useState<string[]>([])
   const [editMediaInput, setEditMediaInput] = useState('')
-  const [editTab, setEditTab] = useState<'write' | 'preview'>('write')
   const [editErr, setEditErr] = useState('')
 
   const isAssigned = question.assigned_ta_id === currentUserId
@@ -338,19 +248,17 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
     const res = await generateAiDraft(question.content, question.image_urls)
     setAiLoading(false)
     if (res.error) { setAiErr(res.error); return }
-    if (res.sections) setSections(res.sections)
+    if (res.draft) setContent(res.draft)
     if (res.mediaUrls?.length) setMediaUrls((prev) => [...new Set([...prev, ...res.mediaUrls!])])
-    setTab('write')
   }
 
   function handleSubmit() {
-    const content = buildContent(sections)
     if (!content.trim()) { setErrMsg('답변 내용을 입력하세요.'); return }
     setErrMsg('')
     startTransition(async () => {
-      const res = await submitAnswer({ questionId: question.id, content, mediaUrls, isAiDraft: false })
+      const res = await submitAnswer({ questionId: question.id, content: content.trim(), mediaUrls, isAiDraft: false })
       if (res.error) { setErrMsg(res.error); return }
-      setSections({ praise: '', keyPoint: '', solution: '' })
+      setContent('')
       setMediaUrls([])
       router.refresh()
     })
@@ -358,7 +266,7 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
 
   function startEdit(a: Answer) {
     setEditingAnswerId(a.id)
-    setEditSections(parseSections(a.content))
+    setEditContent(a.content)
     setEditMediaUrls([...a.media_urls])
     setEditMediaInput('')
     setEditTab('write')
@@ -367,11 +275,10 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
 
   function handleUpdateAnswer() {
     if (!editingAnswerId) return
-    const content = buildContent(editSections)
-    if (!content.trim()) { setEditErr('답변 내용을 입력하세요.'); return }
+    if (!editContent.trim()) { setEditErr('답변 내용을 입력하세요.'); return }
     setEditErr('')
     startTransition(async () => {
-      const res = await updateAnswer({ answerId: editingAnswerId, questionId: question.id, content, mediaUrls: editMediaUrls })
+      const res = await updateAnswer({ answerId: editingAnswerId, questionId: question.id, content: editContent.trim(), mediaUrls: editMediaUrls })
       if (res.error) { setEditErr(res.error); return }
       setEditingAnswerId(null)
       router.refresh()
@@ -405,31 +312,22 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
               <span className="text-zinc-400">담당 조교 없음</span>
             )}
             {canAnswer && !isAssigned && (
-              <button
-                type="button"
-                onClick={handleAssign}
-                disabled={pending}
-                className="rounded-lg bg-zinc-950 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-700 transition-colors disabled:opacity-50"
-              >
+              <button type="button" onClick={handleAssign} disabled={pending}
+                className="rounded-lg bg-zinc-950 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-700 transition-colors disabled:opacity-50">
                 내가 담당하기
               </button>
             )}
           </div>
         </div>
-
         <div className="whitespace-pre-wrap text-sm text-zinc-800 leading-relaxed">{question.content}</div>
-
         {question.image_urls.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
             {question.image_urls.map((url, i) => (
               <a key={i} href={url} target="_blank" rel="noopener noreferrer">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={url}
-                  alt={`첨부 이미지 ${i + 1}`}
+                <img src={url} alt={`첨부 이미지 ${i + 1}`}
                   className="h-32 w-auto rounded-lg border border-zinc-200 object-cover hover:opacity-80 transition-opacity"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                />
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
               </a>
             ))}
           </div>
@@ -447,25 +345,15 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
                   <h3 className="text-sm font-semibold text-zinc-900">답변 수정</h3>
                   <span className="text-xs text-zinc-400">{a.taName}</span>
                 </div>
-                <SectionEditor
-                  sections={editSections}
-                  onChange={(key, value) => setEditSections((prev) => ({ ...prev, [key]: value }))}
-                  mediaUrls={editMediaUrls}
-                  mediaInput={editMediaInput}
+                <AnswerEditor
+                  content={editContent} onContentChange={setEditContent}
+                  mediaUrls={editMediaUrls} mediaInput={editMediaInput}
                   onMediaInputChange={setEditMediaInput}
-                  onAddMedia={() => {
-                    const url = editMediaInput.trim()
-                    if (!url) return
-                    setEditMediaUrls((prev) => [...prev, url])
-                    setEditMediaInput('')
-                  }}
-                  onRemoveMedia={(i) => setEditMediaUrls((prev) => prev.filter((_, idx) => idx !== i))}
-                  tab={editTab}
-                  onTabChange={setEditTab}
-                  errMsg={editErr}
-                  onSubmit={handleUpdateAnswer}
-                  submitLabel="수정 완료"
-                  isPending={pending}
+                  onAddMedia={() => { const u = editMediaInput.trim(); if (!u) return; setEditMediaUrls(p => [...p, u]); setEditMediaInput('') }}
+                  onRemoveMedia={(i) => setEditMediaUrls(p => p.filter((_, idx) => idx !== i))}
+                  tab={editTab} onTabChange={setEditTab}
+                  errMsg={editErr} onSubmit={handleUpdateAnswer}
+                  submitLabel="수정 완료" isPending={pending}
                   onCancel={() => setEditingAnswerId(null)}
                 />
               </div>
@@ -478,23 +366,11 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
                   </div>
                   {a.taId === currentUserId && (
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(a)}
-                        disabled={pending}
-                        className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors disabled:opacity-50"
-                      >
-                        수정
-                      </button>
+                      <button type="button" onClick={() => startEdit(a)} disabled={pending}
+                        className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors disabled:opacity-50">수정</button>
                       <span className="text-zinc-300">|</span>
-                      <button
-                        type="button"
-                        onClick={() => handleCancelAnswer(a.id)}
-                        disabled={pending}
-                        className="text-xs text-red-400 hover:text-red-600 transition-colors disabled:opacity-50"
-                      >
-                        답변 취소
-                      </button>
+                      <button type="button" onClick={() => handleCancelAnswer(a.id)} disabled={pending}
+                        className="text-xs text-red-400 hover:text-red-600 transition-colors disabled:opacity-50">답변 취소</button>
                     </div>
                   )}
                 </div>
@@ -506,54 +382,37 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
                 {a.media_urls.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {a.media_urls.map((url, i) => (
-                      <a
-                        key={i}
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-md bg-zinc-200 px-2.5 py-1 text-xs text-zinc-700 hover:bg-zinc-300 transition-colors"
-                      >
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                        className="rounded-md bg-zinc-200 px-2.5 py-1 text-xs text-zinc-700 hover:bg-zinc-300 transition-colors">
                         미디어 {i + 1}
                       </a>
                     ))}
                   </div>
                 )}
               </div>
-            ),
+            )
           )}
         </div>
       )}
 
       {errMsg && <p className="text-sm text-red-500 font-medium">{errMsg}</p>}
 
-      {/* 답변 작성 에디터 */}
+      {/* 답변 작성 */}
       {canAnswer && (
         <div className="rounded-xl border border-zinc-200 bg-white p-5">
           <h2 className="mb-4 text-sm font-semibold text-zinc-900">
             {answers.length > 0 ? '추가 답변 작성' : '답변 작성'}
           </h2>
-          <SectionEditor
-            sections={sections}
-            onChange={(key, value) => setSections((prev) => ({ ...prev, [key]: value }))}
-            mediaUrls={mediaUrls}
-            mediaInput={mediaInput}
+          <AnswerEditor
+            content={content} onContentChange={setContent}
+            mediaUrls={mediaUrls} mediaInput={mediaInput}
             onMediaInputChange={setMediaInput}
-            onAddMedia={() => {
-              const url = mediaInput.trim()
-              if (!url) return
-              setMediaUrls((prev) => [...prev, url])
-              setMediaInput('')
-            }}
-            onRemoveMedia={(i) => setMediaUrls((prev) => prev.filter((_, idx) => idx !== i))}
-            tab={tab}
-            onTabChange={setTab}
-            aiLoading={aiLoading}
-            aiErr={aiErr}
-            onAiDraft={handleAiDraft}
-            errMsg={errMsg}
-            onSubmit={handleSubmit}
-            submitLabel="답변 제출하기"
-            isPending={pending}
+            onAddMedia={() => { const u = mediaInput.trim(); if (!u) return; setMediaUrls(p => [...p, u]); setMediaInput('') }}
+            onRemoveMedia={(i) => setMediaUrls(p => p.filter((_, idx) => idx !== i))}
+            tab={tab} onTabChange={setTab}
+            aiLoading={aiLoading} aiErr={aiErr} onAiDraft={handleAiDraft}
+            errMsg={errMsg} onSubmit={handleSubmit}
+            submitLabel="답변 제출하기" isPending={pending}
           />
         </div>
       )}

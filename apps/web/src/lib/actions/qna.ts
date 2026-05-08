@@ -146,7 +146,7 @@ export async function cancelAnswer(data: {
 export async function generateAiDraft(
   questionContent: string,
   imageUrls: string[] = [],
-): Promise<{ sections?: { praise: string; keyPoint: string; solution: string }; mediaUrls?: string[]; error?: string }> {
+): Promise<{ draft?: string; mediaUrls?: string[]; error?: string }> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'Gemini API 키가 설정되지 않았습니다.' }
 
@@ -160,19 +160,22 @@ export async function generateAiDraft(
   try {
     const ai = new GoogleGenAI({ apiKey })
 
-    const promptText = `다음 질문에 대해 아래 형식으로 정확히 답변해줘. 형식 이외의 다른 텍스트는 포함하지 마.
-수식은 LaTeX 형식($...$, $$...$$)으로 작성하고, 마크다운(**, *, \`, 목록)을 자유롭게 사용해줘.
-학생이 첨부한 이미지가 있다면 참고해서 답변을 작성해줘.
+    const promptText = `다음 수학 질문에 대해 조교 답변 초안을 작성해줘. 반드시 아래 규칙과 형식을 따를 것.
 
+**규칙 (엄수):**
+- 반드시 한국어로만 작성 (수식 기호 제외)
+- 전체 답변 10줄 이내
+- 케이스가 여러 개이면 케이스당 5줄 이내
+- 수식($...$, $$...$$)과 꼭 필요한 설명만 포함 — 장황한 문장 금지
+- 첨부 이미지가 있으면 이미지로 대체 가능한 텍스트 설명은 생략
+
+**형식 (태그 포함하여 그대로 출력):**
 ###PRAISE###
-(학생의 질문에 대한 칭찬 또는 공감, 1~2문장)
-
+(칭찬 또는 공감, 1문장)
 ###KEYPOINT###
-(핵심 개념 또는 주의할 점, 마크다운+LaTeX 허용)
-
+(핵심 개념, 2줄 이내)
 ###SOLUTION###
-(단계별 풀이, 마크다운+LaTeX 허용)
-
+(풀이, 수식 위주로 최대 7줄)
 ###END###
 
 질문: ${questionContent}`
@@ -250,7 +253,8 @@ export async function generateAiDraft(
       return { error: 'AI 응답 형식을 파싱할 수 없습니다. 다시 시도해 주세요.' }
     }
 
-    return { sections: { praise, keyPoint, solution }, mediaUrls }
+    const draft = [praise, keyPoint, solution].filter(Boolean).join('\n\n')
+    return { draft, mediaUrls }
   } catch (err: unknown) {
     logger.error('generateAiDraft:error', { action: 'generateAiDraft', userId: user.id, error: err })
     
