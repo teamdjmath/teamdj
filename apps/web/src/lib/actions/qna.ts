@@ -160,11 +160,20 @@ export async function generateAiDraft(
   try {
     const ai = new GoogleGenAI({ apiKey })
 
-    const promptText = `다음 질문에 대해 아래 JSON 형식으로만 응답해줘. JSON 외의 다른 텍스트는 포함하지 마.
-수식은 LaTeX 형식($...$, $$...$$)으로 작성하고, 마크다운(**, *, \`, ###)을 자유롭게 사용해줘.
+    const promptText = `다음 질문에 대해 아래 형식으로 정확히 답변해줘. 형식 이외의 다른 텍스트는 포함하지 마.
+수식은 LaTeX 형식($...$, $$...$$)으로 작성하고, 마크다운(**, *, \`, 목록)을 자유롭게 사용해줘.
 학생이 첨부한 이미지가 있다면 참고해서 답변을 작성해줘.
 
-{"praise":"학생의 질문에 대한 칭찬 또는 공감 (1~2문장)","keyPoint":"핵심 개념 또는 주의할 점 (마크다운+LaTeX 허용)","solution":"단계별 풀이 (마크다운+LaTeX 허용)"}
+###PRAISE###
+(학생의 질문에 대한 칭찬 또는 공감, 1~2문장)
+
+###KEYPOINT###
+(핵심 개념 또는 주의할 점, 마크다운+LaTeX 허용)
+
+###SOLUTION###
+(단계별 풀이, 마크다운+LaTeX 허용)
+
+###END###
 
 질문: ${questionContent}`
 
@@ -225,22 +234,23 @@ export async function generateAiDraft(
 
     if (!rawText) return { error: 'AI 응답을 받지 못했습니다.' }
 
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) return { error: 'AI 응답을 파싱할 수 없습니다.' }
+    logger.info('generateAiDraft:raw', { action: 'generateAiDraft', userId: user.id, input: rawText.slice(0, 500) })
 
-    let sections: { praise: string; keyPoint: string; solution: string }
-    try {
-      const parsed = JSON.parse(jsonMatch[0])
-      sections = {
-        praise: String(parsed.praise ?? ''),
-        keyPoint: String(parsed.keyPoint ?? ''),
-        solution: String(parsed.solution ?? ''),
-      }
-    } catch {
-      return { error: 'AI 응답 JSON 파싱에 실패했습니다.' }
+    function extractSection(text: string, tag: string): string {
+      const re = new RegExp(`###${tag}###\\s*([\\s\\S]*?)(?=###[A-Z]+###|$)`, 'i')
+      return text.match(re)?.[1]?.trim() ?? ''
     }
 
-    return { sections, mediaUrls }
+    const praise = extractSection(rawText, 'PRAISE')
+    const keyPoint = extractSection(rawText, 'KEYPOINT')
+    const solution = extractSection(rawText, 'SOLUTION')
+
+    if (!praise && !keyPoint && !solution) {
+      logger.warn('generateAiDraft:parse-failed', { action: 'generateAiDraft', userId: user.id, input: rawText.slice(0, 300) })
+      return { error: 'AI 응답 형식을 파싱할 수 없습니다. 다시 시도해 주세요.' }
+    }
+
+    return { sections: { praise, keyPoint, solution }, mediaUrls }
   } catch (err: unknown) {
     logger.error('generateAiDraft:error', { action: 'generateAiDraft', userId: user.id, error: err })
     
