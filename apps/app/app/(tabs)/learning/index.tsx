@@ -235,8 +235,10 @@ export default function LearningScreen() {
                   key={course.courseName}
                   style={styles.courseItemLink}
                   onPress={() => {
-                    // @ts-ignore
-                    router.push(`/(tabs)/learning/${encodeURIComponent(course.courseName)}`)
+                    router.push({
+                      pathname: '/(tabs)/learning/[courseName]',
+                      params: { courseName: course.courseName },
+                    } as any)
                   }}
                   activeOpacity={0.7}
                 >

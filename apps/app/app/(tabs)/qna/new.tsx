@@ -214,7 +214,7 @@ export default function NewQuestionScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#ffffff' },
   scroll: { flex: 1 },
-  content: { padding: 20, gap: 16, paddingBottom: 40 },
+  content: { padding: 20, gap: 12, paddingBottom: 40 },
 
   fieldCard: { backgroundColor: '#f8f8fa', borderRadius: 24, padding: 20, gap: 12 },
   label: {

@@ -18,8 +18,9 @@ export default async function ReportPage() {
       .limit(10),
     supabase
       .from('test_scores')
-      .select('score, tests!test_id(test_date, max_score, title)')
+      .select('score, tests!test_id!inner(test_date, max_score, title)')
       .eq('student_id', userId)
+      .in('tests.exam_type', ['모의고사', '중간고사', '기말고사'])
       .order('tests(test_date)', { ascending: true })
       .limit(10),
   ])

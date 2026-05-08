@@ -25,13 +25,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ?? null)
+    // 앱 시작 시 세션 복구 실패는 조용히 처리 (에러 콘솔 없음)
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!error) {
+        setUser(data.session?.user ?? null)
+      } else {
+        setUser(null)
+      }
       setIsLoading(false)
     })
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user ?? null)
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        // Invalid Refresh Token 포함 — 모든 로그아웃 이벤트 처리
+        // setUser(null) → (tabs)/_layout.tsx useEffect가 /login으로 이동시킴
+        setUser(null)
+      } else {
+        setUser(session?.user ?? null)
+      }
     })
 
     return () => listener.subscription.unsubscribe()

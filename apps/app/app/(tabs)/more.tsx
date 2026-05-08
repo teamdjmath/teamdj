@@ -10,14 +10,17 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { router } from 'expo-router'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 
 const LS_NOTIFICATIONS = 'teamdj_notifications'
 const LS_MARKETING = 'teamdj_marketing'
+const SHEET_HEIGHT = Dimensions.get('window').height * 0.75
 
 const FAQ_ITEMS = [
   {
@@ -30,7 +33,7 @@ const FAQ_ITEMS = [
   },
   {
     q: '질문은 어떻게 등록하나요?',
-    a: '현재 질문 등록은 선생님을 통해서만 가능합니다. 추후 학생 직접 등록 기능이 추가될 예정입니다.',
+    a: 'Q&A 탭에서 직접 질문을 등록할 수 있습니다.',
   },
   {
     q: '강의 영상은 언제까지 볼 수 있나요?',
@@ -49,6 +52,7 @@ export default function MoreScreen() {
   const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(null)
   const [faqOpen, setFaqOpen] = useState(false)
   const [inquiryOpen, setInquiryOpen] = useState(false)
+  const [inquiryEmail, setInquiryEmail] = useState('')
   const [inquiryText, setInquiryText] = useState('')
   const [inquiryDone, setInquiryDone] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
@@ -74,10 +78,20 @@ export default function MoreScreen() {
     AsyncStorage.setItem(LS_MARKETING, String(v))
   }
 
-
-  function handleInquirySubmit() {
-    if (!inquiryText.trim()) return
+  async function handleInquirySubmit() {
+    if (!inquiryEmail.trim() || !inquiryText.trim()) return
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const body = `[1:1 문의]\n답변 이메일: ${inquiryEmail.trim()}\n\n${inquiryText.trim()}`
+      await supabase.from('push_messages').insert({
+        content: body,
+        student_id: user?.id ?? null,
+      })
+    } catch {
+      // silent — still show confirmation
+    }
     setInquiryDone(true)
+    setInquiryEmail('')
     setInquiryText('')
     setTimeout(() => {
       setInquiryDone(false)
@@ -166,58 +180,68 @@ export default function MoreScreen() {
         )}
       </ScrollView>
 
-      {/* FAQ 모달 */}
+      {/* FAQ 하단 시트 */}
       <Modal
         visible={faqOpen}
         animationType="slide"
-        presentationStyle="pageSheet"
+        transparent
         onRequestClose={() => setFaqOpen(false)}
       >
-        <SafeAreaView style={styles.modalSafe}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>자주 묻는 질문</Text>
-            <TouchableOpacity onPress={() => setFaqOpen(false)}>
-              <Text style={styles.modalClose}>닫기</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView contentContainerStyle={styles.modalBody}>
-            {FAQ_ITEMS.map((item, idx) => (
-              <TouchableOpacity
-                key={idx}
-                style={[styles.faqItem, idx < FAQ_ITEMS.length - 1 && styles.faqBorder]}
-                onPress={() => setOpenFaqIdx(openFaqIdx === idx ? null : idx)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.faqQ}>
-                  <Text style={styles.faqQText}>{item.q}</Text>
-                  <Text style={styles.faqChevron}>{openFaqIdx === idx ? '∧' : '›'}</Text>
-                </View>
-                {openFaqIdx === idx && <Text style={styles.faqAText}>{item.a}</Text>}
+        <View style={styles.overlay}>
+          <TouchableOpacity style={styles.overlayBg} onPress={() => setFaqOpen(false)} activeOpacity={1} />
+          <View style={styles.sheet}>
+            <View style={styles.handle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>자주 묻는 질문</Text>
+              <TouchableOpacity onPress={() => setFaqOpen(false)}>
+                <Text style={styles.sheetClose}>닫기</Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </SafeAreaView>
+            </View>
+            <ScrollView contentContainerStyle={styles.sheetBody} showsVerticalScrollIndicator={false}>
+              {FAQ_ITEMS.map((item, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={[styles.faqItem, idx < FAQ_ITEMS.length - 1 && styles.faqBorder]}
+                  onPress={() => setOpenFaqIdx(openFaqIdx === idx ? null : idx)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.faqQ}>
+                    <Text style={styles.faqQText}>{item.q}</Text>
+                    <Text style={styles.faqChevron}>{openFaqIdx === idx ? '∧' : '›'}</Text>
+                  </View>
+                  {openFaqIdx === idx && <Text style={styles.faqAText}>{item.a}</Text>}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
 
-      {/* 1:1 문의 모달 */}
+      {/* 1:1 문의 하단 시트 */}
       <Modal
         visible={inquiryOpen}
         animationType="slide"
-        presentationStyle="pageSheet"
+        transparent
         onRequestClose={() => setInquiryOpen(false)}
       >
         <KeyboardAvoidingView
-          style={styles.flex}
+          style={styles.overlay}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <SafeAreaView style={styles.modalSafe}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>1:1 문의</Text>
+          <TouchableOpacity style={styles.overlayBg} onPress={() => setInquiryOpen(false)} activeOpacity={1} />
+          <View style={styles.sheet}>
+            <View style={styles.handle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>1:1 문의</Text>
               <TouchableOpacity onPress={() => setInquiryOpen(false)}>
-                <Text style={styles.modalClose}>닫기</Text>
+                <Text style={styles.sheetClose}>닫기</Text>
               </TouchableOpacity>
             </View>
-            <View style={styles.modalBody}>
+            <ScrollView
+              contentContainerStyle={styles.sheetBody}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
               {inquiryDone ? (
                 <View style={styles.inquiryDone}>
                   <Text style={styles.inquiryDoneTitle}>문의가 접수되었습니다.</Text>
@@ -226,48 +250,65 @@ export default function MoreScreen() {
               ) : (
                 <View style={styles.inquiryForm}>
                   <TextInput
+                    style={styles.inquiryEmailInput}
+                    value={inquiryEmail}
+                    onChangeText={setInquiryEmail}
+                    placeholder="답변 받을 이메일을 정확히 기입해주세요."
+                    placeholderTextColor="#a1a1aa"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    returnKeyType="next"
+                  />
+                  <TextInput
                     style={styles.inquiryInput}
                     value={inquiryText}
                     onChangeText={setInquiryText}
                     placeholder="문의 내용을 입력해주세요."
                     placeholderTextColor="#a1a1aa"
                     multiline
-                    numberOfLines={6}
+                    numberOfLines={5}
                     textAlignVertical="top"
                   />
                   <TouchableOpacity
-                    style={[styles.submitBtn, !inquiryText.trim() && styles.submitBtnDisabled]}
+                    style={[
+                      styles.submitBtn,
+                      (!inquiryEmail.trim() || !inquiryText.trim()) && styles.submitBtnDisabled,
+                    ]}
                     onPress={handleInquirySubmit}
-                    disabled={!inquiryText.trim()}
+                    disabled={!inquiryEmail.trim() || !inquiryText.trim()}
                     activeOpacity={0.85}
                   >
                     <Text style={styles.submitBtnText}>문의 보내기</Text>
                   </TouchableOpacity>
                 </View>
               )}
-            </View>
-          </SafeAreaView>
+            </ScrollView>
+          </View>
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* 약관 모달 */}
+      {/* 약관 하단 시트 */}
       <Modal
         visible={termsOpen}
         animationType="slide"
-        presentationStyle="pageSheet"
+        transparent
         onRequestClose={() => setTermsOpen(false)}
       >
-        <SafeAreaView style={styles.modalSafe}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>약관 및 이용동의</Text>
-            <TouchableOpacity onPress={() => setTermsOpen(false)}>
-              <Text style={styles.modalClose}>닫기</Text>
-            </TouchableOpacity>
+        <View style={styles.overlay}>
+          <TouchableOpacity style={styles.overlayBg} onPress={() => setTermsOpen(false)} activeOpacity={1} />
+          <View style={styles.sheet}>
+            <View style={styles.handle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>약관 및 이용동의</Text>
+              <TouchableOpacity onPress={() => setTermsOpen(false)}>
+                <Text style={styles.sheetClose}>닫기</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.sheetBody} showsVerticalScrollIndicator={false}>
+              <Text style={styles.termsText}>{TERMS_TEXT}</Text>
+            </ScrollView>
           </View>
-          <ScrollView contentContainerStyle={styles.modalBody}>
-            <Text style={styles.termsText}>{TERMS_TEXT}</Text>
-          </ScrollView>
-        </SafeAreaView>
+        </View>
       </Modal>
     </SafeAreaView>
   )
@@ -308,7 +349,6 @@ const TERMS_TEXT = `제1조 (목적)
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#ffffff' },
-  flex: { flex: 1 },
   scroll: { flex: 1 },
   content: { padding: 20, gap: 12, paddingBottom: 40 },
 
@@ -357,27 +397,40 @@ const styles = StyleSheet.create({
     padding: 20, gap: 14,
   },
   logoutConfirmText: { fontSize: 14, color: '#3f3f46', textAlign: 'center' },
-  logoutConfirmRow:  { flexDirection: 'row', gap: 10 },
+  logoutConfirmRow: { flexDirection: 'row', gap: 10 },
   logoutCancelBtn: {
     flex: 1, paddingVertical: 13, borderRadius: 16, alignItems: 'center',
     backgroundColor: '#f4f4f5',
   },
-  logoutCancelText:      { fontSize: 14, fontWeight: '600', color: '#71717a' },
+  logoutCancelText: { fontSize: 14, fontWeight: '600', color: '#71717a' },
   logoutConfirmBtn: {
     flex: 1, paddingVertical: 13, borderRadius: 16, alignItems: 'center',
     backgroundColor: '#ef4444',
   },
-  logoutConfirmBtnText:  { fontSize: 14, fontWeight: '600', color: '#fff' },
+  logoutConfirmBtnText: { fontSize: 14, fontWeight: '600', color: '#fff' },
 
-  modalSafe: { flex: 1, backgroundColor: '#fff' },
-  modalHeader: {
+  // 하단 시트 공통
+  overlay: { flex: 1, justifyContent: 'flex-end' },
+  overlayBg: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
+  sheet: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: SHEET_HEIGHT,
+    overflow: 'hidden',
+  },
+  handle: {
+    width: 36, height: 4, backgroundColor: '#e4e4e7', borderRadius: 2,
+    alignSelf: 'center', marginTop: 12,
+  },
+  sheetHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 16,
+    paddingHorizontal: 20, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: '#f4f4f5',
   },
-  modalTitle: { fontSize: 16, fontWeight: '600', color: '#09090b' },
-  modalClose: { fontSize: 14, color: '#a1a1aa' },
-  modalBody: { padding: 20, gap: 0 },
+  sheetTitle: { fontSize: 16, fontWeight: '600', color: '#09090b' },
+  sheetClose: { fontSize: 14, color: '#a1a1aa' },
+  sheetBody: { padding: 20, paddingBottom: 40 },
 
   faqItem: { paddingVertical: 14, gap: 8 },
   faqBorder: { borderBottomWidth: 1, borderBottomColor: '#f4f4f5' },
@@ -387,8 +440,12 @@ const styles = StyleSheet.create({
   faqAText: { fontSize: 13, color: '#71717a', lineHeight: 20 },
 
   inquiryForm: { gap: 12 },
+  inquiryEmailInput: {
+    height: 48, borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 12,
+    paddingHorizontal: 14, fontSize: 14, color: '#09090b', backgroundColor: '#fafafa',
+  },
   inquiryInput: {
-    minHeight: 140, borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 12,
+    minHeight: 120, borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 12,
     padding: 14, fontSize: 14, color: '#09090b', backgroundColor: '#fafafa',
   },
   submitBtn: {

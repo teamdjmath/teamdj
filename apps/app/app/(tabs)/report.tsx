@@ -44,8 +44,9 @@ export default function ReportScreen() {
         const [scoreRes, reportRes] = await Promise.all([
           supabase
             .from('test_scores')
-            .select('id, score, total_q, difficulty, test_date')
+            .select('id, score, total_q, difficulty, test_date, tests!test_id!inner(exam_type)')
             .eq('student_id', user!.id)
+            .in('tests.exam_type', ['모의고사', '중간고사', '기말고사'])
             .order('test_date', { ascending: false })
             .limit(10),
           supabase
@@ -85,17 +86,20 @@ export default function ReportScreen() {
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync()
       if (status !== 'granted') {
-        Alert.alert('권한 필요', '이미지를 저장하려면 갤러리 접근 권한이 필요합니다.')
+        Alert.alert('권한 필요', '설정에서 사진 접근 권한을 허용해주세요.')
         return
       }
       const filename = `report_${Date.now()}.jpg`
       const fileUri = `${FileSystem.cacheDirectory ?? ''}${filename}`
       const result = await FileSystem.downloadAsync(imageUrl, fileUri)
-      if (result.status !== 200) throw new Error('다운로드 실패')
+      if (result.status !== 200) {
+        Alert.alert('다운로드 실패', `서버에서 이미지를 받아오지 못했습니다. (${result.status})`)
+        return
+      }
       await MediaLibrary.saveToLibraryAsync(result.uri)
-      Alert.alert('저장 완료', '저장되었습니다.')
-    } catch {
-      Alert.alert('오류', '이미지를 저장하는 중 문제가 발생했습니다.')
+      Alert.alert('저장 완료', '갤러리에 저장되었습니다.')
+    } catch (e) {
+      Alert.alert('오류', e instanceof Error ? e.message : '이미지를 저장하는 중 문제가 발생했습니다.')
     }
   }
 

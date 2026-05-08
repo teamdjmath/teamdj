@@ -22,7 +22,7 @@ interface Lecture {
 
 export default function CourseDetailScreen() {
   const { courseName } = useLocalSearchParams()
-  const decodedCourseName = decodeURIComponent(courseName as string)
+  const decodedCourseName = Array.isArray(courseName) ? courseName[0] : (courseName ?? '')
   const router = useRouter()
   
   const [lectures, setLectures] = useState<Lecture[]>([])
