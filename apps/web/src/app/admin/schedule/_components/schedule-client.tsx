@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useTransition, useMemo } from 'react'
+import { useState, useEffect, useTransition, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Modal } from '@/components/ui/modal'
@@ -51,6 +51,11 @@ function getWeekDates() {
 function statusOf(s: string | null | undefined): StaffStatus {
   if (s === 'online' || s === 'busy' || s === 'offline') return s
   return 'offline'
+}
+
+// KST 등 로컬 타임존 기준 날짜 문자열 — toISOString()은 UTC 변환으로 날짜가 틀림
+function localDateStr(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function countWeekdayInMonth(dow: number, year: number, month: number): number {
@@ -152,19 +157,40 @@ export function ScheduleClient({
   classes, extraSchedules, initialStaff, currentUserId, myInitialStatus,
 }: Props) {
   const router = useRouter()
-  const [now, setNow]         = useState(new Date())
-  const [staff, setStaff]     = useState(initialStaff)
+  const [now, setNow]           = useState(new Date())
+  const [staff, setStaff]       = useState(initialStaff)
   const [myStatus, setMyStatus] = useState(myInitialStatus)
-  const [addOpen, setAddOpen] = useState(false)
+  const [localExtras, setLocalExtras] = useState(extraSchedules)
+  const [addOpen, setAddOpen]   = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-  const [popup, setPopup]     = useState<PopupData | null>(null)
+  const [popup, setPopup]       = useState<PopupData | null>(null)
+  const wasInClassRef           = useRef(false)
 
-  // 시계
+  // 서버에서 새 props가 오면 (router.refresh 후) 로컬 상태 동기화
+  useEffect(() => { setLocalExtras(extraSchedules) }, [extraSchedules])
+
+  // 30초마다 시계 업데이트
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30_000)
     return () => clearInterval(t)
   }, [])
+
+  // 수업 시간 진입 시 자동 온라인 전환
+  useEffect(() => {
+    const dow = now.getDay()
+    const min = now.getHours() * 60 + now.getMinutes()
+    const inClass = classes.some((c) => {
+      if (!c.day_of_week?.includes(dow)) return false
+      if (!c.start_time || !c.end_time) return false
+      return min >= timeToMin(c.start_time) && min < timeToMin(c.end_time)
+    })
+    if (inClass && !wasInClassRef.current) {
+      setMyStatus('online')
+      startTransition(async () => { await updateStaffStatus('online') })
+    }
+    wasInClassRef.current = inClass
+  }, [now, classes])
 
   // 스태프 상태 실시간 구독
   useEffect(() => {
@@ -187,15 +213,15 @@ export function ScheduleClient({
     return () => { supabase.removeChannel(ch) }
   }, [currentUserId])
 
-  // 이번 주 날짜 + 이번 주 추가 근무
+  // 이번 주 날짜 + weekDateSet (로컬 타임존 기준)
   const weekDates   = useMemo(() => getWeekDates(), [])
   const weekDateSet = useMemo(
-    () => new Set(weekDates.map((d) => d.toISOString().split('T')[0])),
+    () => new Set(weekDates.map(localDateStr)),   // ← toISOString() 대신 로컬 날짜
     [weekDates],
   )
   const weekExtra = useMemo(
-    () => extraSchedules.filter((es) => weekDateSet.has(es.scheduled_date)),
-    [extraSchedules, weekDateSet],
+    () => localExtras.filter((es) => weekDateSet.has(es.scheduled_date)),
+    [localExtras, weekDateSet],
   )
 
   // 시간표 동적 범위 (실제 수업/추가 근무 기준)
@@ -231,12 +257,12 @@ export function ScheduleClient({
       return total + sessionH * sessions
     }, 0)
 
-    const extraH = extraSchedules.reduce((total, es) => {
+    const extraH = localExtras.reduce((total, es) => {
       return total + (timeToMin(es.end_time) - timeToMin(es.start_time)) / 60
     }, 0)
 
     return { regularHours: regularH, extraHours: extraH }
-  }, [classes, extraSchedules, now])
+  }, [classes, localExtras, now])
 
   const todayDow = now.getDay()
   const nowMin   = now.getHours() * 60 + now.getMinutes()
@@ -260,15 +286,30 @@ export function ScheduleClient({
     e.preventDefault()
     setFormError(null)
     const fd = new FormData(e.currentTarget)
+    // 폼 값으로 낙관적 업데이트용 객체 구성
+    const optimistic: ExtraSchedule = {
+      id:             `temp-${crypto.randomUUID()}`,
+      title:          (fd.get('title') as string).trim(),
+      scheduled_date: fd.get('scheduled_date') as string,
+      start_time:     fd.get('start_time') as string,
+      end_time:       fd.get('end_time') as string,
+      note:           (fd.get('note') as string | null)?.trim() || null,
+    }
     startTransition(async () => {
       const res = await createExtraSchedule(fd)
       if (!res.success) { setFormError(res.error); return }
+      setLocalExtras((prev) =>
+        [...prev, optimistic].sort(
+          (a, b) => a.scheduled_date.localeCompare(b.scheduled_date) || a.start_time.localeCompare(b.start_time),
+        ),
+      )
       setAddOpen(false)
-      router.refresh()
+      router.refresh() // 서버 재동기화 (정확한 ID 반영)
     })
   }
 
   function handleDelete(id: string) {
+    setLocalExtras((prev) => prev.filter((e) => e.id !== id)) // 낙관적 제거
     startTransition(async () => {
       await deleteExtraSchedule(id)
       router.refresh()
@@ -338,7 +379,7 @@ export function ScheduleClient({
                   {/* 요일 컬럼 */}
                   {DOW_LIST.map((dow, colIdx) => {
                     const colDate    = weekDates[colIdx]
-                    const colDateStr = colDate.toISOString().split('T')[0]
+                    const colDateStr = localDateStr(colDate) // ← 로컬 타임존 기준
                     const isToday    = colDate.toDateString() === now.toDateString()
                     const isWeekend  = colIdx >= 5
                     const dayClasses = classes.filter(
@@ -419,13 +460,13 @@ export function ScheduleClient({
               </button>
             </div>
 
-            {extraSchedules.length === 0 ? (
+            {localExtras.length === 0 ? (
               <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-6 text-center text-sm text-zinc-400">
                 이번 달 등록된 추가 근무가 없습니다.
               </div>
             ) : (
               <div className="space-y-2">
-                {extraSchedules.map((es) => {
+                {localExtras.map((es) => {
                   const d = new Date(es.scheduled_date + 'T00:00:00')
                   const dateLabel = d.toLocaleDateString('ko-KR', {
                     month: 'numeric', day: 'numeric', weekday: 'short',
