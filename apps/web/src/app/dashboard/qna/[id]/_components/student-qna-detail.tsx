@@ -1,8 +1,12 @@
 'use client'
 
 import 'katex/dist/katex.min.css'
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
 import { deleteQuestion } from '@/lib/actions/qna'
+import { Card, CardHeader, CardContent } from '@/components/ui/card'
 
 type Question = {
   id: string
@@ -44,59 +48,11 @@ function formatDatetime(iso: string) {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-async function renderWithKatex(text: string): Promise<string> {
-  const katex = (await import('katex')).default
-  let html = ''
-  const displayParts = text.split(/\$\$([^$]+)\$\$/)
-  for (let i = 0; i < displayParts.length; i++) {
-    if (i % 2 === 1) {
-      try {
-        html += `<div class="overflow-x-auto py-2 text-center">${katex.renderToString(displayParts[i].trim(), { displayMode: true, throwOnError: false })}</div>`
-      } catch {
-        html += `<code class="text-red-500">$$${displayParts[i]}$$</code>`
-      }
-    } else {
-      const inlineParts = displayParts[i].split(/\$([^$\n]+)\$/)
-      for (let j = 0; j < inlineParts.length; j++) {
-        if (j % 2 === 1) {
-          try {
-            html += katex.renderToString(inlineParts[j].trim(), { throwOnError: false })
-          } catch {
-            html += `<code class="text-red-500">$${inlineParts[j]}$</code>`
-          }
-        } else {
-          html += inlineParts[j]
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/\n/g, '<br>')
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.+?)\*/g, '<em>$1</em>')
-            .replace(/`(.+?)`/g, '<code class="bg-zinc-100 px-1 rounded text-xs font-mono">$1</code>')
-        }
-      }
-    }
-  }
-  return html
-}
-
-import { Card, CardHeader, CardContent } from '@/components/ui/card'
+const mdPlugins = { remark: [remarkMath], rehype: [rehypeKatex] }
 
 export function StudentQnaDetail({ question, answers }: Props) {
   const [pending, startTransition] = useTransition()
   const [errMsg, setErrMsg] = useState('')
-  const [renderedAnswers, setRenderedAnswers] = useState<Record<string, string>>({})
-
-  useEffect(() => {
-    async function renderAll() {
-      const newRendered: Record<string, string> = {}
-      for (const a of answers) {
-        newRendered[a.id] = await renderWithKatex(a.content)
-      }
-      setRenderedAnswers(newRendered)
-    }
-    renderAll()
-  }, [answers])
 
   function handleDelete() {
     if (!confirm('정말 삭제하시겠습니까?')) return
@@ -111,7 +67,7 @@ export function StudentQnaDetail({ question, answers }: Props) {
     <div className="space-y-8">
       {/* 질문 카드 */}
       <Card>
-        <CardHeader 
+        <CardHeader
           title={question.title || '제목 없음'}
           action={
             question.status === 'open' && (
@@ -133,7 +89,11 @@ export function StudentQnaDetail({ question, answers }: Props) {
             <span className="text-xs font-bold text-zinc-300">{formatDatetime(question.created_at)}</span>
             <div className="h-1 w-1 rounded-full bg-zinc-200" />
             <span className="text-xs font-semibold text-zinc-400">
-              {question.assignedTaName ? `담당: ${question.assignedTaName}` : (answers.length > 0 ? `담당: ${answers[0].taName}` : '조교 배정 중')}
+              {question.assignedTaName
+                ? `담당: ${question.assignedTaName}`
+                : answers.length > 0
+                  ? `담당: ${answers[0].taName}`
+                  : '조교 배정 중'}
             </span>
           </div>
 
@@ -146,7 +106,13 @@ export function StudentQnaDetail({ question, answers }: Props) {
           {question.image_urls.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {question.image_urls.map((url, i) => (
-                <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="relative aspect-square overflow-hidden rounded-[20px] border border-zinc-100 hover:opacity-90 transition-all shadow-sm">
+                <a
+                  key={i}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="relative aspect-square overflow-hidden rounded-[20px] border border-zinc-100 hover:opacity-90 transition-all shadow-sm"
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={url}
@@ -167,20 +133,18 @@ export function StudentQnaDetail({ question, answers }: Props) {
           <h2 className="text-xl font-semibold text-zinc-900 tracking-tight">답변</h2>
           <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-400">{answers.length}</span>
         </div>
-        
+
         {answers.length > 0 ? (
           <div className="space-y-4">
             {answers.map((a) => (
               <Card key={a.id}>
-                <CardHeader 
-                  title={a.taName}
-                  subtitle={formatDatetime(a.answered_at)}
-                />
+                <CardHeader title={a.taName} subtitle={formatDatetime(a.answered_at)} />
                 <CardContent>
-                  <div
-                    className="text-[15px] font-medium text-zinc-800 leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: renderedAnswers[a.id] || '렌더링 중...' }}
-                  />
+                  <div className="prose prose-sm prose-zinc max-w-none text-[15px] font-medium leading-relaxed">
+                    <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
+                      {a.content}
+                    </ReactMarkdown>
+                  </div>
                   {a.media_urls.length > 0 && (
                     <div className="mt-6 flex flex-wrap gap-2">
                       {a.media_urls.map((url, i) => (

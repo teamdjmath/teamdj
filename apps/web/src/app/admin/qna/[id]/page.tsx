@@ -17,7 +17,7 @@ export default async function QnaDetailPage({
   const { data: q } = await supabase
     .from('qna_questions')
     .select(
-      'id, content, image_urls, status, assigned_ta_id, created_at, student:users!student_id(name), class:class_groups!class_id(name), assigned_ta:users!assigned_ta_id(name)',
+      'id, title, content, image_urls, status, assigned_ta_id, created_at, student:users!student_id(name), class:class_groups!class_id(name), assigned_ta:users!assigned_ta_id(name)',
     )
     .eq('id', id)
     .single()
@@ -27,6 +27,7 @@ export default async function QnaDetailPage({
   const r = q as Record<string, unknown>
   const question = {
     id: r.id as string,
+    title: (r.title as string) ?? '',
     content: r.content as string,
     image_urls: (r.image_urls as string[]) ?? [],
     status: r.status as 'open' | 'in_progress' | 'answered',
@@ -39,7 +40,7 @@ export default async function QnaDetailPage({
 
   const { data: answerRows } = await supabase
     .from('qna_answers')
-    .select('id, content, media_urls, is_ai_draft, answered_at, ta:users!ta_id(name)')
+    .select('id, content, media_urls, answered_at, ta_id, ta:users!ta_id(name)')
     .eq('question_id', id)
     .order('answered_at', { ascending: true })
 
@@ -50,11 +51,13 @@ export default async function QnaDetailPage({
       id: ar.id as string,
       content: ar.content as string,
       media_urls: (ar.media_urls as string[]) ?? [],
-      is_ai_draft: (ar.is_ai_draft ?? false) as boolean,
       answered_at: ar.answered_at as string,
+      taId: (ar.ta_id as string) ?? '',
       taName: ((ar.ta as { name?: string } | null)?.name ?? '') as string,
     }
   })
+
+  const currentUserName = (user.user_metadata?.name as string | undefined) ?? ''
 
   return (
     <div>
@@ -69,7 +72,7 @@ export default async function QnaDetailPage({
           질의응답 목록
         </Link>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-bold text-zinc-950">질문 상세</h1>
+          <h1 className="text-xl font-bold text-zinc-950">{question.title || '질문 상세'}</h1>
           <span className="text-sm text-zinc-400">·</span>
           <span className="text-sm text-zinc-500">{question.studentName}</span>
           {question.className && <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">{question.className}</span>}
@@ -80,6 +83,7 @@ export default async function QnaDetailPage({
         question={question}
         answers={answers}
         currentUserId={user.id}
+        currentUserName={currentUserName}
       />
     </div>
   )

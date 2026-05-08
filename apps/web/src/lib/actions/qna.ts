@@ -84,10 +84,69 @@ export async function submitAnswer(data: {
   return {}
 }
 
+export async function updateAnswer(data: {
+  answerId: string
+  questionId: string
+  content: string
+  mediaUrls: string[]
+}): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '인증이 필요합니다.' }
+
+  const role = user.user_metadata?.role as string | undefined
+  if (role !== 'teacher' && role !== 'ta') return { error: '권한이 없습니다.' }
+
+  const { error } = await supabase
+    .from('qna_answers')
+    .update({ content: data.content, media_urls: data.mediaUrls })
+    .eq('id', data.answerId)
+    .eq('ta_id', user.id)
+
+  if (error) return { error: '답변 수정에 실패했습니다.' }
+
+  revalidatePath('/admin/qna')
+  revalidatePath(`/admin/qna/${data.questionId}`)
+  revalidatePath('/dashboard/qna')
+  revalidatePath(`/dashboard/qna/${data.questionId}`)
+  return {}
+}
+
+export async function cancelAnswer(data: {
+  questionId: string
+  answerId: string
+}): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '인증이 필요합니다.' }
+
+  const role = user.user_metadata?.role as string | undefined
+  if (role !== 'teacher' && role !== 'ta') return { error: '권한이 없습니다.' }
+
+  const { error: deleteError } = await supabase
+    .from('qna_answers')
+    .delete()
+    .eq('id', data.answerId)
+    .eq('ta_id', user.id)
+
+  if (deleteError) return { error: '답변 취소에 실패했습니다.' }
+
+  await supabase
+    .from('qna_questions')
+    .update({ status: 'open', assigned_ta_id: null })
+    .eq('id', data.questionId)
+
+  revalidatePath('/admin/qna')
+  revalidatePath(`/admin/qna/${data.questionId}`)
+  revalidatePath('/dashboard/qna')
+  revalidatePath(`/dashboard/qna/${data.questionId}`)
+  return {}
+}
+
 export async function generateAiDraft(
   questionContent: string,
   imageUrls: string[] = [],
-): Promise<{ draft?: string; mediaUrls?: string[]; error?: string }> {
+): Promise<{ sections?: { praise: string; keyPoint: string; solution: string }; mediaUrls?: string[]; error?: string }> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'Gemini API 키가 설정되지 않았습니다.' }
 
@@ -101,10 +160,11 @@ export async function generateAiDraft(
   try {
     const ai = new GoogleGenAI({ apiKey })
 
-    const promptText = `다음 수학 문제 또는 질문에 대해 단계별로 풀이를 설명해줘.
-수식은 LaTeX 형식($...$)으로 작성해줘.
-학생이 첨부한 이미지가 있다면 이를 상세히 참고해서 답변을 작성해줘.
-필요하다면 풀이 과정을 손으로 직접 쓴 것 같은 손필기 스타일의 이미지(handwritten solution image)도 하나 생성해서 포함해줘.
+    const promptText = `다음 질문에 대해 아래 JSON 형식으로만 응답해줘. JSON 외의 다른 텍스트는 포함하지 마.
+수식은 LaTeX 형식($...$, $$...$$)으로 작성하고, 마크다운(**, *, \`, ###)을 자유롭게 사용해줘.
+학생이 첨부한 이미지가 있다면 참고해서 답변을 작성해줘.
+
+{"praise":"학생의 질문에 대한 칭찬 또는 공감 (1~2문장)","keyPoint":"핵심 개념 또는 주의할 점 (마크다운+LaTeX 허용)","solution":"단계별 풀이 (마크다운+LaTeX 허용)"}
 
 질문: ${questionContent}`
 
@@ -137,16 +197,15 @@ export async function generateAiDraft(
       contents: contentsParts,
     })
     
-    let draft = ''
+    let rawText = ''
     const mediaUrls: string[] = []
     const admin = createAdminClient()
 
     const parts = response.candidates?.[0]?.content?.parts ?? []
     for (const part of parts) {
       if (part.text) {
-        draft += part.text
+        rawText += part.text
       } else if (part.inlineData && part.inlineData.data) {
-        // 이미지 데이터 처리
         const imageData = part.inlineData.data
         const contentType = part.inlineData.mimeType || 'image/png'
         const buffer = Buffer.from(imageData, 'base64')
@@ -164,9 +223,24 @@ export async function generateAiDraft(
       }
     }
 
-    if (!draft && mediaUrls.length === 0) return { error: 'AI 응답을 받지 못했습니다.' }
-    
-    return { draft, mediaUrls }
+    if (!rawText) return { error: 'AI 응답을 받지 못했습니다.' }
+
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) return { error: 'AI 응답을 파싱할 수 없습니다.' }
+
+    let sections: { praise: string; keyPoint: string; solution: string }
+    try {
+      const parsed = JSON.parse(jsonMatch[0])
+      sections = {
+        praise: String(parsed.praise ?? ''),
+        keyPoint: String(parsed.keyPoint ?? ''),
+        solution: String(parsed.solution ?? ''),
+      }
+    } catch {
+      return { error: 'AI 응답 JSON 파싱에 실패했습니다.' }
+    }
+
+    return { sections, mediaUrls }
   } catch (err: unknown) {
     logger.error('generateAiDraft:error', { action: 'generateAiDraft', userId: user.id, error: err })
     
