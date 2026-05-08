@@ -13,11 +13,11 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 
 const START_HOUR = 9
-const END_HOUR   = 22
-const PX_PER_MIN = 1.0
+const END_HOUR   = 21
+const PX_PER_MIN = 0.65
 const TOTAL_H    = (END_HOUR - START_HOUR) * 60 * PX_PER_MIN
-const TIME_W     = 28
-const COL_W      = 68
+const TIME_W     = 22
+const COL_W      = 52
 
 const DAY_LABELS = ['월', '화', '수', '목', '금']
 const DOW_LIST   = [1, 2, 3, 4, 5]
@@ -30,6 +30,23 @@ const WORK_STATUSES: { key: WorkStatus; label: string }[] = [
   { key: 'offline', label: '오프라인' },
 ]
 
+const STATUS_DOT: Record<WorkStatus, string> = {
+  online:  '#34d399',
+  busy:    '#fbbf24',
+  offline: '#d4d4d8',
+}
+
+const STATUS_LABEL: Record<WorkStatus, string> = {
+  online:  '근무중',
+  busy:    '바쁨',
+  offline: '오프라인',
+}
+
+function toWorkStatus(s: string | null): WorkStatus {
+  if (s === 'online' || s === 'busy' || s === 'offline') return s
+  return 'offline'
+}
+
 type ClassRow = {
   id: string
   name: string
@@ -37,6 +54,13 @@ type ClassRow = {
   start_time: string | null
   end_time: string | null
   day_of_week: number[] | null
+}
+
+type StaffMember = {
+  userId: string
+  name: string
+  role: string
+  status: WorkStatus
 }
 
 function timeToMin(t: string) {
@@ -82,7 +106,7 @@ function ClassCard({
   const startMin = timeToMin(cls.start_time!)
   const endMin   = timeToMin(cls.end_time!)
   const top      = minToTop(startMin)
-  const height   = Math.max((endMin - startMin) * PX_PER_MIN, 22)
+  const height   = Math.max((endMin - startMin) * PX_PER_MIN, 18)
 
   return (
     <View
@@ -100,7 +124,7 @@ function ClassCard({
       <Text style={[styles.classCardName, { color: color.text }]} numberOfLines={1}>
         {cls.name}
       </Text>
-      {height >= 34 && (
+      {height >= 28 && (
         <Text style={[styles.classCardTime, { color: color.text }]} numberOfLines={1}>
           {cls.start_time!.slice(0, 5)}–{cls.end_time!.slice(0, 5)}
         </Text>
@@ -113,6 +137,7 @@ export default function WorkScreen() {
   const { user, role } = useAuth()
   const [workStatus, setWorkStatus] = useState<WorkStatus>('offline')
   const [classes, setClasses]       = useState<ClassRow[]>([])
+  const [staffList, setStaffList]   = useState<StaffMember[]>([])
   const [loading, setLoading]       = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [now, setNow]               = useState(new Date())
@@ -125,13 +150,15 @@ export default function WorkScreen() {
   const load = useCallback(async () => {
     if (!user) return
     try {
+      // 내 근무 상태
       const { data: statusRow } = await supabase
         .from('staff_status')
         .select('status')
         .eq('user_id', user.id)
         .single()
-      if (statusRow?.status) setWorkStatus(statusRow.status as WorkStatus)
+      if (statusRow?.status) setWorkStatus(toWorkStatus(statusRow.status))
 
+      // 시간표
       const { data: classRows } = await supabase
         .from('class_groups')
         .select('id, name, subject, start_time, end_time, day_of_week')
@@ -151,8 +178,37 @@ export default function WorkScreen() {
           allClasses = allClasses.filter((c) => allowed.has(c.id))
         }
       }
-
       setClasses(allClasses)
+
+      // 스태프 현황
+      const { data: staffUsers } = await supabase
+        .from('users')
+        .select('id, name, role')
+        .in('role', ['teacher', 'ta'])
+        .eq('is_active', true)
+        .order('role')
+        .order('name')
+
+      const staffIds = (staffUsers ?? []).map((u) => u.id as string)
+      const statusMap: Record<string, string> = {}
+      if (staffIds.length > 0) {
+        const { data: statusRows } = await supabase
+          .from('staff_status')
+          .select('user_id, status')
+          .in('user_id', staffIds)
+        for (const row of statusRows ?? []) {
+          statusMap[row.user_id as string] = row.status as string
+        }
+      }
+
+      setStaffList(
+        (staffUsers ?? []).map((u) => ({
+          userId: u.id as string,
+          name:   u.name as string,
+          role:   u.role as string,
+          status: toWorkStatus(statusMap[u.id as string] ?? null),
+        })),
+      )
     } catch {
       // silent
     } finally {
@@ -162,6 +218,34 @@ export default function WorkScreen() {
   }, [user, role])
 
   useEffect(() => { load() }, [load])
+
+  // 스태프 상태 실시간 업데이트
+  useEffect(() => {
+    if (!user) return
+    const channel = supabase
+      .channel('staff_status_work')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'staff_status' },
+        (payload) => {
+          const row = payload.new as { user_id: string; status: string } | undefined
+          if (!row) return
+          setStaffList((prev) =>
+            prev.map((s) =>
+              s.userId === row.user_id
+                ? { ...s, status: toWorkStatus(row.status) }
+                : s,
+            ),
+          )
+          if (row.user_id === user.id) {
+            setWorkStatus(toWorkStatus(row.status))
+          }
+        },
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [user])
 
   async function handleStatusChange(s: WorkStatus) {
     setWorkStatus(s)
@@ -206,25 +290,6 @@ export default function WorkScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#09090b" />
         }
       >
-        {/* 근무 상태 */}
-        <View style={styles.card}>
-          <Text style={styles.sectionLabel}>근무 상태</Text>
-          <View style={styles.statusRow}>
-            {WORK_STATUSES.map(({ key, label }) => (
-              <TouchableOpacity
-                key={key}
-                style={[styles.statusBtn, workStatus === key && styles.statusBtnActive]}
-                onPress={() => handleStatusChange(key)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.statusBtnText, workStatus === key && styles.statusBtnTextActive]}>
-                  {label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
         {/* 주간 시간표 */}
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>주간 시간표</Text>
@@ -256,7 +321,7 @@ export default function WorkScreen() {
                   {hours.map((h) => (
                     <Text
                       key={h}
-                      style={[styles.ttHourLabel, { top: minToTop(h * 60) - 6 }]}
+                      style={[styles.ttHourLabel, { top: minToTop(h * 60) - 5 }]}
                     >
                       {h}
                     </Text>
@@ -304,6 +369,62 @@ export default function WorkScreen() {
             </View>
           </ScrollView>
         </View>
+
+        {/* 근무 상태 */}
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>근무 상태</Text>
+          <View style={styles.statusRow}>
+            {WORK_STATUSES.map(({ key, label }) => (
+              <TouchableOpacity
+                key={key}
+                style={[styles.statusBtn, workStatus === key && styles.statusBtnActive]}
+                onPress={() => handleStatusChange(key)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.statusBtnText, workStatus === key && styles.statusBtnTextActive]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* 스태프 현황 */}
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>스태프 현황</Text>
+          {staffList.length === 0 ? (
+            <Text style={styles.staffEmpty}>등록된 스태프가 없습니다.</Text>
+          ) : (
+            staffList.map((member, i) => {
+              const isMe = member.userId === user?.id
+              return (
+                <View
+                  key={member.userId}
+                  style={[
+                    styles.staffRow,
+                    i < staffList.length - 1 && styles.staffRowBorder,
+                  ]}
+                >
+                  <View style={[styles.staffDot, { backgroundColor: STATUS_DOT[member.status] }]} />
+                  <View style={styles.staffInfo}>
+                    <Text style={styles.staffName}>
+                      {member.name}
+                      {isMe && <Text style={styles.staffMe}> (나)</Text>}
+                    </Text>
+                    <Text style={styles.staffRole}>
+                      {member.role === 'teacher' ? '선생님' : '조교'}
+                    </Text>
+                  </View>
+                  <View style={[styles.staffBadge, { backgroundColor: member.status === 'online' ? '#ecfdf5' : member.status === 'busy' ? '#fffbeb' : '#f4f4f5' }]}>
+                    <Text style={[styles.staffBadgeText, { color: member.status === 'online' ? '#059669' : member.status === 'busy' ? '#d97706' : '#a1a1aa' }]}>
+                      {STATUS_LABEL[member.status]}
+                    </Text>
+                  </View>
+                </View>
+              )
+            })
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   )
@@ -336,21 +457,20 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e4e4e7',
     paddingBottom: 4,
-    marginBottom: 0,
   },
-  ttDayHeader:      { alignItems: 'center', paddingVertical: 4 },
-  ttDayLabel:       { fontSize: 11, fontWeight: '600', color: '#a1a1aa' },
+  ttDayHeader:      { alignItems: 'center', paddingVertical: 3 },
+  ttDayLabel:       { fontSize: 10, fontWeight: '600', color: '#a1a1aa' },
   ttDayLabelToday:  { color: '#09090b' },
-  ttDayDate:        { fontSize: 9, color: '#d4d4d8', marginTop: 1 },
+  ttDayDate:        { fontSize: 8, color: '#d4d4d8', marginTop: 1 },
   ttDayDateToday:   { color: '#71717a', fontWeight: '600' },
 
   ttBody:     { flexDirection: 'row' },
   ttHourLabel: {
     position: 'absolute',
-    right: 2,
-    fontSize: 9,
+    right: 1,
+    fontSize: 8,
     color: '#d4d4d8',
-    lineHeight: 12,
+    lineHeight: 11,
   },
   ttDayCol: {
     position: 'relative',
@@ -376,12 +496,12 @@ const styles = StyleSheet.create({
 
   classCard: {
     position: 'absolute',
-    left: 2,
-    right: 2,
-    borderRadius: 4,
+    left: 1,
+    right: 1,
+    borderRadius: 3,
     borderLeftWidth: 2,
-    paddingHorizontal: 3,
-    paddingVertical: 2,
+    paddingHorizontal: 2,
+    paddingVertical: 1,
     overflow: 'hidden',
     zIndex: 1,
   },
@@ -393,6 +513,24 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
-  classCardName: { fontSize: 8, fontWeight: '700', lineHeight: 11 },
-  classCardTime: { fontSize: 7, lineHeight: 10, opacity: 0.7, marginTop: 1 },
+  classCardName: { fontSize: 7, fontWeight: '700', lineHeight: 10 },
+  classCardTime: { fontSize: 6, lineHeight: 9, opacity: 0.7, marginTop: 1 },
+
+  staffEmpty: { fontSize: 13, color: '#a1a1aa', textAlign: 'center', paddingVertical: 8 },
+  staffRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 10,
+  },
+  staffRowBorder: { borderBottomWidth: 1, borderBottomColor: '#f1f1f4' },
+  staffDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  staffInfo: { flex: 1 },
+  staffName: { fontSize: 13, fontWeight: '500', color: '#09090b' },
+  staffMe:   { fontSize: 11, fontWeight: '400', color: '#a1a1aa' },
+  staffRole: { fontSize: 11, color: '#a1a1aa', marginTop: 1 },
+  staffBadge: {
+    borderRadius: 20, paddingHorizontal: 9, paddingVertical: 3,
+  },
+  staffBadgeText: { fontSize: 11, fontWeight: '500' },
 })

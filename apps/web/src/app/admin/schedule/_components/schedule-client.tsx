@@ -9,8 +9,8 @@ import { EmptyState } from '@/components/ui/empty-state'
 
 // ── 상수
 const START_HOUR = 9
-const END_HOUR   = 23
-const PX_PER_MIN = 1.2
+const END_HOUR   = 22
+const PX_PER_MIN = 0.7
 const TOTAL_H    = (END_HOUR - START_HOUR) * 60 * PX_PER_MIN
 
 const DAY_LABELS = ['월', '화', '수', '목', '금']
@@ -87,11 +87,11 @@ function ClassCard({
   const startMin = timeToMin(cls.start_time!)
   const endMin   = timeToMin(cls.end_time!)
   const top    = minToTop(startMin)
-  const height = Math.max((endMin - startMin) * PX_PER_MIN, 28)
+  const height = Math.max((endMin - startMin) * PX_PER_MIN, 20)
 
   return (
     <div
-      className="absolute inset-x-1 rounded-lg px-2 py-1 overflow-hidden transition-shadow"
+      className="absolute inset-x-1 rounded-md px-1.5 py-0.5 overflow-hidden transition-shadow"
       style={{
         top,
         height,
@@ -102,9 +102,9 @@ function ClassCard({
         zIndex: isActive ? 10 : 1,
       }}
     >
-      <p className="text-[10px] font-bold leading-tight truncate">{cls.name}</p>
-      {height >= 38 && (
-        <p className="text-[9px] opacity-65 mt-0.5 truncate">
+      <p className="text-[9px] font-bold leading-tight truncate">{cls.name}</p>
+      {height >= 32 && (
+        <p className="text-[8px] opacity-65 mt-0.5 truncate">
           {cls.start_time!.slice(0, 5)}–{cls.end_time!.slice(0, 5)}
         </p>
       )}
@@ -130,7 +130,6 @@ export function ScheduleClient({ classes, extraSchedules }: Props) {
   const nowMin    = now.getHours() * 60 + now.getMinutes()
   const nowTop    = minToTop(nowMin)
 
-  // 분반별 색상 (이름 정렬 기준으로 인덱스 고정)
   const sorted   = [...classes].sort((a, b) => a.name.localeCompare(b.name))
   const colorMap = Object.fromEntries(sorted.map((c, i) => [c.id, getClassColor(i)]))
 
@@ -140,7 +139,6 @@ export function ScheduleClient({ classes, extraSchedules }: Props) {
     return nowMin >= timeToMin(cls.start_time) && nowMin < timeToMin(cls.end_time)
   }
 
-  // 시간 눈금 (정시만)
   const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i)
 
   function handleAddExtra(e: React.FormEvent<HTMLFormElement>) {
@@ -167,158 +165,161 @@ export function ScheduleClient({ classes, extraSchedules }: Props) {
   return (
     <div>
       {/* 헤더 */}
-      <div className="mb-6">
+      <div className="mb-5">
         <h1 className="text-xl font-bold text-zinc-950">시간표</h1>
         <p className="mt-0.5 text-sm text-zinc-400">이번 주 {dateRange}</p>
       </div>
 
-      {/* ── 주간 시간표 ── */}
-      <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
-        <div className="overflow-x-auto">
-          <div className="min-w-[580px]">
+      {/* ── 두 컬럼 레이아웃 ── */}
+      <div className="flex gap-5 items-start">
 
-            {/* 요일 헤더 */}
-            <div
-              className="border-b border-zinc-100 bg-zinc-50"
-              style={{ display: 'grid', gridTemplateColumns: '52px repeat(5, 1fr)' }}
-            >
-              <div className="py-3" />
-              {weekDates.map((d, i) => {
-                const isToday = d.toDateString() === now.toDateString()
-                return (
-                  <div key={i} className={`py-3 text-center text-xs font-semibold ${isToday ? 'text-zinc-950' : 'text-zinc-400'}`}>
-                    <div>{DAY_LABELS[i]}</div>
-                    <div className={`mt-0.5 text-[11px] ${isToday ? 'font-bold text-zinc-700' : 'text-zinc-300'}`}>
-                      {d.getMonth() + 1}/{d.getDate()}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+        {/* 왼쪽: 주간 시간표 */}
+        <div className="flex-1 min-w-0">
+          <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
+            <div className="overflow-x-auto">
+              <div className="min-w-[420px]">
 
-            {/* 그리드 본문 */}
-            <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(5, 1fr)' }}>
-              {/* 시간 컬럼 */}
-              <div className="relative border-r border-zinc-100" style={{ height: TOTAL_H }}>
-                {hours.map((h) => (
-                  <div
-                    key={h}
-                    className="absolute right-2 text-[10px] text-zinc-300 leading-none select-none"
-                    style={{ top: minToTop(h * 60) - 5 }}
-                  >
-                    {h}
-                  </div>
-                ))}
-              </div>
+                {/* 요일 헤더 */}
+                <div
+                  className="border-b border-zinc-100 bg-zinc-50"
+                  style={{ display: 'grid', gridTemplateColumns: '44px repeat(5, 1fr)' }}
+                >
+                  <div className="py-2" />
+                  {weekDates.map((d, i) => {
+                    const isToday = d.toDateString() === now.toDateString()
+                    return (
+                      <div key={i} className={`py-2 text-center text-xs font-semibold ${isToday ? 'text-zinc-950' : 'text-zinc-400'}`}>
+                        <div>{DAY_LABELS[i]}</div>
+                        <div className={`mt-0.5 text-[10px] ${isToday ? 'font-bold text-zinc-700' : 'text-zinc-300'}`}>
+                          {d.getMonth() + 1}/{d.getDate()}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
 
-              {/* 요일 컬럼 */}
-              {DOW_LIST.map((dow, colIdx) => {
-                const colDate = weekDates[colIdx]
-                const isToday = colDate.toDateString() === now.toDateString()
-                const dayClasses = classes.filter(
-                  (c) => c.day_of_week?.includes(dow) && c.start_time && c.end_time,
-                )
-
-                return (
-                  <div
-                    key={dow}
-                    className={`relative border-l border-zinc-100 ${isToday ? 'bg-zinc-50/60' : ''}`}
-                    style={{ height: TOTAL_H }}
-                  >
-                    {/* 정시 눈금선 */}
+                {/* 그리드 본문 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '44px repeat(5, 1fr)' }}>
+                  {/* 시간 컬럼 */}
+                  <div className="relative border-r border-zinc-100" style={{ height: TOTAL_H }}>
                     {hours.map((h) => (
                       <div
                         key={h}
-                        className="absolute inset-x-0 border-t border-zinc-100"
-                        style={{ top: minToTop(h * 60) }}
-                      />
-                    ))}
-
-                    {/* 현재 시간 라인 */}
-                    {isToday && nowMin >= START_HOUR * 60 && nowMin < END_HOUR * 60 && (
-                      <div
-                        className="absolute inset-x-0 z-20 flex items-center"
-                        style={{ top: nowTop }}
+                        className="absolute right-1.5 text-[9px] text-zinc-300 leading-none select-none"
+                        style={{ top: minToTop(h * 60) - 4 }}
                       >
-                        <div className="w-2 h-2 rounded-full bg-red-500 -ml-1 shrink-0" />
-                        <div className="flex-1 border-t-2 border-red-400" />
+                        {h}
                       </div>
-                    )}
-
-                    {/* 수업 카드 */}
-                    {dayClasses.map((cls) => (
-                      <ClassCard
-                        key={cls.id}
-                        cls={cls}
-                        color={colorMap[cls.id]}
-                        isActive={isActive(cls)}
-                      />
                     ))}
+                  </div>
+
+                  {/* 요일 컬럼 */}
+                  {DOW_LIST.map((dow, colIdx) => {
+                    const colDate = weekDates[colIdx]
+                    const isToday = colDate.toDateString() === now.toDateString()
+                    const dayClasses = classes.filter(
+                      (c) => c.day_of_week?.includes(dow) && c.start_time && c.end_time,
+                    )
+
+                    return (
+                      <div
+                        key={dow}
+                        className={`relative border-l border-zinc-100 ${isToday ? 'bg-zinc-50/60' : ''}`}
+                        style={{ height: TOTAL_H }}
+                      >
+                        {hours.map((h) => (
+                          <div
+                            key={h}
+                            className="absolute inset-x-0 border-t border-zinc-100"
+                            style={{ top: minToTop(h * 60) }}
+                          />
+                        ))}
+
+                        {isToday && nowMin >= START_HOUR * 60 && nowMin < END_HOUR * 60 && (
+                          <div
+                            className="absolute inset-x-0 z-20 flex items-center"
+                            style={{ top: nowTop }}
+                          >
+                            <div className="w-1.5 h-1.5 rounded-full bg-red-500 -ml-0.5 shrink-0" />
+                            <div className="flex-1 border-t-2 border-red-400" />
+                          </div>
+                        )}
+
+                        {dayClasses.map((cls) => (
+                          <ClassCard
+                            key={cls.id}
+                            cls={cls}
+                            color={colorMap[cls.id]}
+                            isActive={isActive(cls)}
+                          />
+                        ))}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 오른쪽: 추가 근무 */}
+        <div className="w-72 shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-sm font-bold text-zinc-950">추가 근무</h2>
+              <p className="text-xs text-zinc-400 mt-0.5">이번 주</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { setFormError(null); setAddOpen(true) }}
+              className="rounded-lg bg-zinc-950 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 transition-colors"
+            >
+              + 등록
+            </button>
+          </div>
+
+          {extraSchedules.length === 0 ? (
+            <div className="rounded-2xl border border-zinc-200 bg-white">
+              <EmptyState message="이번 주 등록된 추가 근무가 없습니다." />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {extraSchedules.map((es) => {
+                const d = new Date(es.scheduled_date + 'T00:00:00')
+                const dateLabel = d.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' })
+                return (
+                  <div
+                    key={es.id}
+                    className="rounded-2xl border border-zinc-200 bg-white px-4 py-3.5 flex items-center justify-between gap-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-zinc-900">{es.title}</span>
+                        <span className="text-xs text-zinc-400">{dateLabel}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-zinc-500">
+                          {es.start_time.slice(0, 5)}–{es.end_time.slice(0, 5)}
+                        </span>
+                        {es.note && (
+                          <span className="text-xs text-zinc-400 truncate">{es.note}</span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => handleDelete(es.id)}
+                      className="shrink-0 text-xs text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                    >
+                      삭제
+                    </button>
                   </div>
                 )
               })}
             </div>
-          </div>
+          )}
         </div>
-      </div>
-
-      {/* ── 추가 근무 섹션 ── */}
-      <div className="mt-8">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-base font-bold text-zinc-950">추가 근무</h2>
-            <p className="text-xs text-zinc-400 mt-0.5">이번 주</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => { setFormError(null); setAddOpen(true) }}
-            className="rounded-lg bg-zinc-950 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 transition-colors"
-          >
-            + 등록
-          </button>
-        </div>
-
-        {extraSchedules.length === 0 ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white">
-            <EmptyState message="이번 주 등록된 추가 근무가 없습니다." />
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {extraSchedules.map((es) => {
-              const d = new Date(es.scheduled_date + 'T00:00:00')
-              const dateLabel = d.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' })
-              return (
-                <div
-                  key={es.id}
-                  className="rounded-2xl border border-zinc-200 bg-white px-5 py-4 flex items-center justify-between gap-4"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-zinc-900">{es.title}</span>
-                      <span className="text-xs text-zinc-400">{dateLabel}</span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-zinc-500">
-                        {es.start_time.slice(0, 5)}–{es.end_time.slice(0, 5)}
-                      </span>
-                      {es.note && (
-                        <span className="text-xs text-zinc-400 truncate">{es.note}</span>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={isPending}
-                    onClick={() => handleDelete(es.id)}
-                    className="shrink-0 text-xs text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                  >
-                    삭제
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        )}
       </div>
 
       {/* ── 추가 근무 등록 모달 ── */}
