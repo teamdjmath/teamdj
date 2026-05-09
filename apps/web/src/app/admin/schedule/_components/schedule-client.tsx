@@ -158,15 +158,13 @@ export function ScheduleClient({
   const [now, setNow]           = useState(new Date())
   const [staff, setStaff]       = useState(initialStaff)
   const [myStatus, setMyStatus] = useState(myInitialStatus)
-  const [localExtras, setLocalExtras] = useState(extraSchedules)
+  // extraSchedules를 초기값으로만 사용 — 이후 서버 props 변경이 로컬 상태를 덮어쓰지 않음
+  const [localExtras, setLocalExtras] = useState(() => extraSchedules)
   const [addOpen, setAddOpen]   = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [popup, setPopup]       = useState<PopupData | null>(null)
   const wasInClassRef           = useRef(false)
-
-  // 서버에서 새 props가 오면 (router.refresh 후) 로컬 상태 동기화
-  useEffect(() => { setLocalExtras(extraSchedules) }, [extraSchedules])
 
   // 30초마다 시계 업데이트
   useEffect(() => {
@@ -298,9 +296,18 @@ export function ScheduleClient({
   }
 
   function handleDelete(id: string) {
-    setLocalExtras((prev) => prev.filter((e) => e.id !== id)) // 낙관적 제거
+    const snapshot = localExtras.find((e) => e.id === id)
+    setLocalExtras((prev) => prev.filter((e) => e.id !== id))
     startTransition(async () => {
-      await deleteExtraSchedule(id)
+      const res = await deleteExtraSchedule(id)
+      if (!res.success && snapshot) {
+        // 서버 삭제 실패 시 롤백
+        setLocalExtras((prev) =>
+          [...prev, snapshot].sort(
+            (a, b) => a.scheduled_date.localeCompare(b.scheduled_date) || a.start_time.localeCompare(b.start_time),
+          ),
+        )
+      }
     })
   }
 
