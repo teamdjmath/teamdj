@@ -5,7 +5,12 @@ import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
 
-export async function createExtraSchedule(formData: FormData): Promise<ActionResult> {
+type ExtraScheduleRow = {
+  id: string; title: string; scheduled_date: string
+  start_time: string; end_time: string; note: string | null
+}
+
+export async function createExtraSchedule(formData: FormData): Promise<ActionResult<ExtraScheduleRow>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -23,13 +28,15 @@ export async function createExtraSchedule(formData: FormData): Promise<ActionRes
     }
 
     // 유저 세션 클라이언트 사용 — RLS 정책 (auth.uid() = user_id) 통과
-    const { error } = await supabase.from('extra_schedules').insert({
-      user_id: user.id, title, scheduled_date, start_time, end_time, note,
-    })
+    const { data, error } = await supabase
+      .from('extra_schedules')
+      .insert({ user_id: user.id, title, scheduled_date, start_time, end_time, note })
+      .select('id, title, scheduled_date, start_time, end_time, note')
+      .single()
     if (error) throw error
 
     revalidatePath('/admin/schedule')
-    return { success: true }
+    return { success: true, data }
   })
 }
 

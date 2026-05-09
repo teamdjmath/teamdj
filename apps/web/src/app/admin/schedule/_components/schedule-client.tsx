@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useTransition, useMemo, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Modal } from '@/components/ui/modal'
 import { InputField } from '@/components/ui/form-field'
@@ -156,7 +155,6 @@ function ExtraCard({
 export function ScheduleClient({
   classes, extraSchedules, initialStaff, currentUserId, myInitialStatus,
 }: Props) {
-  const router = useRouter()
   const [now, setNow]           = useState(new Date())
   const [staff, setStaff]       = useState(initialStaff)
   const [myStatus, setMyStatus] = useState(myInitialStatus)
@@ -286,25 +284,16 @@ export function ScheduleClient({
     e.preventDefault()
     setFormError(null)
     const fd = new FormData(e.currentTarget)
-    // 폼 값으로 낙관적 업데이트용 객체 구성
-    const optimistic: ExtraSchedule = {
-      id:             `temp-${crypto.randomUUID()}`,
-      title:          (fd.get('title') as string).trim(),
-      scheduled_date: fd.get('scheduled_date') as string,
-      start_time:     fd.get('start_time') as string,
-      end_time:       fd.get('end_time') as string,
-      note:           (fd.get('note') as string | null)?.trim() || null,
-    }
     startTransition(async () => {
       const res = await createExtraSchedule(fd)
       if (!res.success) { setFormError(res.error); return }
+      // 서버에서 반환된 실제 레코드로 상태 업데이트 (router.refresh 불필요)
       setLocalExtras((prev) =>
-        [...prev, optimistic].sort(
+        [...prev, res.data!].sort(
           (a, b) => a.scheduled_date.localeCompare(b.scheduled_date) || a.start_time.localeCompare(b.start_time),
         ),
       )
       setAddOpen(false)
-      router.refresh() // 서버 재동기화 (정확한 ID 반영)
     })
   }
 
@@ -312,7 +301,6 @@ export function ScheduleClient({
     setLocalExtras((prev) => prev.filter((e) => e.id !== id)) // 낙관적 제거
     startTransition(async () => {
       await deleteExtraSchedule(id)
-      router.refresh()
     })
   }
 

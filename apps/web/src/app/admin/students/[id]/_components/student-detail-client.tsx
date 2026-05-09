@@ -11,6 +11,7 @@ import {
   changeStudentClass,
   linkParent,
   unlinkParent,
+  resetStudentPassword,
 } from '@/lib/actions/students'
 
 type ClassOption = { id: string; label: string }
@@ -45,6 +46,22 @@ export function StudentDetailClient({
 }: StudentDetailClientProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+
+  // 비밀번호 초기화
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
+  const [resetSuccess, setResetSuccess] = useState(false)
+
+  function handleResetPassword() {
+    setResetError(null)
+    setResetSuccess(false)
+    startTransition(async () => {
+      const res = await resetStudentPassword(student.id)
+      if (!res.success) { setResetError(res.error); return }
+      setResetSuccess(true)
+      setResetConfirmOpen(false)
+    })
+  }
 
   // 기본 정보 수정
   const [infoError, setInfoError] = useState<string | null>(null)
@@ -140,7 +157,23 @@ export function StudentDetailClient({
             {infoError && (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{infoError}</p>
             )}
-            <div className="flex justify-end">
+            {resetError && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{resetError}</p>
+            )}
+            {resetSuccess && (
+              <p className="rounded-lg bg-zinc-100 px-3 py-2 text-xs text-zinc-600">
+                비밀번호가 초기화되었습니다. 학생이 다음 로그인 시 비밀번호를 변경해야 합니다.
+              </p>
+            )}
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => { setResetError(null); setResetSuccess(false); setResetConfirmOpen(true) }}
+                className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-500 hover:bg-zinc-50 hover:text-zinc-700 disabled:opacity-50 transition-colors"
+              >
+                비밀번호 초기화
+              </button>
               <button
                 type="submit"
                 disabled={isPending}
@@ -240,6 +273,37 @@ export function StudentDetailClient({
           </div>
         </Card>
       </div>
+
+      {/* 비밀번호 초기화 확인 모달 */}
+      <Modal open={resetConfirmOpen} onClose={() => setResetConfirmOpen(false)} title="비밀번호 초기화" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-zinc-600">
+            <span className="font-semibold text-zinc-900">{student.name}</span> 학생의 비밀번호를 초기 비밀번호로 재설정합니다.
+            <br />
+            학생이 다음 로그인 시 비밀번호를 변경해야 합니다.
+          </p>
+          {resetError && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{resetError}</p>
+          )}
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setResetConfirmOpen(false)}
+              className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={handleResetPassword}
+              className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+            >
+              {isPending ? '초기화 중…' : '초기화'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* 학부모 연결 모달 */}
       <Modal open={parentOpen} onClose={() => setParentOpen(false)} title="학부모 연결" size="sm">

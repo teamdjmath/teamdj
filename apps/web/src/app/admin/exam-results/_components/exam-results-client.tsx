@@ -41,6 +41,8 @@ function gradeFromScore(score: number, gradeCuts: Record<string, number>): strin
   return '9등급'
 }
 
+import { InputField, SelectField, TextareaField } from '@/components/ui/form-field'
+
 export function ExamResultsClient({
   classes,
   students,
@@ -272,123 +274,114 @@ export function ExamResultsClient({
       {/* 결과 등록 모달 */}
       {createOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
           onClick={() => setCreateOpen(false)}
         >
           <div
-            className="w-full max-w-lg rounded-t-2xl sm:rounded-2xl bg-white px-5 pt-5 pb-8 max-h-[90vh] overflow-y-auto"
+            className="w-full max-w-xl rounded-3xl bg-white p-6 md:p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-zinc-900">시험 결과 등록</h2>
+            <div className="mb-8 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-zinc-950">특별 시험 결과 등록</h2>
+                <p className="text-sm text-zinc-500 mt-1">학생의 시험 점수와 피드백을 기록하세요.</p>
+              </div>
               <button
                 type="button"
                 onClick={() => setCreateOpen(false)}
-                className="text-sm text-zinc-400 hover:text-zinc-700"
+                className="rounded-full p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
               >
-                닫기
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
-            <form onSubmit={handleCreate} className="space-y-4">
+            <form onSubmit={handleCreate} className="space-y-6">
               {/* 분반 + 학생 */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-zinc-600">분반</label>
-                  <select
-                    value={form.classId}
-                    onChange={(e) => setForm((f) => ({ ...f, classId: e.target.value, studentId: '' }))}
-                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm focus:border-zinc-400 focus:outline-none"
-                  >
-                    {classes.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-zinc-600">학생</label>
-                  <select
-                    value={form.studentId}
-                    onChange={(e) => setForm((f) => ({ ...f, studentId: e.target.value }))}
-                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm focus:border-zinc-400 focus:outline-none"
-                  >
-                    <option value="">선택</option>
-                    {filteredStudents.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <SelectField
+                  label="분반"
+                  required
+                  value={form.classId}
+                  onChange={(e) => setForm((f) => ({ ...f, classId: e.target.value, studentId: '' }))}
+                >
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </SelectField>
+                <SelectField
+                  label="학생"
+                  required
+                  value={form.studentId}
+                  onChange={(e) => setForm((f) => ({ ...f, studentId: e.target.value }))}
+                >
+                  <option value="">학생 선택</option>
+                  {filteredStudents.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </SelectField>
               </div>
 
               {/* 시험명 + 유형 */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-zinc-600">시험명</label>
-                  <input
-                    type="text"
-                    value={form.examName}
-                    onChange={(e) => setForm((f) => ({ ...f, examName: e.target.value }))}
-                    placeholder="예) 6월 모의고사"
-                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm focus:border-zinc-400 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-zinc-600">유형</label>
-                  <select
-                    value={form.examType}
-                    onChange={(e) => setForm((f) => ({ ...f, examType: e.target.value }))}
-                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm focus:border-zinc-400 focus:outline-none"
-                  >
-                    {EXAM_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <InputField
+                  label="시험명"
+                  required
+                  value={form.examName}
+                  onChange={(e) => setForm((f) => ({ ...f, examName: e.target.value }))}
+                  placeholder="예: 2024년 6월 평가원 모의고사"
+                />
+                <SelectField
+                  label="유형"
+                  required
+                  value={form.examType}
+                  onChange={(e) => setForm((f) => ({ ...f, examType: e.target.value }))}
+                >
+                  {EXAM_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </SelectField>
               </div>
 
               {/* 날짜 + 점수 + 만점 */}
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-zinc-600">날짜</label>
-                  <input
-                    type="date"
-                    value={form.examDate}
-                    onChange={(e) => setForm((f) => ({ ...f, examDate: e.target.value }))}
-                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm focus:border-zinc-400 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-zinc-600">점수</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.score}
-                    onChange={(e) => setForm((f) => ({ ...f, score: e.target.value }))}
-                    placeholder="점수"
-                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm focus:border-zinc-400 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-zinc-600">만점</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={form.maxScore}
-                    onChange={(e) => setForm((f) => ({ ...f, maxScore: e.target.value }))}
-                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm focus:border-zinc-400 focus:outline-none"
-                  />
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                <InputField
+                  label="날짜"
+                  type="date"
+                  required
+                  value={form.examDate}
+                  onChange={(e) => setForm((f) => ({ ...f, examDate: e.target.value }))}
+                />
+                <InputField
+                  label="실득 점수"
+                  type="number"
+                  required
+                  min={0}
+                  value={form.score}
+                  onChange={(e) => setForm((f) => ({ ...f, score: e.target.value }))}
+                  placeholder="점수 입력"
+                />
+                <InputField
+                  label="시험 만점"
+                  type="number"
+                  required
+                  min={1}
+                  value={form.maxScore}
+                  onChange={(e) => setForm((f) => ({ ...f, maxScore: e.target.value }))}
+                  placeholder="예: 100"
+                />
               </div>
 
               {/* 등급컷 */}
-              <div>
-                <label className="mb-2 block text-xs font-medium text-zinc-600">
-                  등급컷 (선택, 각 등급 기준 점수)
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-zinc-900 uppercase tracking-widest">
+                  등급컷 설정 (선택)
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-3 p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
                   {GRADE_LABELS.map((label, idx) => (
-                    <div key={idx} className="flex items-center gap-1.5">
-                      <span className="shrink-0 text-xs text-zinc-400 w-10">{label}</span>
+                    <div key={idx} className="space-y-1">
+                      <span className="text-[10px] font-bold text-zinc-400 block ml-1">{label}</span>
                       <input
                         type="number"
                         min={0}
@@ -399,34 +392,39 @@ export function ExamResultsClient({
                             gradeCuts: { ...f.gradeCuts, [String(idx + 1)]: e.target.value },
                           }))
                         }
-                        placeholder="점"
-                        className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-xs focus:border-zinc-400 focus:outline-none"
+                        placeholder="점수"
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs focus:border-zinc-900 focus:outline-none transition-all"
                       />
                     </div>
                   ))}
                 </div>
+                <p className="text-[10px] text-zinc-400 ml-1">각 등급의 최저 기준 점수를 입력하면 등급이 자동 계산됩니다.</p>
               </div>
 
               {/* 학습 제안 */}
-              <div>
-                <label className="mb-1 block text-xs font-medium text-zinc-600">학습 제안 (선택)</label>
-                <textarea
-                  value={form.studySuggestion}
-                  onChange={(e) => setForm((f) => ({ ...f, studySuggestion: e.target.value }))}
-                  placeholder="학습 방향이나 피드백을 입력하세요."
-                  rows={3}
-                  className="w-full resize-none rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none"
-                />
-              </div>
+              <TextareaField
+                label="학습 제안 및 피드백"
+                value={form.studySuggestion}
+                onChange={(e) => setForm((f) => ({ ...f, studySuggestion: e.target.value }))}
+                placeholder="학생의 강점과 약점, 향후 학습 방향에 대한 구체적인 피드백을 남겨주세요."
+                rows={4}
+              />
 
-              {error && <p className="text-xs text-red-500">{error}</p>}
+              {error && (
+                <div className="flex items-center gap-2 p-4 bg-red-50 rounded-2xl text-red-600">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-sm font-medium">{error}</p>
+                </div>
+              )}
 
               <button
                 type="submit"
                 disabled={isPending}
-                className="w-full rounded-xl bg-zinc-950 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:bg-zinc-200 disabled:text-zinc-400"
+                className="w-full rounded-2xl bg-zinc-950 py-4 text-sm font-bold text-white shadow-xl transition-all hover:bg-zinc-800 hover:shadow-zinc-950/20 disabled:bg-zinc-200 disabled:text-zinc-400 active:scale-[0.98]"
               >
-                {isPending ? '저장 중…' : '저장'}
+                {isPending ? '시험 결과 저장 중...' : '시험 결과 등록하기'}
               </button>
             </form>
           </div>

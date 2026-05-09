@@ -7,6 +7,9 @@ const PUBLIC_PATHS = ['/', '/intro', '/login', '/register']
 // teacher / ta 전용 경로
 const ADMIN_PATH_PREFIX = '/admin'
 
+// 비밀번호 변경 경로 (인증 필요, 변경 완료 전까지 다른 경로 차단)
+const CHANGE_PASSWORD_PATH = '/change-password'
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -33,7 +36,17 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // 4. /admin/* 경로는 teacher / ta 만 접근 가능
+  // 4. 비밀번호 변경 강제: must_change_password 플래그가 true면 /change-password로 리다이렉트
+  if (user && user.user_metadata?.must_change_password === true) {
+    if (pathname !== CHANGE_PASSWORD_PATH) {
+      const cpUrl = request.nextUrl.clone()
+      cpUrl.pathname = CHANGE_PASSWORD_PATH
+      return NextResponse.redirect(cpUrl)
+    }
+    return supabaseResponse
+  }
+
+  // 5. /admin/* 경로는 teacher / ta 만 접근 가능
   if (user && pathname.startsWith(ADMIN_PATH_PREFIX)) {
     const role = user.user_metadata?.role as string | undefined
     if (role !== 'teacher' && role !== 'ta') {

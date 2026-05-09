@@ -60,7 +60,7 @@ export function ExcelImportModal({
       }))
 
       // 빈 행 제거 + 기본 유효성 검사
-      const valid = parsed.filter((r) => r.name && r.phone && r.password)
+      const valid = parsed.filter((r) => r.name && r.phone)
       if (valid.length === 0) {
         setParseError('유효한 데이터가 없습니다. 컬럼명을 확인해주세요.')
         return
@@ -159,8 +159,9 @@ export function ExcelImportModal({
               className="block w-full text-sm text-zinc-500 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-zinc-700"
             />
             <p className="mt-1.5 text-[11px] text-zinc-400">
-              필수 컬럼: <span className="font-mono">이름, 전화번호, 초기비밀번호, 학교명, 학년</span> &nbsp;|&nbsp;
+              필수 컬럼: <span className="font-mono">이름, 전화번호, 학교명, 학년</span> &nbsp;|&nbsp;
               선택: <span className="font-mono">분반명, 학부모전화번호</span>
+              &nbsp;·&nbsp;초기 비밀번호는 자동으로 설정됩니다.
             </p>
             {parseError && (
               <p className="mt-1.5 text-xs text-red-500">{parseError}</p>

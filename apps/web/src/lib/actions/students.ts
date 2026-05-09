@@ -10,7 +10,7 @@ import { logger } from '@/lib/logger'
 export type StudentBulkRow = {
   name: string
   phone: string
-  password: string
+  password?: string  // 무시됨 — 환경변수 사용
   className: string
   school: string
   grade: string
@@ -26,6 +26,10 @@ function toAuthEmail(phone: string) {
   return `${phone.replace(/\D/g, '')}@teamdj.com`
 }
 
+function getInitialPassword() {
+  return process.env.INITIAL_STUDENT_PASSWORD ?? 'teamdj1234'
+}
+
 export async function createStudent(formData: FormData): Promise<ActionResult> {
   const supabase      = await createClient()
   const adminSupabase = createAdminClient()
@@ -39,19 +43,19 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
 
     const name        = (formData.get('name')     as string).trim()
     const phone       = (formData.get('phone')    as string).trim()
-    const password    = formData.get('password') as string
     const classId     = formData.get('classId')  as string | null
     const school      = (formData.get('school')   as string || '').trim()
     const grade       = (formData.get('grade')    as string || '').trim()
     const parentPhone = (formData.get('parentPhone') as string || '').trim()
 
-    if (!name || !phone || !password) return { success: false, error: '필수 항목을 입력해주세요.' }
+    if (!name || !phone) return { success: false, error: '필수 항목을 입력해주세요.' }
 
+    const password = getInitialPassword()
     const email = toAuthEmail(phone)
 
     const { data: authData, error: authErr } = await adminSupabase.auth.admin.createUser({
       email, password, email_confirm: true,
-      user_metadata: { name, role: 'student', phone, school, grade },
+      user_metadata: { name, role: 'student', phone, school, grade, must_change_password: true },
     })
 
     if (authErr) {
@@ -69,8 +73,9 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
 
     const userId = authData.user.id
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: userErr } = await adminSupabase.from('users').upsert(
-      { id: userId, phone, name, role: 'student', school, grade },
+      { id: userId, phone, name, role: 'student', school, grade, must_change_password: true } as any,
       { onConflict: 'id' },
     )
 
@@ -108,6 +113,8 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
     return { succeeded: 0, failed: rows.map((r) => ({ name: r.name, phone: r.phone, reason: '인증 필요' })) }
   }
 
+  const password = getInitialPassword()
+
   const classNames = [...new Set(rows.map((r) => r.className).filter(Boolean))]
   const { data: classes } = await adminSupabase.from('class_groups').select('id, name').in('name', classNames)
   const classMap = new Map<string, string>((classes ?? []).map((c) => [c.name, c.id]))
@@ -119,8 +126,8 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
     const email = toAuthEmail(row.phone)
     try {
       const { data: authData, error: authErr } = await adminSupabase.auth.admin.createUser({
-        email, password: row.password, email_confirm: true,
-        user_metadata: { name: row.name, role: 'student', phone: row.phone, school: row.school, grade: row.grade },
+        email, password, email_confirm: true,
+        user_metadata: { name: row.name, role: 'student', phone: row.phone, school: row.school, grade: row.grade, must_change_password: true },
       })
 
       if (authErr) {
@@ -132,8 +139,9 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
       if (!authData?.user?.id) { failed.push({ name: row.name, phone: row.phone, reason: '계정 생성 실패: 사용자 정보 없음' }); continue }
 
       const userId = authData.user.id
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: userErr } = await adminSupabase.from('users').upsert(
-        { id: userId, phone: row.phone, name: row.name, role: 'student', school: row.school, grade: row.grade },
+        { id: userId, phone: row.phone, name: row.name, role: 'student', school: row.school, grade: row.grade, must_change_password: true } as any,
         { onConflict: 'id' },
       )
 
@@ -258,6 +266,37 @@ export async function unlinkParent(linkId: string, studentId: string): Promise<A
     const adminSupabase = createAdminClient()
     const { error } = await adminSupabase.from('parent_links').delete().eq('id', linkId)
     if (error) throw error
+
+    revalidatePath(`/admin/students/${studentId}`)
+    return { success: true }
+  })
+}
+
+export async function resetStudentPassword(studentId: string): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user: caller } } = await supabase.auth.getUser()
+
+  return withAction('resetStudentPassword', caller?.id, async () => {
+    if (!caller) return { success: false, error: '인증이 필요합니다.' }
+
+    const role = caller.user_metadata?.role as string | undefined
+    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+
+    const adminSupabase = createAdminClient()
+    const password = getInitialPassword()
+
+    const { error: authErr } = await adminSupabase.auth.admin.updateUserById(studentId, {
+      password,
+      user_metadata: { must_change_password: true },
+    })
+    if (authErr) throw authErr
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: dbErr } = await adminSupabase
+      .from('users')
+      .update({ must_change_password: true } as any)
+      .eq('id', studentId)
+    if (dbErr) throw dbErr
 
     revalidatePath(`/admin/students/${studentId}`)
     return { success: true }
