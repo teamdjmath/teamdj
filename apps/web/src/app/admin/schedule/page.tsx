@@ -22,7 +22,7 @@ export default async function SchedulePage() {
   if (!user) redirect('/login')
 
   const role = user.user_metadata?.role as string | undefined
-  if (role !== 'teacher' && role !== 'ta') redirect('/dashboard')
+  if (!['teacher', 'ta_admin', 'ta_assistant'].includes(role ?? '')) redirect('/dashboard')
 
   const admin = createAdminClient()
 
@@ -38,7 +38,7 @@ export default async function SchedulePage() {
       .select('id, name, subject, grade, start_time, end_time, day_of_week')
       .eq('is_active', true).not('day_of_week', 'is', null).order('name')
     classes = data ?? []
-  } else {
+  } else if (role === 'ta_admin' || role === 'ta_assistant') {
     const { data: allAccess } = await admin
       .from('ta_class_access').select('is_all_classes')
       .eq('ta_id', user.id).eq('is_all_classes', true).limit(1)
@@ -78,7 +78,7 @@ export default async function SchedulePage() {
   const { data: staffUsers } = await supabase
     .from('users')
     .select('id, name, role')
-    .in('role', ['teacher', 'ta'])
+    .in('role', ['teacher', 'ta_admin', 'ta_assistant'])
     .eq('is_active', true)
     .order('role').order('name')
 

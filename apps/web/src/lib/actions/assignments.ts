@@ -25,7 +25,7 @@ export async function createAssignment(data: {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
 
     const role = user.user_metadata?.role as string | undefined
-    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const adminSupabase = createAdminClient()
     const { error } = await adminSupabase.from('assignments').insert({
@@ -53,7 +53,7 @@ export async function updateAssignment(
     if (!user) return { success: false, error: '인증이 필요합니다.' }
 
     const role = user.user_metadata?.role as string | undefined
-    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const adminSupabase = createAdminClient()
     const { error } = await adminSupabase
@@ -75,7 +75,7 @@ export async function deleteAssignment(id: string): Promise<ActionResult> {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
 
     const role = user.user_metadata?.role as string | undefined
-    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const adminSupabase = createAdminClient()
     const { error } = await adminSupabase.from('assignments').delete().eq('id', id)
@@ -98,7 +98,7 @@ export async function saveProgress(
     if (!user) return { success: false, error: '인증이 필요합니다.' }
 
     const role = user.user_metadata?.role as string | undefined
-    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
     if (!entries.length) return { success: false, error: '저장할 데이터가 없습니다.' }
 
     const today = new Date().toISOString().split('T')[0]
@@ -128,7 +128,7 @@ export async function createCategory(name: string): Promise<ActionResult> {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
 
     const role = user.user_metadata?.role as string | undefined
-    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const { error } = await supabase.from('assignment_categories').insert({ name })
     if (error) throw error

@@ -16,7 +16,7 @@ export default async function StaffPage() {
   const { data: staffUsers } = await supabase
     .from('users')
     .select('id, name, role')
-    .in('role', ['teacher', 'ta'])
+    .in('role', ['teacher', 'ta_admin', 'ta_assistant'])
     .eq('is_active', true)
     .order('role')
     .order('name')

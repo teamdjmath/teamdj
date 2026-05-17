@@ -8,12 +8,12 @@ export function LandingNav() {
           TeamDJ
         </Link>
         <nav className="flex items-center gap-4">
-          <a
-            href="#intro"
+          <Link
+            href="/intro"
             className="text-sm font-medium text-zinc-600 hover:text-zinc-950 transition-colors"
           >
             소개
-          </a>
+          </Link>
           <Link
             href="/consultation"
             className="rounded-full bg-zinc-950 px-4 py-1.5 text-sm font-semibold text-white hover:bg-zinc-800 transition-colors"

@@ -8,10 +8,12 @@ export type AuthState = {
   error: string | null
 }
 
+const STAFF_ROLES = ['teacher', 'ta_admin', 'ta_assistant']
+
 // ────────────────────────────────────────────────
 // 로그인
 // role: 'student' | 'parent' → 전화번호를 이메일 형식으로 변환
-// role: 'teacher' | 'ta'    → 이메일 그대로 사용
+// role: 'teacher' | 'ta_admin' | 'ta_assistant' → 이메일 그대로 사용
 // ────────────────────────────────────────────────
 export async function signIn(
   _prev: AuthState,
@@ -40,14 +42,18 @@ export async function signIn(
   } = await supabase.auth.getUser()
 
   const role = user?.user_metadata?.role as string | undefined
-  const dest =
-    role === 'teacher' || role === 'ta' ? '/admin/dashboard' : '/dashboard'
+  const dest = STAFF_ROLES.includes(role ?? '') ? '/admin/dashboard' : '/dashboard'
 
   redirect(dest)
 }
 
 // ────────────────────────────────────────────────
 // 회원가입 (선생님 / 조교 전용 — 초대 코드 검증)
+// 초대 코드로 역할 자동 결정:
+//   TEACHER_INVITE_CODE      → teacher
+//   TA_ADMIN_INVITE_CODE     → ta_admin  (사무 조교)
+//   TA_ASSISTANT_INVITE_CODE → ta_assistant (첨삭 조교)
+//   TA_INVITE_CODE           → ta_admin  (하위 호환)
 // ────────────────────────────────────────────────
 export async function signUp(
   _prev: AuthState,
@@ -58,13 +64,16 @@ export async function signUp(
   const password   = formData.get('password') as string
   const inviteCode = (formData.get('inviteCode') as string).trim()
 
-  // 초대 코드로 역할 결정
-  const teacherCode = process.env.TEACHER_INVITE_CODE
-  const taCode      = process.env.TA_INVITE_CODE
+  const teacherCode        = process.env.TEACHER_INVITE_CODE
+  const taAdminCode        = process.env.TA_ADMIN_INVITE_CODE
+  const taAssistantCode    = process.env.TA_ASSISTANT_INVITE_CODE
+  const taCodeLegacy       = process.env.TA_INVITE_CODE
 
-  let role: 'teacher' | 'ta' | null = null
-  if (inviteCode === teacherCode) role = 'teacher'
-  else if (inviteCode === taCode)  role = 'ta'
+  let role: 'teacher' | 'ta_admin' | 'ta_assistant' | null = null
+  if (inviteCode === teacherCode)          role = 'teacher'
+  else if (inviteCode === taAdminCode)     role = 'ta_admin'
+  else if (inviteCode === taAssistantCode) role = 'ta_assistant'
+  else if (inviteCode === taCodeLegacy)    role = 'ta_admin'
 
   if (!role) {
     return { error: '유효하지 않은 초대 코드입니다.' }

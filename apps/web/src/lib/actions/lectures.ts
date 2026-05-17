@@ -18,7 +18,7 @@ export async function createCourse(courseName: string, classIds: string[]): Prom
   return withAction('createCourse', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
     const role = user.user_metadata?.role as string | undefined
-    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
     if (!courseName.trim()) return { success: false, error: '강좌명을 입력하세요.' }
 
     const admin = createAdminClient()
@@ -40,7 +40,7 @@ export async function updateCourseClasses(courseName: string, classIds: string[]
   return withAction('updateCourseClasses', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
     const role = user.user_metadata?.role as string | undefined
-    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const admin = createAdminClient()
     await admin.from('lecture_class_access').delete().eq('course_name', courseName)
@@ -63,7 +63,7 @@ export async function deleteCourse(courseName: string): Promise<ActionResult> {
   return withAction('deleteCourse', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
     const role = user.user_metadata?.role as string | undefined
-    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const admin = createAdminClient()
     await admin.from('lectures').delete().eq('course_name', courseName)
@@ -86,7 +86,7 @@ export async function createLecture(data: {
   return withAction('createLecture', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
     const role = user.user_metadata?.role as string | undefined
-    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
     if (!data.title.trim()) return { success: false, error: '강의 제목을 입력하세요.' }
     if (!data.courseName.trim()) return { success: false, error: '강좌명이 없습니다.' }
 
@@ -115,7 +115,7 @@ export async function updateLecture(
   return withAction('updateLecture', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
     const role = user.user_metadata?.role as string | undefined
-    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const admin = createAdminClient()
     const { error } = await admin
@@ -140,7 +140,7 @@ export async function updateLectureOrder(id: string, orderNum: number): Promise<
   return withAction('updateLectureOrder', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
     const role = user.user_metadata?.role as string | undefined
-    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const admin = createAdminClient()
     const { error } = await admin.from('lectures').update({ order_num: orderNum }).eq('id', id)
@@ -157,7 +157,7 @@ export async function deleteLecture(id: string): Promise<ActionResult> {
   return withAction('deleteLecture', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
     const role = user.user_metadata?.role as string | undefined
-    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const admin = createAdminClient()
     const { error } = await admin.from('lectures').delete().eq('id', id)
@@ -177,7 +177,7 @@ export async function syncYouTubePlaylistToCourse(
   return withAction('syncYouTubePlaylistToCourse', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
     const role = user.user_metadata?.role as string | undefined
-    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const apiKey = process.env.YOUTUBE_API_KEY
     if (!apiKey) return { success: false, error: 'YouTube API 키가 설정되지 않았습니다.' }

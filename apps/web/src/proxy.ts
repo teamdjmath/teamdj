@@ -4,11 +4,31 @@ import { updateSession } from './lib/supabase/middleware'
 // 로그인 없이 접근 가능한 공개 경로
 const PUBLIC_PATHS = ['/', '/intro', '/login', '/register', '/consultation']
 
-// teacher / ta 전용 경로
+// staff 전용 경로
 const ADMIN_PATH_PREFIX = '/admin'
 
 // 비밀번호 변경 경로 (인증 필요, 변경 완료 전까지 다른 경로 차단)
 const CHANGE_PASSWORD_PATH = '/change-password'
+
+// 스태프 역할 정의
+const STAFF_ROLES = ['teacher', 'ta_admin', 'ta_assistant']
+
+// ta_assistant 허용 경로 (/admin 하위) — /admin/qna/stats 는 senior 전용이므로 제외
+const TA_ASSISTANT_ALLOWED = [
+  '/admin/dashboard',
+  '/admin/qna',
+  '/admin/messages',
+  '/admin/schedule',
+  '/admin/staff',
+]
+
+// ta_assistant 접근 차단 경로 (허용 경로 하위라도 차단)
+const TA_ASSISTANT_BLOCKED = ['/admin/qna/stats']
+
+function isTaAssistantAllowed(pathname: string): boolean {
+  if (TA_ASSISTANT_BLOCKED.some((b) => pathname === b || pathname.startsWith(b + '/'))) return false
+  return TA_ASSISTANT_ALLOWED.some((p) => pathname === p || pathname.startsWith(p + '/'))
+}
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -30,7 +50,7 @@ export async function proxy(request: NextRequest) {
   if (user && isPublic && (pathname === '/login' || pathname === '/register')) {
     const role = user.user_metadata?.role as string | undefined
     const redirectUrl = request.nextUrl.clone()
-    redirectUrl.pathname = role === 'teacher' || role === 'ta'
+    redirectUrl.pathname = STAFF_ROLES.includes(role ?? '')
       ? '/admin/dashboard'
       : '/dashboard'
     return NextResponse.redirect(redirectUrl)
@@ -46,13 +66,21 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse
   }
 
-  // 5. /admin/* 경로는 teacher / ta 만 접근 가능
+  // 5. /admin/* 경로는 스태프만 접근 가능
   if (user && pathname.startsWith(ADMIN_PATH_PREFIX)) {
     const role = user.user_metadata?.role as string | undefined
-    if (role !== 'teacher' && role !== 'ta') {
+
+    if (!STAFF_ROLES.includes(role ?? '')) {
       const dashboardUrl = request.nextUrl.clone()
       dashboardUrl.pathname = '/dashboard'
       return NextResponse.redirect(dashboardUrl)
+    }
+
+    // ta_assistant는 허용된 경로만 접근 가능
+    if (role === 'ta_assistant' && !isTaAssistantAllowed(pathname)) {
+      const qnaUrl = request.nextUrl.clone()
+      qnaUrl.pathname = '/admin/qna'
+      return NextResponse.redirect(qnaUrl)
     }
   }
 

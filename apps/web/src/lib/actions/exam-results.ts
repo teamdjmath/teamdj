@@ -27,7 +27,7 @@ export async function createExamResult(data: {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
 
     const role = user.user_metadata?.role as string | undefined
-    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from('exam_results').insert({
@@ -60,7 +60,7 @@ export async function autoRankExam(examName: string, examDate: string): Promise<
     if (!user) return { success: false, error: '인증이 필요합니다.' }
 
     const role = user.user_metadata?.role as string | undefined
-    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: rows, error: fetchErr } = await (supabase as any)
@@ -98,7 +98,7 @@ export async function deleteExamResult(id: string): Promise<ActionResult> {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
 
     const role = user.user_metadata?.role as string | undefined
-    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const { error } = await supabase.from('exam_results').delete().eq('id', id)
     if (error) throw error

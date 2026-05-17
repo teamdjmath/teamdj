@@ -9,10 +9,17 @@ import { NotificationBell } from '@/components/ui/notification-bell'
 import { ToastContainer } from '@/components/ui/toast'
 import { getUnreadConsultationCount } from '@/lib/actions/consultations'
 
+// 역할 계층 정의
+// 'all'      → teacher + ta_admin + ta_assistant
+// 'senior'   → teacher + ta_admin
+// 'teacher'  → teacher only
+type NavVisibility = 'all' | 'senior' | 'teacher'
+
 const NAV_ITEMS = [
   {
     href: '/admin/dashboard',
     label: '홈',
+    visibility: 'all' as NavVisibility,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -23,6 +30,7 @@ const NAV_ITEMS = [
   {
     href: '/admin/classes',
     label: '분반 관리',
+    visibility: 'senior' as NavVisibility,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -32,6 +40,7 @@ const NAV_ITEMS = [
   {
     href: '/admin/students',
     label: '학생 관리',
+    visibility: 'senior' as NavVisibility,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -43,6 +52,7 @@ const NAV_ITEMS = [
   {
     href: '/admin/attendance',
     label: '출석 체크',
+    visibility: 'senior' as NavVisibility,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 11l3 3L22 4" />
@@ -53,6 +63,7 @@ const NAV_ITEMS = [
   {
     href: '/admin/assignments',
     label: '과제 관리',
+    visibility: 'senior' as NavVisibility,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" />
@@ -62,6 +73,7 @@ const NAV_ITEMS = [
   {
     href: '/admin/scores',
     label: '테스트 점수',
+    visibility: 'senior' as NavVisibility,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2zm0 0V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10m-6 0a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m0 0V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z" />
@@ -69,17 +81,19 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: '/admin/qna',
-    label: '질의응답',
+    href: '/admin/exam-results',
+    label: '특별 시험',
+    visibility: 'senior' as NavVisibility,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9 2 2 4-4" />
       </svg>
     ),
   },
   {
     href: '/admin/reports',
     label: '학습 리포트',
+    visibility: 'senior' as NavVisibility,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
@@ -89,6 +103,7 @@ const NAV_ITEMS = [
   {
     href: '/admin/notices',
     label: '공지사항',
+    visibility: 'senior' as NavVisibility,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V5a2 2 0 1 0-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9" />
@@ -98,6 +113,7 @@ const NAV_ITEMS = [
   {
     href: '/admin/lectures',
     label: '강의 영상',
+    visibility: 'senior' as NavVisibility,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
         <polygon strokeLinecap="round" strokeLinejoin="round" points="23 7 16 12 23 17 23 7" />
@@ -106,17 +122,29 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: '/admin/exam-results',
-    label: '특별 시험',
+    href: '/admin/qna',
+    label: '질의응답',
+    visibility: 'all' as NavVisibility,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9 2 2 4-4" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+      </svg>
+    ),
+  },
+  {
+    href: '/admin/consultations',
+    label: '상담',
+    visibility: 'teacher' as NavVisibility,
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
       </svg>
     ),
   },
   {
     href: '/admin/messages',
     label: '쪽지 발송',
+    visibility: 'all' as NavVisibility,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
@@ -126,6 +154,7 @@ const NAV_ITEMS = [
   {
     href: '/admin/schedule',
     label: '근무',
+    visibility: 'all' as NavVisibility,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
         <rect x="3" y="4" width="18" height="18" rx="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -135,17 +164,30 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: '/admin/consultations',
-    label: '상담',
+    href: '/admin/qna/stats',
+    label: '답변 통계',
+    visibility: 'senior' as NavVisibility,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
       </svg>
     ),
   },
 ] as const
 
 export type NavItem = (typeof NAV_ITEMS)[number]
+
+const STAFF_ROLES = ['teacher', 'ta_admin', 'ta_assistant'] as const
+type StaffRole = (typeof STAFF_ROLES)[number]
+
+function filterNavByRole(role: StaffRole) {
+  return NAV_ITEMS.filter((item) => {
+    if (item.visibility === 'all') return true
+    if (item.visibility === 'senior') return role === 'teacher' || role === 'ta_admin'
+    if (item.visibility === 'teacher') return role === 'teacher'
+    return false
+  })
+}
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient()
@@ -154,11 +196,15 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   if (!user) redirect('/login')
 
   const role = user.user_metadata?.role as string | undefined
-  if (role !== 'teacher' && role !== 'ta') redirect('/dashboard')
+  if (!STAFF_ROLES.includes(role as StaffRole)) redirect('/dashboard')
 
+  const staffRole = role as StaffRole
   const displayName = user.user_metadata?.name ?? user.email ?? ''
-  const unreadConsultations = await getUnreadConsultationCount()
+
+  const unreadConsultations = staffRole === 'teacher' ? await getUnreadConsultationCount() : 0
   const badges: Record<string, number> = unreadConsultations > 0 ? { '/admin/consultations': unreadConsultations } : {}
+
+  const visibleItems = filterNavByRole(staffRole)
 
   return (
     <NotificationsProvider userId={user.id}>
@@ -170,12 +216,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <div className="flex h-14 items-center px-5 border-b border-zinc-100">
             <span className="text-base font-bold tracking-tight text-zinc-950">TeamDJ</span>
             <span className="ml-2 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 uppercase">
-              {role}
+              {staffRole}
             </span>
           </div>
 
           {/* 네비게이션 (클라이언트 — usePathname으로 활성 상태 처리) */}
-          <SidebarNav items={NAV_ITEMS} badges={badges} />
+          <SidebarNav items={visibleItems} badges={badges} />
 
           {/* 하단 유저 정보 */}
           <div className="border-t border-zinc-100 px-4 py-4 space-y-2">
@@ -193,7 +239,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <div className="flex items-center gap-2">
             <NotificationBell />
             <span className="text-sm text-zinc-500">{displayName}</span>
-            <MobileNav items={NAV_ITEMS} badges={badges} />
+            <MobileNav items={visibleItems} badges={badges} />
           </div>
         </div>
 

@@ -27,7 +27,7 @@ export function ChangePasswordForm({ role }: { role: string }) {
     startTransition(async () => {
       const res = await changePassword(newPassword)
       if (!res.success) { setError(res.error); return }
-      const dest = role === 'teacher' || role === 'ta' ? '/admin/dashboard' : '/dashboard'
+      const dest = ['teacher', 'ta_admin', 'ta_assistant'].includes(role) ? '/admin/dashboard' : '/dashboard'
       router.replace(dest)
     })
   }

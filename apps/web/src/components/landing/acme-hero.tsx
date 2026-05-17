@@ -1,48 +1,10 @@
 "use client";
 
-import { Menu } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
 import { motion } from "motion/react";
-import Link from "next/link";
 
 export function AcmeHero() {
   return (
     <div className="container max-w-5xl mx-auto">
-      <header className="relative pt-4">
-        <nav className="flex items-center justify-between rounded-xl bg-white py-2 px-4 shadow-lg border border-zinc-200">
-          <div className="flex items-center space-x-6">
-            <Link href="/" className="text-lg font-black tracking-tighter text-zinc-950 uppercase italic">
-              TeamDJ
-            </Link>
-            <div className="hidden md:flex items-center space-x-6">
-              <a href="/intro" className="text-sm text-zinc-500 hover:text-zinc-950 transition-colors">
-                소개
-              </a>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Button asChild className="hidden md:inline-flex h-7 rounded-full bg-zinc-950 px-4 text-sm font-bold text-white hover:bg-zinc-800">
-              <Link href="/login">로그인</Link>
-            </Button>
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7 md:hidden">
-                  <Menu className="h-[15px] w-[15px]" />
-                  <span className="sr-only">Open menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[240px]">
-                <nav className="flex flex-col space-y-4 pt-8">
-                  <Link href="/login" className="text-sm font-medium">로그인</Link>
-                  <a href="/intro" className="text-sm text-zinc-500">소개</a>
-                </nav>
-              </SheetContent>
-            </Sheet>
-          </div>
-        </nav>
-      </header>
-
       <main className="relative container px-2 mx-auto">
         <section className="w-full pt-12 pb-24 md:pt-16 md:pb-32 lg:pt-20 lg:pb-36">
           <motion.div
