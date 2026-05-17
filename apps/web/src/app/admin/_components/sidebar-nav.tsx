@@ -4,16 +4,28 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { NavItem } from '../layout'
 
+function isItemActive(href: string, pathname: string, allHrefs: readonly string[]): boolean {
+  if (href === '/admin/dashboard') return pathname === href
+  const matches = pathname === href || pathname.startsWith(href + '/')
+  if (!matches) return false
+  // 더 구체적인 다른 항목이 현재 경로에 매칭되면 이 항목은 비활성
+  const moreSpecific = allHrefs.some(
+    (other) =>
+      other !== href &&
+      other.startsWith(href) &&
+      (pathname === other || pathname.startsWith(other + '/')),
+  )
+  return !moreSpecific
+}
+
 export function SidebarNav({ items, badges }: { items: readonly NavItem[]; badges?: Record<string, number> }) {
   const pathname = usePathname()
+  const allHrefs = items.map((i) => i.href)
 
   return (
     <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
       {items.map(({ href, label, icon }) => {
-        const active =
-          href === '/admin/dashboard'
-            ? pathname === href
-            : pathname.startsWith(href)
+        const active = isItemActive(href, pathname, allHrefs)
         const badge = badges?.[href] ?? 0
         return (
           <Link

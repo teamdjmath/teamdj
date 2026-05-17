@@ -56,7 +56,7 @@ export default async function QnaStatsPage({
   const periodStart = getPeriodStart(period)
   let answersQuery = db
     .from('qna_answers')
-    .select('ta_id, created_at')
+    .select('ta_id, created_at, difficulty')
     .in('ta_id', staffIds)
 
   if (periodStart) {
@@ -68,12 +68,18 @@ export default async function QnaStatsPage({
   // 전체 기간 집계 (비교용)
   const { data: allAnswers } = await db
     .from('qna_answers')
-    .select('ta_id')
+    .select('ta_id, difficulty')
     .in('ta_id', staffIds)
 
   // ta_id 기준 집계
   const periodCount: Record<string, number> = {}
   const totalCount: Record<string, number> = {}
+  const diffLow: Record<string, number> = {}   // 0–3
+  const diffMid: Record<string, number> = {}   // >3–6
+  const diffHigh: Record<string, number> = {}  // >6–10
+  const diffSum: Record<string, number> = {}
+  const diffSetCount: Record<string, number> = {}
+  const diffUnset: Record<string, number> = {}
 
   for (const row of answers ?? []) {
     const id = row.ta_id as string
@@ -82,16 +88,35 @@ export default async function QnaStatsPage({
   for (const row of allAnswers ?? []) {
     const id = row.ta_id as string
     totalCount[id] = (totalCount[id] ?? 0) + 1
+    const d = row.difficulty as number | null
+    if (d === null || d === undefined) {
+      diffUnset[id] = (diffUnset[id] ?? 0) + 1
+    } else {
+      diffSum[id] = (diffSum[id] ?? 0) + d
+      diffSetCount[id] = (diffSetCount[id] ?? 0) + 1
+      if (d <= 4) diffLow[id] = (diffLow[id] ?? 0) + 1
+      else if (d <= 6) diffMid[id] = (diffMid[id] ?? 0) + 1
+      else diffHigh[id] = (diffHigh[id] ?? 0) + 1
+    }
   }
 
   const rows = (staffList ?? [])
-    .map((s) => ({
-      id: s.id as string,
-      name: s.name as string,
-      role: s.role as string,
-      periodCount: periodCount[s.id as string] ?? 0,
-      totalCount: totalCount[s.id as string] ?? 0,
-    }))
+    .map((s) => {
+      const sid = s.id as string
+      const setCount = diffSetCount[sid] ?? 0
+      return {
+        id: sid,
+        name: s.name as string,
+        role: s.role as string,
+        periodCount: periodCount[sid] ?? 0,
+        totalCount: totalCount[sid] ?? 0,
+        diffLow: diffLow[sid] ?? 0,
+        diffMid: diffMid[sid] ?? 0,
+        diffHigh: diffHigh[sid] ?? 0,
+        diffAvg: setCount > 0 ? (diffSum[sid] ?? 0) / setCount : null,
+        diffUnset: diffUnset[sid] ?? 0,
+      }
+    })
     .sort((a, b) => b.periodCount - a.periodCount)
 
   const PERIODS: Period[] = ['week', 'month', 'all']
@@ -139,12 +164,17 @@ export default async function QnaStatsPage({
                 {periodLabel(period)} 답변
               </th>
               <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">전체 답변</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">하 (1–4)</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">중 (5–6)</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">상 (7–8)</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">평균</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">미설정</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-50">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-5 py-10 text-center text-sm text-zinc-400">
+                <td colSpan={9} className="px-5 py-10 text-center text-sm text-zinc-400">
                   데이터가 없습니다.
                 </td>
               </tr>
@@ -169,9 +199,14 @@ export default async function QnaStatsPage({
                       {r.periodCount}
                     </span>
                   </td>
+                  <td className="px-5 py-3.5 text-right text-zinc-500">{r.totalCount}</td>
+                  <td className="px-5 py-3.5 text-right text-zinc-500">{r.diffLow || '—'}</td>
+                  <td className="px-5 py-3.5 text-right text-zinc-500">{r.diffMid || '—'}</td>
+                  <td className="px-5 py-3.5 text-right text-zinc-500">{r.diffHigh || '—'}</td>
                   <td className="px-5 py-3.5 text-right text-zinc-500">
-                    {r.totalCount}
+                    {r.diffAvg !== null ? r.diffAvg.toFixed(2) : '—'}
                   </td>
+                  <td className="px-5 py-3.5 text-right text-zinc-400 text-xs">{r.diffUnset || '—'}</td>
                 </tr>
               ))
             )}
@@ -186,6 +221,16 @@ export default async function QnaStatsPage({
                 <td className="px-5 py-3 text-right text-xs text-zinc-500">
                   {rows.reduce((s, r) => s + r.totalCount, 0)}
                 </td>
+                <td className="px-5 py-3 text-right text-xs text-zinc-500">
+                  {rows.reduce((s, r) => s + r.diffLow, 0) || '—'}
+                </td>
+                <td className="px-5 py-3 text-right text-xs text-zinc-500">
+                  {rows.reduce((s, r) => s + r.diffMid, 0) || '—'}
+                </td>
+                <td className="px-5 py-3 text-right text-xs text-zinc-500">
+                  {rows.reduce((s, r) => s + r.diffHigh, 0) || '—'}
+                </td>
+                <td colSpan={2} />
               </tr>
             </tfoot>
           )}

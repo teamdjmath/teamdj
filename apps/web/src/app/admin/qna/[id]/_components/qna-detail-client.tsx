@@ -29,6 +29,7 @@ type Answer = {
   answered_at: string
   taId: string
   taName: string
+  difficulty?: number | null
 }
 
 interface Props {
@@ -62,6 +63,7 @@ function AnswerEditor({
   files, onFileChange, onRemoveFile,
   tab, onTabChange,
   aiLoading, aiErr, onAiDraft,
+  difficulty, onDifficultyChange,
   errMsg, onSubmit, submitLabel, isPending, onCancel,
 }: {
   content: string
@@ -76,6 +78,8 @@ function AnswerEditor({
   aiLoading?: boolean
   aiErr?: string
   onAiDraft?: () => void
+  difficulty: number | null
+  onDifficultyChange: (v: number | null) => void
   errMsg: string
   onSubmit: () => void
   submitLabel: string
@@ -214,6 +218,46 @@ function AnswerEditor({
         )}
       </div>
 
+      {/* 난이도 */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400">
+          난이도 (1–8, 선택) · 하 1–4 / 중 5–6 / 상 7–8
+        </label>
+        <div className="flex items-center gap-3">
+          <input
+            type="range"
+            min={1}
+            max={8}
+            step={1}
+            value={difficulty ?? 4}
+            onChange={(e) => onDifficultyChange(parseInt(e.target.value, 10))}
+            disabled={isPending || difficulty === null}
+            className="h-1.5 w-48 accent-zinc-950 disabled:opacity-50"
+          />
+          <span className="min-w-10 text-sm font-medium text-zinc-700">
+            {difficulty !== null ? difficulty : '—'}
+          </span>
+          {difficulty !== null && (
+            <button
+              type="button"
+              onClick={() => onDifficultyChange(null)}
+              className="text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+            >
+              초기화
+            </button>
+          )}
+          {difficulty === null && (
+            <button
+              type="button"
+              onClick={() => onDifficultyChange(4)}
+              className="text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+            >
+              설정
+            </button>
+          )}
+        </div>
+      </div>
+
       {errMsg && <p className="text-sm text-red-500 font-medium">{errMsg}</p>}
 
       <div className="flex items-center justify-end gap-3">
@@ -250,6 +294,7 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
   const [tab, setTab] = useState<'write' | 'preview'>('write')
   const [mediaUrls, setMediaUrls] = useState<string[]>([])
   const [files, setFiles] = useState<File[]>([])
+  const [difficulty, setDifficulty] = useState<number | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiErr, setAiErr] = useState('')
 
@@ -258,6 +303,7 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
   const [editTab, setEditTab] = useState<'write' | 'preview'>('write')
   const [editMediaUrls, setEditMediaUrls] = useState<string[]>([])
   const [editFiles, setEditFiles] = useState<File[]>([])
+  const [editDifficulty, setEditDifficulty] = useState<number | null>(null)
   const [editErr, setEditErr] = useState('')
 
   const isAssigned = question.assigned_ta_id === currentUserId
@@ -299,12 +345,13 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
         }
 
         const allMediaUrls = [...mediaUrls, ...uploadedUrls]
-        const res = await submitAnswer({ questionId: question.id, content: content.trim(), mediaUrls: allMediaUrls, isAiDraft: false })
+        const res = await submitAnswer({ questionId: question.id, content: content.trim(), mediaUrls: allMediaUrls, isAiDraft: false, difficulty })
         if (res.error) { setErrMsg(res.error); return }
-        
+
         setContent('')
         setMediaUrls([])
         setFiles([])
+        setDifficulty(null)
         router.refresh()
       } catch (err: unknown) {
         if (err instanceof Error) {
@@ -321,6 +368,7 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
     setEditContent(a.content)
     setEditMediaUrls([...a.media_urls])
     setEditFiles([])
+    setEditDifficulty(a.difficulty ?? null)
     setEditTab('write')
     setEditErr('')
   }
@@ -343,7 +391,7 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
         }
 
         const allMediaUrls = [...editMediaUrls, ...uploadedUrls]
-        const res = await updateAnswer({ answerId: editingAnswerId, questionId: question.id, content: editContent.trim(), mediaUrls: allMediaUrls })
+        const res = await updateAnswer({ answerId: editingAnswerId, questionId: question.id, content: editContent.trim(), mediaUrls: allMediaUrls, difficulty: editDifficulty })
         if (res.error) { setEditErr(res.error); return }
 
         setEditingAnswerId(null)
@@ -431,6 +479,7 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
                   }}
                   onRemoveFile={(i) => setEditFiles(p => p.filter((_, idx) => idx !== i))}
                   tab={editTab} onTabChange={setEditTab}
+                  difficulty={editDifficulty} onDifficultyChange={setEditDifficulty}
                   errMsg={editErr} onSubmit={handleUpdateAnswer}
                   submitLabel="수정 완료" isPending={pending}
                   onCancel={() => setEditingAnswerId(null)}
@@ -442,6 +491,11 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-zinc-800">{a.taName}</span>
                     <span className="text-xs text-zinc-400">{formatDatetime(a.answered_at)}</span>
+                    {a.difficulty !== null && a.difficulty !== undefined && (
+                      <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-600">
+                        난이도 {a.difficulty}
+                      </span>
+                    )}
                   </div>
                   {a.taId === currentUserId && (
                     <div className="flex items-center gap-2">
@@ -495,6 +549,7 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
             onRemoveFile={(i) => setFiles(p => p.filter((_, idx) => idx !== i))}
             tab={tab} onTabChange={setTab}
             aiLoading={aiLoading} aiErr={aiErr} onAiDraft={handleAiDraft}
+            difficulty={difficulty} onDifficultyChange={setDifficulty}
             errMsg={errMsg} onSubmit={handleSubmit}
             submitLabel="답변 제출하기" isPending={pending}
           />

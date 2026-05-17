@@ -31,6 +31,7 @@ export async function submitAnswer(data: {
   content: string
   mediaUrls: string[]
   isAiDraft: boolean
+  difficulty?: number | null
 }): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -39,12 +40,14 @@ export async function submitAnswer(data: {
   const role = user.user_metadata?.role as string | undefined
   if (!['teacher', 'ta_admin', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
 
-  const { error: answerError } = await supabase.from('qna_answers').insert({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: answerError } = await (supabase as any).from('qna_answers').insert({
     question_id: data.questionId,
     ta_id: user.id,
     content: data.content,
     media_urls: data.mediaUrls,
     is_ai_draft: data.isAiDraft,
+    difficulty: data.difficulty ?? null,
   })
 
   if (answerError) return { error: '답변 등록에 실패했습니다.' }
@@ -89,6 +92,7 @@ export async function updateAnswer(data: {
   questionId: string
   content: string
   mediaUrls: string[]
+  difficulty?: number | null
 }): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -97,9 +101,10 @@ export async function updateAnswer(data: {
   const role = user.user_metadata?.role as string | undefined
   if (!['teacher', 'ta_admin', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
 
-  const { error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
     .from('qna_answers')
-    .update({ content: data.content, media_urls: data.mediaUrls })
+    .update({ content: data.content, media_urls: data.mediaUrls, difficulty: data.difficulty ?? null })
     .eq('id', data.answerId)
     .eq('ta_id', user.id)
 

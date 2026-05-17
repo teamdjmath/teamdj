@@ -38,24 +38,23 @@ export default async function QnaDetailPage({
     assignedTaName: ((r.assigned_ta as { name?: string } | null)?.name ?? null) as string | null,
   }
 
-  const { data: answerRows } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: answerRows } = await (supabase as any)
     .from('qna_answers')
-    .select('id, content, media_urls, answered_at, ta_id, ta:users!ta_id(name)')
+    .select('id, content, media_urls, answered_at, ta_id, difficulty, ta:users!ta_id(name)')
     .eq('question_id', id)
     .order('answered_at', { ascending: true })
 
-  type AnswerRow = (typeof answerRows extends (infer T)[] | null ? T : never)
-  const answers = (answerRows ?? []).map((a: AnswerRow) => {
-    const ar = a as Record<string, unknown>
-    return {
-      id: ar.id as string,
-      content: ar.content as string,
-      media_urls: (ar.media_urls as string[]) ?? [],
-      answered_at: ar.answered_at as string,
-      taId: (ar.ta_id as string) ?? '',
-      taName: ((ar.ta as { name?: string } | null)?.name ?? '') as string,
-    }
-  })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const answers = ((answerRows ?? []) as any[]).map((ar: Record<string, unknown>) => ({
+    id: ar.id as string,
+    content: ar.content as string,
+    media_urls: (ar.media_urls as string[]) ?? [],
+    answered_at: ar.answered_at as string,
+    taId: (ar.ta_id as string) ?? '',
+    taName: ((ar.ta as { name?: string } | null)?.name ?? '') as string,
+    difficulty: (ar.difficulty as number | null) ?? null,
+  }))
 
   const currentUserName = (user.user_metadata?.name as string | undefined) ?? ''
 
