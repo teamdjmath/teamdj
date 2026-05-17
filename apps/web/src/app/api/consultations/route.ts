@@ -15,7 +15,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: '연락처는 숫자와 하이픈(-)만 사용할 수 있습니다.' }, { status: 400 })
     }
 
-    const admin = createAdminClient()
+    let admin
+    try {
+      admin = createAdminClient()
+    } catch (envErr) {
+      console.error('[consultations] admin client init failed:', envErr)
+      return NextResponse.json({ success: false, error: '서버 설정 오류입니다.' }, { status: 500 })
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (admin as any).from('consultations').insert({
       name: name.trim(),
@@ -24,7 +31,8 @@ export async function POST(request: Request) {
     })
 
     if (error) {
-      return NextResponse.json({ success: false, error: '저장에 실패했습니다.' }, { status: 500 })
+      console.error('[consultations] insert error:', error)
+      return NextResponse.json({ success: false, error: '저장에 실패했습니다. (' + error.message + ')' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })

@@ -74,11 +74,11 @@ export function ConsultationsClient({ consultations }: { consultations: Consulta
                     )}
                     {c.name}
                   </td>
-                  <td className="px-4 py-3 text-zinc-500 hidden sm:table-cell">{c.phone}</td>
-                  <td className="px-4 py-3 text-zinc-600 max-w-xs">
+                  <td className="px-4 py-3 text-zinc-700 hidden sm:table-cell">{c.phone}</td>
+                  <td className="px-4 py-3 text-zinc-700 max-w-xs">
                     <span className="line-clamp-1">{c.content.slice(0, 30)}{c.content.length > 30 ? '…' : ''}</span>
                   </td>
-                  <td className="px-4 py-3 text-zinc-400 hidden md:table-cell">{formatDate(c.created_at)}</td>
+                  <td className="px-4 py-3 text-zinc-600 hidden md:table-cell">{formatDate(c.created_at)}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${c.is_read ? 'bg-zinc-100 text-zinc-400' : 'bg-zinc-900 text-white'}`}>
                       {c.is_read ? '읽음' : '미확인'}

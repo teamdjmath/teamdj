@@ -18,6 +18,19 @@ export default async function DashboardLayout({
 
   if (!user) redirect('/login')
 
+  // 휴원 상태 확인
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: dbUser } = await (supabase as any)
+    .from('users')
+    .select('suspended_from, suspended_until')
+    .eq('id', user.id)
+    .single()
+
+  const today = new Date().toISOString().slice(0, 10)
+  const suspFrom = dbUser?.suspended_from as string | null
+  const suspUntil = dbUser?.suspended_until as string | null
+  const isSuspended = !!(suspFrom && suspUntil && suspFrom <= today && today <= suspUntil)
+
   // 활성 분반 목록
   const { data: memberships } = await supabase
     .from('class_members')
@@ -70,6 +83,22 @@ export default async function DashboardLayout({
 
         {/* 다중 분반 탭 (2개 이상일 때만 표시) */}
         <ClassTabBar classes={activeClasses} />
+
+        {/* 휴원 배너 */}
+        {isSuspended && suspUntil && (
+          <div className="border-b border-amber-200 bg-amber-50 px-4 py-2.5">
+            <div className="max-w-lg mx-auto flex items-center gap-2">
+              <svg className="h-4 w-4 shrink-0 text-amber-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+              <p className="text-xs text-amber-800">
+                현재 휴원 중입니다.
+                (종료일: {new Date(suspUntil).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })})
+                {' '}일부 기능이 제한됩니다.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* 페이지 본문 */}
         <main className="flex-1 max-w-lg mx-auto w-full px-4 py-5 pb-24">

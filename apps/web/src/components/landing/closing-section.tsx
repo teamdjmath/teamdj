@@ -1,8 +1,7 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "motion/react";
-import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
 
 export function ClosingSection() {
   return (
@@ -41,13 +40,15 @@ export function ClosingSection() {
             viewport={{ once: true }}
             transition={{ delay: 0.3, duration: 0.6 }}
           >
-            <Button 
-              size="lg" 
-              className="h-16 px-12 rounded-full bg-zinc-950 text-white hover:bg-zinc-800 text-xl font-bold transition-all shadow-2xl hover:shadow-emerald-500/20 group"
+            <Link
+              href="/consultation"
+              className="inline-flex items-center gap-3 h-16 px-12 rounded-full bg-zinc-950 text-white hover:bg-zinc-800 text-xl font-bold transition-all shadow-2xl"
             >
               상담 신청하기
-              <ArrowRight className="ml-3 w-6 h-6 transition-transform group-hover:translate-x-1" />
-            </Button>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+            </Link>
           </motion.div>
         </div>
       </div>

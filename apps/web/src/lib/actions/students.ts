@@ -314,6 +314,31 @@ export async function unlinkParent(linkId: string, studentId: string): Promise<A
   })
 }
 
+export async function deleteStudent(studentId: string): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user: caller } } = await supabase.auth.getUser()
+
+  return withAction('deleteStudent', caller?.id, async () => {
+    if (!caller) return { success: false, error: '인증이 필요합니다.' }
+
+    const role = caller.user_metadata?.role as string | undefined
+    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+
+    const adminSupabase = createAdminClient()
+
+    // users 테이블에서 삭제 (class_members, parent_links 등은 CASCADE)
+    const { error: dbErr } = await adminSupabase.from('users').delete().eq('id', studentId)
+    if (dbErr) throw dbErr
+
+    // Auth에서도 삭제
+    const { error: authErr } = await adminSupabase.auth.admin.deleteUser(studentId)
+    if (authErr) logger.warn('deleteStudent:auth-delete-failed', { action: 'deleteStudent', userId: caller.id, error: authErr })
+
+    revalidatePath('/admin/students')
+    return { success: true }
+  })
+}
+
 export async function setSuspension(
   studentId: string,
   from: string,

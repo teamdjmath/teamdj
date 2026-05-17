@@ -15,6 +15,24 @@ export default async function NewQuestionPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
 
+  // 휴원 확인
+  const { data: dbUser } = await db.from('users').select('suspended_from, suspended_until').eq('id', user.id).single()
+  const today = new Date().toISOString().slice(0, 10)
+  const suspFrom = dbUser?.suspended_from as string | null
+  const suspUntil = dbUser?.suspended_until as string | null
+  const isSuspended = !!(suspFrom && suspUntil && suspFrom <= today && today <= suspUntil)
+
+  if (isSuspended) {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-8 text-center">
+        <p className="text-sm font-semibold text-amber-800">휴원 중에는 질문 등록이 제한됩니다.</p>
+        <p className="mt-1 text-xs text-amber-700">
+          종료일: {suspUntil ? new Date(suspUntil).toLocaleDateString('ko-KR') : ''} 이후 이용 가능합니다.
+        </p>
+      </div>
+    )
+  }
+
   const [membershipsRes, textbooksRes] = await Promise.all([
     supabase
       .from('class_members')

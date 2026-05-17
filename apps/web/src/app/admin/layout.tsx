@@ -180,7 +180,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           {/* 하단 유저 정보 */}
           <div className="border-t border-zinc-100 px-4 py-4 space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-medium text-zinc-700 truncate">{displayName}</p>
+              <p className="text-xs font-semibold text-zinc-900 truncate">{displayName}</p>
               <NotificationBell placement="up" />
             </div>
             <LogoutButton className="text-xs" />

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Modal } from '@/components/ui/modal'
 import { InputField, SelectField } from '@/components/ui/form-field'
 import { Card, CardHeader } from '@/components/ui/card'
+import { DatePicker } from '@/components/ui/date-picker'
 import {
   updateStudent,
   addStudentToClass,
@@ -15,6 +16,7 @@ import {
   resetStudentPassword,
   setSuspension,
   clearSuspension,
+  deleteStudent,
 } from '@/lib/actions/students'
 
 type ClassOption = { id: string; label: string }
@@ -151,6 +153,19 @@ export function StudentDetailClient({
     })
   }
 
+  // 삭제
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  function handleDelete() {
+    setDeleteError(null)
+    startTransition(async () => {
+      const res = await deleteStudent(student.id)
+      if (!res.success) { setDeleteError(res.error); return }
+      router.push('/admin/students')
+    })
+  }
+
   function handleUnlink(linkId: string, name: string) {
     if (!confirm(`${name} 학부모 연결을 해제하시겠습니까?`)) return
     startTransition(async () => {
@@ -181,14 +196,14 @@ export function StudentDetailClient({
             </div>
             <div className="flex items-center gap-4">
               <div>
-                <p className="text-xs font-medium text-zinc-500 mb-0.5">등록일</p>
+                <p className="text-xs font-medium text-zinc-600 mb-0.5">등록일</p>
                 <p className="text-sm text-zinc-700">
                   {new Date(student.createdAt).toLocaleDateString('ko-KR')}
                 </p>
               </div>
               <div>
-                <p className="text-xs font-medium text-zinc-500 mb-0.5">로그인 ID</p>
-                <p className="font-mono text-xs text-zinc-500">
+                <p className="text-xs font-medium text-zinc-600 mb-0.5">로그인 ID</p>
+                <p className="font-mono text-xs text-zinc-600">
                   {(student.phone ?? '').replace(/\D/g, '')}@teamdj.com
                 </p>
               </div>
@@ -241,7 +256,7 @@ export function StudentDetailClient({
                       >
                         {m.className}
                       </Link>
-                      <p className="text-xs text-zinc-500 mt-0.5">
+                      <p className="text-xs text-zinc-600 mt-0.5">
                         {m.subject} · {m.grade} · {new Date(m.enrolledAt).toLocaleDateString('ko-KR')} 등록
                       </p>
                     </div>
@@ -325,6 +340,15 @@ export function StudentDetailClient({
           </div>
         </Card>
 
+        {/* 회원 삭제 */}
+        <button
+          type="button"
+          onClick={() => { setDeleteError(null); setDeleteConfirmOpen(true) }}
+          className="w-full rounded-xl border border-red-200 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+        >
+          회원 정보 삭제
+        </button>
+
         {/* 휴원 설정 카드 */}
         <Card>
           <CardHeader title="휴원 설정" />
@@ -346,24 +370,14 @@ export function StudentDetailClient({
               </div>
             )}
             <form onSubmit={handleSetSuspension} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2.5">
                 <div>
-                  <label className="block text-xs font-medium text-zinc-700 mb-1">시작일</label>
-                  <input
-                    type="date"
-                    value={suspendFrom}
-                    onChange={(e) => setSuspendFrom(e.target.value)}
-                    className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400"
-                  />
+                  <label className="block text-xs font-semibold text-zinc-700 mb-1">시작일</label>
+                  <DatePicker value={suspendFrom} onChange={setSuspendFrom} placeholder="시작일 선택" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-zinc-700 mb-1">종료일</label>
-                  <input
-                    type="date"
-                    value={suspendUntil}
-                    onChange={(e) => setSuspendUntil(e.target.value)}
-                    className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400"
-                  />
+                  <label className="block text-xs font-semibold text-zinc-700 mb-1">종료일</label>
+                  <DatePicker value={suspendUntil} onChange={setSuspendUntil} placeholder="종료일 선택" />
                 </div>
               </div>
               {suspendError && <p className="text-xs text-red-500">{suspendError}</p>}
@@ -444,6 +458,38 @@ export function StudentDetailClient({
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* 회원 삭제 확인 모달 */}
+      <Modal open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} title="회원 정보 삭제" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-zinc-700">
+            <span className="font-semibold text-zinc-950">{student.name}</span> 학생의 모든 정보가 삭제됩니다.
+            <br />
+            출석, QnA, 점수 등 연관된 데이터가 함께 삭제되며, 이 작업은 되돌릴 수 없습니다.
+          </p>
+          <p className="text-sm font-medium text-red-600">계속하시겠습니까?</p>
+          {deleteError && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{deleteError}</p>
+          )}
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setDeleteConfirmOpen(false)}
+              className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={handleDelete}
+              className="rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50"
+            >
+              {isPending ? '삭제 중…' : '삭제'}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   )

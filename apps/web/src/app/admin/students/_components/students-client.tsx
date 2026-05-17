@@ -15,6 +15,7 @@ type StudentRow = {
   school: string | null
   grade: string | null
   is_active: boolean
+  suspendedUntil: string | null
   classes: { id: string; name: string }[]
   hasParent: boolean
 }
@@ -29,6 +30,7 @@ export function StudentsClient({
   totalPages,
   q,
   filterClassId,
+  filterStatus,
 }: {
   students: StudentRow[]
   classOptions: ClassOption[]
@@ -37,6 +39,7 @@ export function StudentsClient({
   totalPages: number
   q: string
   filterClassId: string
+  filterStatus: string
 }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -45,12 +48,14 @@ export function StudentsClient({
   const [inputValue, setInputValue] = useState(q)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  function pushParams(newQ: string, newPage: number, newClassId?: string) {
+  function pushParams(newQ: string, newPage: number, newClassId?: string, newStatus?: string) {
     const params = new URLSearchParams()
     if (newQ) params.set('q', newQ)
     if (newPage > 1) params.set('page', String(newPage))
     const classId = newClassId ?? filterClassId
     if (classId) params.set('classId', classId)
+    const status = newStatus ?? filterStatus
+    if (status) params.set('status', status)
     startTransition(() => {
       router.push(`/admin/students${params.size ? `?${params}` : ''}`)
     })
@@ -75,6 +80,13 @@ export function StudentsClient({
     XLSX.utils.book_append_sheet(wb, ws, '학생목록')
     XLSX.writeFile(wb, '학생_일괄등록_샘플.xlsx')
   }
+
+  // 상태 필터 (클라이언트 측)
+  const displayedStudents = filterStatus === 'active'
+    ? students.filter((s) => s.is_active && !s.suspendedUntil)
+    : filterStatus === 'suspended'
+    ? students.filter((s) => s.suspendedUntil)
+    : students
 
   return (
     <>
@@ -109,7 +121,7 @@ export function StudentsClient({
         </div>
       </div>
 
-      {/* 검색 + 분반 필터 */}
+      {/* 검색 + 필터 */}
       <div className="mb-4 flex flex-wrap gap-2">
         <div className="w-60">
           <InputField
@@ -129,6 +141,15 @@ export function StudentsClient({
             <option key={c.id} value={c.id}>{c.label}</option>
           ))}
         </select>
+        <select
+          value={filterStatus}
+          onChange={(e) => pushParams(q, 1, undefined, e.target.value)}
+          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+        >
+          <option value="">전체 상태</option>
+          <option value="active">활성</option>
+          <option value="suspended">휴원 중</option>
+        </select>
       </div>
 
       {/* 테이블 */}
@@ -145,7 +166,7 @@ export function StudentsClient({
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
-            {students.length === 0 ? (
+            {displayedStudents.length === 0 ? (
               <tr>
                 <td colSpan={6}>
                   <EmptyState
@@ -155,15 +176,15 @@ export function StudentsClient({
                 </td>
               </tr>
             ) : (
-              students.map((s) => (
+              displayedStudents.map((s) => (
                 <tr key={s.id} className="hover:bg-zinc-50 transition-colors">
                   <td className="px-5 py-3.5">
                     <div className="font-medium text-zinc-900">{s.name}</div>
-                    <div className="text-[11px] text-zinc-400">
+                    <div className="text-[11px] text-zinc-500">
                       {s.school || '학교 미지정'} · {s.grade ? `${s.grade}학년` : '학년 미지정'}
                     </div>
                   </td>
-                  <td className="hidden sm:table-cell px-5 py-3.5 text-zinc-500">{s.phone}</td>
+                  <td className="hidden sm:table-cell px-5 py-3.5 text-zinc-700">{s.phone}</td>
                   <td className="px-5 py-3.5">
                     {s.classes.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
@@ -185,11 +206,15 @@ export function StudentsClient({
                     <span className={`inline-block h-2 w-2 rounded-full ${s.hasParent ? 'bg-zinc-900' : 'bg-zinc-200'}`} />
                   </td>
                   <td className="px-5 py-3.5 text-center">
-                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                      s.is_active ? 'bg-zinc-100 text-zinc-600' : 'bg-zinc-50 text-zinc-300'
-                    }`}>
-                      {s.is_active ? '활성' : '비활성'}
-                    </span>
+                    {s.suspendedUntil ? (
+                      <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                        휴원 중
+                      </span>
+                    ) : s.is_active ? (
+                      <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                        활성
+                      </span>
+                    ) : null}
                   </td>
                   <td className="px-5 py-3.5 text-right">
                     <Link
