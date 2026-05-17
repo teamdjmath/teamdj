@@ -1,8 +1,10 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { LecturesClient } from './_components/lectures-client'
 
 export default async function LecturesPage() {
   const admin = createAdminClient()
+  const supabase = await createClient()
 
   const { data: classes } = await admin
     .from('class_groups')
@@ -23,6 +25,13 @@ export default async function LecturesPage() {
     .not('course_name', 'is', null)
     .order('course_name')
     .order('order_num', { ascending: true })
+
+  // 교재 목록 (textbooks table - types generated after migration)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: textbookRows } = await (supabase as any)
+    .from('textbooks')
+    .select('id, name')
+    .order('name')
 
   // 강좌명 목록 수집 (lecture_class_access + lectures 합집합)
   const courseNameSet = new Set<string>()
@@ -66,6 +75,8 @@ export default async function LecturesPage() {
     <LecturesClient
       classOptions={(classes ?? []).map((c) => ({ id: c.id, name: c.name }))}
       courses={courses}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      textbooks={(textbookRows ?? []).map((t: any) => ({ id: t.id as string, name: t.name as string }))}
     />
   )
 }

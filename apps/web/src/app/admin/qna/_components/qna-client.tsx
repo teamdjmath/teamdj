@@ -2,20 +2,26 @@
 
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { EmptyState } from '@/components/ui/empty-state'
 
 type ClassOption = { id: string; name: string }
+type TextbookOption = { id: string; name: string }
 type Question = {
   id: string
+  title: string
   content: string
   status: 'open' | 'in_progress' | 'answered'
   created_at: string
   assigned_ta_id: string | null
+  textbook_id: string | null
+  problem_number: string | null
   studentName: string
   className: string | null
   assignedTaName: string | null
+  textbookName: string | null
+  isDuplicate: boolean
 }
 
 const STATUS_OPTIONS = [
@@ -44,18 +50,42 @@ function formatDate(iso: string) {
 
 interface Props {
   classOptions: ClassOption[]
+  textbookOptions: TextbookOption[]
   selectedStatus: string
   selectedClassId: string | null
+  selectedTextbookId: string | null
+  selectedProblemNumber: string
   questions: Question[]
 }
 
-export function QnaClient({ classOptions, selectedStatus, selectedClassId, questions }: Props) {
+export function QnaClient({
+  classOptions,
+  textbookOptions,
+  selectedStatus,
+  selectedClassId,
+  selectedTextbookId,
+  selectedProblemNumber,
+  questions,
+}: Props) {
   const router = useRouter()
+  const [problemInput, setProblemInput] = useState(selectedProblemNumber)
 
-  function applyFilter(status: string, classId: string) {
+  function applyFilter(params: {
+    status?: string
+    classId?: string
+    textbookId?: string
+    problemNumber?: string
+  }) {
     const p = new URLSearchParams()
+    const status = params.status ?? selectedStatus
+    const classId = params.classId ?? selectedClassId ?? ''
+    const textbookId = params.textbookId ?? selectedTextbookId ?? ''
+    const problemNumber = params.problemNumber ?? problemInput
+
     if (status && status !== 'all') p.set('status', status)
     if (classId) p.set('classId', classId)
+    if (textbookId) p.set('textbookId', textbookId)
+    if (problemNumber) p.set('problemNumber', problemNumber)
     router.push(`/admin/qna?${p.toString()}`)
   }
 
@@ -68,9 +98,7 @@ export function QnaClient({ classOptions, selectedStatus, selectedClassId, quest
       })
       .subscribe()
 
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    return () => { supabase.removeChannel(channel) }
   }, [router])
 
   const counts = {
@@ -92,7 +120,7 @@ export function QnaClient({ classOptions, selectedStatus, selectedClassId, quest
         {STATUS_OPTIONS.map((s) => (
           <button
             key={s.value}
-            onClick={() => applyFilter(s.value, selectedClassId ?? '')}
+            onClick={() => applyFilter({ status: s.value })}
             className={[
               'flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors',
               selectedStatus === s.value
@@ -109,9 +137,9 @@ export function QnaClient({ classOptions, selectedStatus, selectedClassId, quest
       </div>
 
       {/* 분반 필터 */}
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         <button
-          onClick={() => applyFilter(selectedStatus, '')}
+          onClick={() => applyFilter({ classId: '' })}
           className={[
             'rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors',
             !selectedClassId ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200',
@@ -122,7 +150,7 @@ export function QnaClient({ classOptions, selectedStatus, selectedClassId, quest
         {classOptions.map((c) => (
           <button
             key={c.id}
-            onClick={() => applyFilter(selectedStatus, c.id)}
+            onClick={() => applyFilter({ classId: c.id })}
             className={[
               'rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors',
               selectedClassId === c.id ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200',
@@ -131,6 +159,44 @@ export function QnaClient({ classOptions, selectedStatus, selectedClassId, quest
             {c.name}
           </button>
         ))}
+      </div>
+
+      {/* 교재 + 문항번호 필터 */}
+      <div className="mb-6 flex flex-wrap gap-2 items-center">
+        <select
+          value={selectedTextbookId ?? ''}
+          onChange={(e) => applyFilter({ textbookId: e.target.value })}
+          className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-700 focus:border-zinc-900 focus:outline-none"
+        >
+          <option value="">교재 전체</option>
+          {textbookOptions.map((t) => (
+            <option key={t.id} value={t.id}>{t.name}</option>
+          ))}
+        </select>
+        <div className="flex items-center gap-1.5">
+          <input
+            type="text"
+            value={problemInput}
+            onChange={(e) => setProblemInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && applyFilter({ problemNumber: problemInput })}
+            placeholder="문항번호 검색"
+            className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-700 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none w-36"
+          />
+          <button
+            onClick={() => applyFilter({ problemNumber: problemInput })}
+            className="rounded-xl bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-200 transition-colors"
+          >
+            검색
+          </button>
+          {(selectedTextbookId || selectedProblemNumber) && (
+            <button
+              onClick={() => { setProblemInput(''); applyFilter({ textbookId: '', problemNumber: '' }) }}
+              className="rounded-xl px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-700 transition-colors"
+            >
+              초기화
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 질문 목록 */}
@@ -145,6 +211,8 @@ export function QnaClient({ classOptions, selectedStatus, selectedClassId, quest
               <tr className="border-b border-zinc-100 text-left text-xs text-zinc-400">
                 <th className="px-4 py-3 font-medium">학생</th>
                 <th className="px-4 py-3 font-medium hidden sm:table-cell">분반</th>
+                <th className="px-4 py-3 font-medium hidden md:table-cell">교재</th>
+                <th className="px-4 py-3 font-medium hidden md:table-cell">문항</th>
                 <th className="px-4 py-3 font-medium">질문 내용</th>
                 <th className="px-4 py-3 font-medium">상태</th>
                 <th className="px-4 py-3 font-medium hidden md:table-cell">담당 조교</th>
@@ -154,13 +222,26 @@ export function QnaClient({ classOptions, selectedStatus, selectedClassId, quest
             </thead>
             <tbody className="divide-y divide-zinc-50">
               {questions.map((q) => (
-                <tr key={q.id} className="hover:bg-zinc-50 transition-colors">
+                <tr
+                  key={q.id}
+                  className={[
+                    'transition-colors',
+                    q.isDuplicate ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-zinc-50',
+                  ].join(' ')}
+                >
                   <td className="px-4 py-3 font-medium text-zinc-900">{q.studentName}</td>
                   <td className="px-4 py-3 text-zinc-500 hidden sm:table-cell">
                     {q.className ?? <span className="text-zinc-300">-</span>}
                   </td>
+                  <td className="px-4 py-3 text-zinc-500 hidden md:table-cell">
+                    {q.textbookName ?? <span className="text-zinc-300">-</span>}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500 hidden md:table-cell">
+                    {q.problem_number ?? <span className="text-zinc-300">-</span>}
+                  </td>
                   <td className="px-4 py-3 text-zinc-600 max-w-xs">
-                    <span className="line-clamp-2">{q.content}</span>
+                    <p className="font-medium text-zinc-800 truncate">{q.title}</p>
+                    <span className="line-clamp-1 text-xs text-zinc-400">{q.content}</span>
                   </td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[q.status]}`}>

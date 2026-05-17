@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { createQuestion } from '@/lib/actions/qna'
 import { InputField, SelectField, TextareaField } from '@/components/ui/form-field'
@@ -12,16 +13,93 @@ interface ClassGroup {
   subject: string
 }
 
-export function NewQuestionForm({ classes }: { classes: ClassGroup[] }) {
+interface Textbook {
+  id: string
+  name: string
+}
+
+interface SimilarQuestion {
+  id: string
+  title: string
+  status: string
+  studentName: string
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  open: '미답변',
+  in_progress: '답변중',
+  answered: '답변완료',
+}
+
+const STATUS_CLS: Record<string, string> = {
+  open: 'bg-zinc-100 text-zinc-400',
+  in_progress: 'bg-zinc-950 text-white',
+  answered: 'bg-zinc-100 text-zinc-900 font-bold',
+}
+
+export function NewQuestionForm({
+  classes,
+  textbooks,
+}: {
+  classes: ClassGroup[]
+  textbooks: Textbook[]
+}) {
   const router = useRouter()
   const supabase = createClient()
-  
+
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [classId, setClassId] = useState(classes.length === 1 ? classes[0].id : '')
+  const [textbookId, setTextbookId] = useState('')
+  const [problemNumber, setProblemNumber] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  const [similarQuestions, setSimilarQuestions] = useState<SimilarQuestion[]>([])
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // 같은 분반 내 유사 질문 조회
+  useEffect(() => {
+    if (!textbookId || !problemNumber.trim()) {
+      setSimilarQuestions([])
+      return
+    }
+
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    debounceRef.current = setTimeout(async () => {
+      let query = supabase
+        .from('qna_questions')
+        .select('id, title, status, student:users!student_id(name)')
+        .eq('textbook_id', textbookId)
+        .eq('problem_number', problemNumber.trim())
+        .order('created_at', { ascending: false })
+        .limit(10)
+
+      if (classId) {
+        query = query.eq('class_id', classId) as typeof query
+      }
+
+      const { data } = await query
+
+      setSimilarQuestions(
+        (data ?? []).map((q) => {
+          const r = q as Record<string, unknown>
+          return {
+            id: r.id as string,
+            title: r.title as string,
+            status: r.status as string,
+            studentName: ((r.student as { name?: string } | null)?.name ?? '') as string,
+          }
+        }),
+      )
+    }, 400)
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [textbookId, problemNumber, classId, supabase])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -44,58 +122,52 @@ export function NewQuestionForm({ classes }: { classes: ClassGroup[] }) {
       setError('제목과 내용을 모두 입력해주세요.')
       return
     }
-    
+
     setIsSubmitting(true)
     setError('')
 
     try {
       const imageUrls: string[] = []
-      
-      // Upload images
+
       for (const file of files) {
         const fileExt = file.name.split('.').pop()
         const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`
-        const filePath = `${fileName}`
 
         const { error: uploadError, data } = await supabase.storage
           .from('qna-images')
-          .upload(filePath, file)
+          .upload(fileName, file)
 
-        if (uploadError) {
-          throw new Error('이미지 업로드에 실패했습니다.')
-        }
+        if (uploadError) throw new Error('이미지 업로드에 실패했습니다.')
 
         const { data: { publicUrl } } = supabase.storage
           .from('qna-images')
           .getPublicUrl(data.path)
-          
+
         imageUrls.push(publicUrl)
       }
 
-      // Call Server Action
       const { error: actionError } = await createQuestion({
         title,
         content,
         classId: classId || null,
-        imageUrls
+        imageUrls,
+        textbookId: textbookId || null,
+        problemNumber: problemNumber.trim() || null,
       })
 
       if (actionError) throw new Error(actionError)
       router.push('/dashboard/qna')
-      
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message || '질문 등록 중 오류가 발생했습니다.')
-      } else {
-        setError('질문 등록 중 오류가 발생했습니다.')
-      }
+      setError(err instanceof Error ? err.message : '질문 등록 중 오류가 발생했습니다.')
       setIsSubmitting(false)
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {error && <div className="text-sm font-bold text-red-500 bg-red-50 p-4 rounded-2xl">{error}</div>}
+      {error && (
+        <div className="text-sm font-bold text-red-500 bg-red-50 p-4 rounded-2xl">{error}</div>
+      )}
 
       <SelectField
         label="분반"
@@ -109,6 +181,61 @@ export function NewQuestionForm({ classes }: { classes: ClassGroup[] }) {
           </option>
         ))}
       </SelectField>
+
+      {/* 교재 선택 */}
+      <SelectField
+        label="교재"
+        value={textbookId}
+        onChange={(e) => { setTextbookId(e.target.value); setProblemNumber('') }}
+      >
+        <option value="">교재 선택 (선택사항)</option>
+        {textbooks.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name}
+          </option>
+        ))}
+      </SelectField>
+
+      {/* 문항 번호 (교재 선택 시 표시) */}
+      {textbookId && (
+        <InputField
+          label="문항 번호"
+          value={problemNumber}
+          onChange={(e) => setProblemNumber(e.target.value)}
+          placeholder="예: 15, 3-2, p.42"
+        />
+      )}
+
+      {/* 같은 문제 질문 목록 */}
+      {similarQuestions.length > 0 && (
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 space-y-2">
+          <p className="text-xs font-bold text-zinc-500">같은 문제 질문 목록 (참고용)</p>
+          <div className="space-y-2">
+            {similarQuestions.map((q) => (
+              <div
+                key={q.id}
+                className="flex items-center justify-between gap-3 rounded-xl bg-white border border-zinc-100 px-4 py-2.5"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-zinc-800 truncate">{q.title}</p>
+                  <p className="text-[11px] text-zinc-400">{q.studentName}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_CLS[q.status] ?? 'bg-zinc-100 text-zinc-400'}`}>
+                    {STATUS_LABEL[q.status] ?? q.status}
+                  </span>
+                  <Link
+                    href={`/dashboard/qna/${q.id}`}
+                    className="text-[11px] font-medium text-zinc-500 hover:text-zinc-900 underline underline-offset-2"
+                  >
+                    해당 답변 보기
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <InputField
         label="제목"

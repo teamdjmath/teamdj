@@ -12,24 +12,32 @@ export default async function NewQuestionPage() {
 
   if (!user) redirect('/login')
 
-  // Fetch classes the student is enrolled in
-  const { data: memberships } = await supabase
-    .from('class_members')
-    .select('class_id, class_groups(id, name, subject)')
-    .eq('student_id', user.id)
-    .eq('is_active', true)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
 
-  const classes = (memberships || [])
-    .map(m => m.class_groups)
+  const [membershipsRes, textbooksRes] = await Promise.all([
+    supabase
+      .from('class_members')
+      .select('class_id, class_groups(id, name, subject)')
+      .eq('student_id', user.id)
+      .eq('is_active', true),
+    db.from('textbooks').select('id, name').order('name'),
+  ])
+
+  const classes = (membershipsRes.data || [])
+    .map((m: { class_groups: unknown }) => m.class_groups)
     .filter(Boolean) as { id: string; name: string; subject: string }[]
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const textbooks = (textbooksRes.data ?? []).map((t: any) => ({ id: t.id as string, name: t.name as string }))
 
   return (
     <div className="space-y-6">
       <div className="pb-2 border-b border-zinc-200">
         <h1 className="text-lg font-bold text-zinc-900">새 질문 등록</h1>
       </div>
-      
-      <NewQuestionForm classes={classes} />
+
+      <NewQuestionForm classes={classes} textbooks={textbooks} />
     </div>
   )
 }

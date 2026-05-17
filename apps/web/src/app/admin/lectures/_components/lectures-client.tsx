@@ -16,8 +16,10 @@ import {
   deleteLecture,
   syncYouTubePlaylistToCourse,
 } from '@/lib/actions/lectures'
+import { createTextbook, deleteTextbook } from '@/lib/actions/textbooks'
 
 type ClassOption = { id: string; name: string }
+type TextbookItem = { id: string; name: string }
 type LectureItem = {
   id: string; title: string; videoId: string; orderNum: number; syncedAt: string | null; materialUrl?: string | null
 }
@@ -28,6 +30,7 @@ type Course = {
 interface Props {
   classOptions: ClassOption[]
   courses: Course[]
+  textbooks: TextbookItem[]
 }
 
 function ytThumb(vid: string) { return `https://img.youtube.com/vi/${vid}/mqdefault.jpg` }
@@ -46,7 +49,7 @@ type ModalType =
   | { kind: 'editLecture'; lecture: LectureItem }
   | null
 
-export function LecturesClient({ classOptions, courses }: Props) {
+export function LecturesClient({ classOptions, courses, textbooks: initialTextbooks }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [modal, setModal] = useState<ModalType>(null)
@@ -56,6 +59,11 @@ export function LecturesClient({ classOptions, courses }: Props) {
     courses.forEach(c => { init[c.courseName] = true })
     return init
   })
+
+  // 교재 관리
+  const [textbooks, setTextbooks] = useState<TextbookItem[]>(initialTextbooks)
+  const [newTextbookName, setNewTextbookName] = useState('')
+  const [textbookErr, setTextbookErr] = useState('')
 
   // 강좌 생성 폼
   const [newCourseName, setNewCourseName] = useState('')
@@ -208,6 +216,30 @@ export function LecturesClient({ classOptions, courses }: Props) {
       await updateLectureOrder(a.id, b.orderNum)
       await updateLectureOrder(b.id, a.orderNum)
       router.refresh()
+    })
+  }
+
+  // ─ 교재 추가
+  function handleAddTextbook() {
+    if (!newTextbookName.trim()) { setTextbookErr('교재명을 입력하세요.'); return }
+    setTextbookErr('')
+    startTransition(async () => {
+      const res = await createTextbook(newTextbookName.trim())
+      if (res.error) { setTextbookErr(res.error); return }
+      setTextbooks((prev) => [...prev, { id: crypto.randomUUID(), name: newTextbookName.trim() }])
+      setNewTextbookName('')
+      router.refresh()
+    })
+  }
+
+  // ─ 교재 삭제
+  function handleDeleteTextbook(id: string, name: string) {
+    if (!confirm(`"${name}" 교재를 삭제하시겠습니까?`)) return
+    setTextbookErr('')
+    startTransition(async () => {
+      const res = await deleteTextbook(id)
+      if (res.error) { setTextbookErr(res.error); return }
+      setTextbooks((prev) => prev.filter((t) => t.id !== id))
     })
   }
 
@@ -430,6 +462,56 @@ export function LecturesClient({ classOptions, courses }: Props) {
           })}
         </div>
       )}
+
+      {/* ─ 사용 교재 관리 섹션 */}
+      <div className="mt-10 rounded-2xl border border-zinc-200 bg-white overflow-hidden">
+        <div className="px-5 py-4 border-b border-zinc-100">
+          <h2 className="text-sm font-bold text-zinc-900">사용 교재 관리</h2>
+        </div>
+        <div className="p-5 space-y-4">
+          {/* 교재 목록 */}
+          {textbooks.length === 0 ? (
+            <p className="text-xs text-zinc-400">등록된 교재가 없습니다.</p>
+          ) : (
+            <div className="space-y-2">
+              {textbooks.map((t) => (
+                <div key={t.id} className="flex items-center justify-between rounded-xl bg-zinc-50 px-4 py-2.5">
+                  <span className="text-sm font-medium text-zinc-800">{t.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteTextbook(t.id, t.name)}
+                    disabled={pending}
+                    className="text-xs text-red-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                  >
+                    삭제
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 교재 추가 */}
+          <div className="flex gap-2 pt-1">
+            <input
+              type="text"
+              value={newTextbookName}
+              onChange={(e) => setNewTextbookName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddTextbook()}
+              placeholder="교재명 입력"
+              className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-2.5 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 placeholder:font-normal focus:border-zinc-900 focus:bg-white focus:outline-none transition-all"
+            />
+            <button
+              type="button"
+              onClick={handleAddTextbook}
+              disabled={pending}
+              className="rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 transition-colors disabled:opacity-50"
+            >
+              추가
+            </button>
+          </div>
+          {textbookErr && <p className="text-xs text-red-500">{textbookErr}</p>}
+        </div>
+      </div>
 
       {/* ─ 강좌 생성 모달 */}
       <Modal open={modal?.kind === 'createCourse'} onClose={() => setModal(null)} title="강좌 생성" size="md">

@@ -288,6 +288,8 @@ export async function createQuestion(data: {
   content: string
   classId: string | null
   imageUrls: string[]
+  textbookId?: string | null
+  problemNumber?: string | null
 }): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -296,7 +298,9 @@ export async function createQuestion(data: {
 
   const studentName = (user.user_metadata?.name as string | undefined) ?? '학생'
 
-  const { error, data: inserted } = await supabase
+  // textbook_id and problem_number columns added via migration 026
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error, data: inserted } = await (supabase as any)
     .from('qna_questions')
     .insert({
       student_id: user.id,
@@ -305,6 +309,8 @@ export async function createQuestion(data: {
       content: data.content,
       image_urls: data.imageUrls,
       status: 'open',
+      textbook_id: data.textbookId || null,
+      problem_number: data.problemNumber?.trim() || null,
     })
     .select('id')
     .single()
