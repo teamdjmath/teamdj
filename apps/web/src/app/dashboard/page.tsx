@@ -31,24 +31,29 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   const userId = user!.id
 
-  // 소속 반 ID 목록
+  // 소속 반 ID + 이름 맵
   const { data: memberships } = await supabase
     .from('class_members')
-    .select('class_id')
+    .select('class_id, class_groups(name)')
     .eq('student_id', userId)
     .eq('is_active', true)
 
-  const classIds = (memberships ?? []).map((m) => m.class_id as string)
+  type MembershipRow = { class_id: string; class_groups: { name: string } | null }
+  const classNameMap: Record<string, string> = {}
+  for (const m of (memberships as MembershipRow[] ?? [])) {
+    classNameMap[m.class_id] = m.class_groups?.name ?? m.class_id
+  }
+  const classIds = Object.keys(classNameMap)
 
-  // 오늘의 과제 (마감일 >= 오늘, 최대 5개)
+  // 과제 (마감일 >= 오늘, 모든 분반 합산, 날짜순, 최대 10개)
   const assignmentsQuery = classIds.length
     ? supabase
         .from('assignments')
-        .select('id, title, due_date, category')
+        .select('id, title, due_date, category, class_id')
         .in('class_id', classIds)
         .gte('due_date', TODAY)
         .order('due_date', { ascending: true })
-        .limit(5)
+        .limit(10)
     : null
 
   const { data: assignments } = assignmentsQuery
@@ -70,22 +75,22 @@ export default async function DashboardPage() {
     progressMap[p.assignment_id as string] = (p.completion_pct ?? 0) as number
   }
 
-  // 공지사항 (고정 + 최근 3개, 내 반 + 전체)
+  // 공지사항 (모든 분반 + 전체 공지, 중복 제거, 날짜순, 최대 5개)
   const noticesQuery = classIds.length
     ? supabase
         .from('notices')
-        .select('id, title, created_at, is_pinned')
+        .select('id, title, created_at, is_pinned, class_id')
         .or(`class_id.is.null,class_id.in.(${classIds.join(',')})`)
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
-        .limit(3)
+        .limit(5)
     : supabase
         .from('notices')
-        .select('id, title, created_at, is_pinned')
+        .select('id, title, created_at, is_pinned, class_id')
         .is('class_id', null)
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
-        .limit(3)
+        .limit(5)
 
   const { data: notices } = await noticesQuery
 
@@ -105,7 +110,7 @@ export default async function DashboardPage() {
     ? await todayClassesQuery
     : { data: [] }
 
-  // 최근 질문
+  // 최근 질문 (분반 무관, 본인 전체)
   const { data: questions } = await supabase
     .from('qna_questions')
     .select('id, title, status, created_at')
@@ -148,7 +153,7 @@ export default async function DashboardPage() {
         </Card>
       )}
 
-      {/* 오늘의 학습 계획 */}
+      {/* 오늘의 학습 계획 — 모든 분반 과제 합산 */}
       <Card>
         <CardHeader
           title="오늘의 학습 계획"
@@ -160,6 +165,7 @@ export default async function DashboardPage() {
               {assignments.map((a) => {
                 const pct = progressMap[a.id as string] ?? 0
                 const isOverdue = a.due_date && (a.due_date as string) < TODAY
+                const className = classNameMap[a.class_id as string]
                 return (
                   <li key={a.id as string}>
                     <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -167,6 +173,11 @@ export default async function DashboardPage() {
                         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${catStyle(a.category as string | null)}`}>
                           {(a.category as string) || '기타'}
                         </span>
+                        {className && (
+                          <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium bg-zinc-100 text-zinc-400 border border-zinc-200">
+                            {className}
+                          </span>
+                        )}
                         <span className={`truncate text-sm ${isOverdue && pct < 100 ? 'text-red-600' : 'text-zinc-800'}`}>
                           {a.title as string}
                         </span>
@@ -190,42 +201,46 @@ export default async function DashboardPage() {
               })}
             </ul>
           ) : (
-            <EmptyState message="오늘 마감인 과제가 없습니다." />
+            <EmptyState message="예정된 과제가 없습니다." />
           )}
         </CardContent>
       </Card>
 
-      {/* 공지사항 */}
+      {/* 공지사항 — 모든 분반 + 전체 공지 합산 */}
       <Card>
-        <CardHeader 
-          title="공지사항" 
-        />
+        <CardHeader title="공지사항" />
         <CardContent>
           {notices && notices.length > 0 ? (
             <div className="space-y-2">
-              {notices.map((n) => (
-                <Link 
-                  key={n.id as string} 
-                  href={`/dashboard/notices/${n.id}`}
-                  className="flex items-center gap-4 p-4 rounded-2xl hover:bg-zinc-50 transition-colors group"
-                >
-                  <span className="shrink-0 rounded-xl bg-zinc-100 px-3 py-1.5 text-xs font-bold text-zinc-400 group-hover:bg-zinc-200">
-                    공지
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-bold text-zinc-800">
-                      {(n.is_pinned as boolean) && <span className="text-red-500 mr-1.5">[고정]</span>}
-                      {n.title as string}
-                    </p>
-                    <p className="text-[11px] text-zinc-400 mt-0.5">
-                      {new Date(n.created_at as string).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
-                    </p>
-                  </div>
-                  <svg className="w-5 h-5 text-zinc-200 group-hover:text-zinc-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </Link>
-              ))}
+              {notices.map((n) => {
+                const noticeClassId = n.class_id as string | null
+                const noticeName = noticeClassId
+                  ? (classNameMap[noticeClassId] ?? noticeClassId)
+                  : '전체'
+                return (
+                  <Link
+                    key={n.id as string}
+                    href={`/dashboard/notices/${n.id}`}
+                    className="flex items-center gap-4 p-4 rounded-2xl hover:bg-zinc-50 transition-colors group"
+                  >
+                    <span className="shrink-0 rounded-xl bg-zinc-100 px-3 py-1.5 text-xs font-bold text-zinc-400 group-hover:bg-zinc-200">
+                      {noticeName}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm font-bold text-zinc-800">
+                        {(n.is_pinned as boolean) && <span className="text-red-500 mr-1.5">[고정]</span>}
+                        {n.title as string}
+                      </p>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">
+                        {new Date(n.created_at as string).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      </p>
+                    </div>
+                    <svg className="w-5 h-5 text-zinc-200 group-hover:text-zinc-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                )
+              })}
             </div>
           ) : (
             <EmptyState message="공지사항이 없습니다." />
@@ -233,7 +248,7 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* 질의응답 */}
+      {/* 질의응답 — 분반 무관, 본인 전체 */}
       <Card>
         <CardHeader
           title="질의응답"
@@ -248,7 +263,7 @@ export default async function DashboardPage() {
             <ul className="divide-y divide-zinc-50">
               {questions.map((q) => (
                 <li key={q.id as string}>
-                  <Link 
+                  <Link
                     href={`/dashboard/qna/${q.id}`}
                     className="flex items-center justify-between gap-3 py-3 hover:bg-zinc-50 px-2 rounded-xl transition-colors"
                   >

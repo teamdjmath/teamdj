@@ -7,7 +7,7 @@ export function LandingNav() {
         <Link href="/" className="text-sm font-black tracking-tighter text-zinc-950 uppercase italic">
           TeamDJ
         </Link>
-        <nav className="flex items-center gap-6">
+        <nav className="flex items-center gap-4">
           <a
             href="#intro"
             className="text-sm font-medium text-zinc-600 hover:text-zinc-950 transition-colors"
@@ -19,6 +19,12 @@ export function LandingNav() {
             className="rounded-full bg-zinc-950 px-4 py-1.5 text-sm font-semibold text-white hover:bg-zinc-800 transition-colors"
           >
             상담 신청
+          </Link>
+          <Link
+            href="/login"
+            className="rounded-full border border-zinc-200 px-4 py-1.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors"
+          >
+            로그인
           </Link>
         </nav>
       </div>
