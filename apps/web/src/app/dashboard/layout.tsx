@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { BottomNav } from './_components/bottom-nav'
+import { ClassTabBar } from './_components/class-tab-bar'
 import { NotificationsProvider } from '@/contexts/notifications-context'
 import { NotificationBell } from '@/components/ui/notification-bell'
 import { ToastContainer } from '@/components/ui/toast'
@@ -17,13 +18,20 @@ export default async function DashboardLayout({
 
   if (!user) redirect('/login')
 
-  // 읽지 않은 메시지 수 확인
+  // 활성 분반 목록
   const { data: memberships } = await supabase
     .from('class_members')
-    .select('class_id')
+    .select('class_id, class_groups(name)')
     .eq('student_id', user.id)
     .eq('is_active', true)
-  const classIds = (memberships ?? []).map(m => m.class_id)
+    .order('enrolled_at')
+
+  type MembershipWithClass = { class_id: string; class_groups: { name: string } | null }
+  const activeClasses = (memberships as MembershipWithClass[] ?? []).map((m) => ({
+    id: m.class_id,
+    name: m.class_groups?.name ?? m.class_id,
+  }))
+  const classIds = activeClasses.map((m) => m.id)
 
   const { count: unreadCount } = await supabase
     .from('push_messages')
@@ -59,6 +67,9 @@ export default async function DashboardLayout({
             </div>
           </div>
         </header>
+
+        {/* 다중 분반 탭 (2개 이상일 때만 표시) */}
+        <ClassTabBar classes={activeClasses} />
 
         {/* 페이지 본문 */}
         <main className="flex-1 max-w-lg mx-auto w-full px-4 py-5 pb-24">

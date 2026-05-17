@@ -15,8 +15,7 @@ type StudentRow = {
   school: string | null
   grade: string | null
   is_active: boolean
-  className: string | null
-  classId: string | null
+  classes: { id: string; name: string }[]
   hasParent: boolean
 }
 
@@ -29,6 +28,7 @@ export function StudentsClient({
   page,
   totalPages,
   q,
+  filterClassId,
 }: {
   students: StudentRow[]
   classOptions: ClassOption[]
@@ -36,6 +36,7 @@ export function StudentsClient({
   page: number
   totalPages: number
   q: string
+  filterClassId: string
 }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -44,10 +45,12 @@ export function StudentsClient({
   const [inputValue, setInputValue] = useState(q)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  function pushParams(newQ: string, newPage: number) {
+  function pushParams(newQ: string, newPage: number, newClassId?: string) {
     const params = new URLSearchParams()
     if (newQ) params.set('q', newQ)
     if (newPage > 1) params.set('page', String(newPage))
+    const classId = newClassId ?? filterClassId
+    if (classId) params.set('classId', classId)
     startTransition(() => {
       router.push(`/admin/students${params.size ? `?${params}` : ''}`)
     })
@@ -106,14 +109,26 @@ export function StudentsClient({
         </div>
       </div>
 
-      {/* 검색 */}
-      <div className="mb-4 max-w-sm">
-        <InputField
-          type="search"
-          placeholder="이름, 전화번호로 검색"
-          value={inputValue}
-          onChange={handleSearchChange}
-        />
+      {/* 검색 + 분반 필터 */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        <div className="w-60">
+          <InputField
+            type="search"
+            placeholder="이름, 전화번호로 검색"
+            value={inputValue}
+            onChange={handleSearchChange}
+          />
+        </div>
+        <select
+          value={filterClassId}
+          onChange={(e) => pushParams(q, 1, e.target.value)}
+          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+        >
+          <option value="">전체 분반</option>
+          {classOptions.map((c) => (
+            <option key={c.id} value={c.id}>{c.label}</option>
+          ))}
+        </select>
       </div>
 
       {/* 테이블 */}
@@ -150,10 +165,18 @@ export function StudentsClient({
                   </td>
                   <td className="hidden sm:table-cell px-5 py-3.5 text-zinc-500">{s.phone}</td>
                   <td className="px-5 py-3.5">
-                    {s.className ? (
-                      <Link href={`/admin/classes/${s.classId}`} className="text-zinc-700 hover:underline">
-                        {s.className}
-                      </Link>
+                    {s.classes.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {s.classes.map((c) => (
+                          <Link
+                            key={c.id}
+                            href={`/admin/classes/${c.id}`}
+                            className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-700 hover:bg-zinc-200 transition-colors"
+                          >
+                            {c.name}
+                          </Link>
+                        ))}
+                      </div>
                     ) : (
                       <span className="text-zinc-300">—</span>
                     )}

@@ -43,7 +43,7 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
 
     const name        = (formData.get('name')     as string).trim()
     const phone       = (formData.get('phone')    as string).trim()
-    const classId     = formData.get('classId')  as string | null
+    const classIds    = formData.getAll('classId').map(String).filter(Boolean)
     const school      = (formData.get('school')   as string || '').trim()
     const grade       = (formData.get('grade')    as string || '').trim()
     const parentPhone = (formData.get('parentPhone') as string || '').trim()
@@ -85,7 +85,7 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
       throw userErr
     }
 
-    if (classId) {
+    for (const classId of classIds) {
       const { error: memberErr } = await adminSupabase.from('class_members').insert({ class_id: classId, student_id: userId })
       if (memberErr) logger.warn('createStudent:class-member-failed', { action: 'createStudent', userId: caller.id, error: memberErr })
     }
@@ -226,6 +226,48 @@ export async function changeStudentClass(
   })
 }
 
+export async function addStudentToClass(studentId: string, classId: string): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user: caller } } = await supabase.auth.getUser()
+
+  return withAction('addStudentToClass', caller?.id, async () => {
+    if (!caller) return { success: false, error: '인증이 필요합니다.' }
+
+    const adminSupabase = createAdminClient()
+    const { data: existing } = await adminSupabase
+      .from('class_members').select('id, is_active').eq('student_id', studentId).eq('class_id', classId).maybeSingle()
+
+    if (existing) {
+      if (existing.is_active) return { success: false, error: '이미 등록된 분반입니다.' }
+      const { error } = await adminSupabase.from('class_members').update({ is_active: true }).eq('id', existing.id)
+      if (error) throw error
+    } else {
+      const { error } = await adminSupabase.from('class_members').insert({ class_id: classId, student_id: studentId })
+      if (error) throw error
+    }
+
+    revalidatePath(`/admin/students/${studentId}`)
+    return { success: true }
+  })
+}
+
+export async function removeStudentFromClass(studentId: string, classId: string): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user: caller } } = await supabase.auth.getUser()
+
+  return withAction('removeStudentFromClass', caller?.id, async () => {
+    if (!caller) return { success: false, error: '인증이 필요합니다.' }
+
+    const adminSupabase = createAdminClient()
+    const { error } = await adminSupabase
+      .from('class_members').update({ is_active: false }).eq('student_id', studentId).eq('class_id', classId)
+    if (error) throw error
+
+    revalidatePath(`/admin/students/${studentId}`)
+    return { success: true }
+  })
+}
+
 export async function linkParent(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user: caller } } = await supabase.auth.getUser()
@@ -265,6 +307,56 @@ export async function unlinkParent(linkId: string, studentId: string): Promise<A
 
     const adminSupabase = createAdminClient()
     const { error } = await adminSupabase.from('parent_links').delete().eq('id', linkId)
+    if (error) throw error
+
+    revalidatePath(`/admin/students/${studentId}`)
+    return { success: true }
+  })
+}
+
+export async function setSuspension(
+  studentId: string,
+  from: string,
+  until: string,
+): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user: caller } } = await supabase.auth.getUser()
+
+  return withAction('setSuspension', caller?.id, async () => {
+    if (!caller) return { success: false, error: '인증이 필요합니다.' }
+
+    const role = caller.user_metadata?.role as string | undefined
+    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+
+    const adminSupabase = createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (adminSupabase as any)
+      .from('users')
+      .update({ suspended_from: from, suspended_until: until })
+      .eq('id', studentId)
+    if (error) throw error
+
+    revalidatePath(`/admin/students/${studentId}`)
+    return { success: true }
+  })
+}
+
+export async function clearSuspension(studentId: string): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user: caller } } = await supabase.auth.getUser()
+
+  return withAction('clearSuspension', caller?.id, async () => {
+    if (!caller) return { success: false, error: '인증이 필요합니다.' }
+
+    const role = caller.user_metadata?.role as string | undefined
+    if (role !== 'teacher' && role !== 'ta') return { success: false, error: '권한이 없습니다.' }
+
+    const adminSupabase = createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (adminSupabase as any)
+      .from('users')
+      .update({ suspended_from: null, suspended_until: null })
+      .eq('id', studentId)
     if (error) throw error
 
     revalidatePath(`/admin/students/${studentId}`)

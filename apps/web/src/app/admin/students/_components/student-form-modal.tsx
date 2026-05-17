@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Modal } from '@/components/ui/modal'
-import { InputField, SelectField } from '@/components/ui/form-field'
+import { InputField } from '@/components/ui/form-field'
 import { createStudent } from '@/lib/actions/students'
 
 type ClassOption = { id: string; label: string }
@@ -20,14 +20,24 @@ export function StudentFormModal({
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([])
+
+  function toggleClass(id: string) {
+    setSelectedClassIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    )
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
     const fd = new FormData(e.currentTarget)
+    // 체크박스 선택 분반 추가
+    selectedClassIds.forEach((id) => fd.append('classId', id))
     startTransition(async () => {
       const res = await createStudent(fd)
       if (!res.success) { setError(res.error); return }
+      setSelectedClassIds([])
       onClose()
       router.refresh()
     })
@@ -63,12 +73,37 @@ export function StudentFormModal({
             required
           />
         </div>
-        <SelectField label="소속 반 (선택)" name="classId">
-          <option value="">반 없음</option>
-          {classOptions.map((c) => (
-            <option key={c.id} value={c.id}>{c.label}</option>
-          ))}
-        </SelectField>
+
+        {/* 다중 분반 선택 */}
+        <div>
+          <p className="mb-1.5 text-xs font-medium text-zinc-700">
+            소속 반{' '}
+            <span className="text-zinc-400 font-normal">
+              {selectedClassIds.length > 0 ? `${selectedClassIds.length}개 선택됨` : '(선택 사항)'}
+            </span>
+          </p>
+          <div className="max-h-36 overflow-y-auto rounded-xl border border-zinc-200 divide-y divide-zinc-100">
+            {classOptions.length === 0 ? (
+              <p className="px-3 py-2.5 text-xs text-zinc-400">등록된 분반이 없습니다.</p>
+            ) : (
+              classOptions.map((c) => (
+                <label
+                  key={c.id}
+                  className="flex cursor-pointer items-center gap-2.5 px-3 py-2 hover:bg-zinc-50"
+                >
+                  <input
+                    type="checkbox"
+                    className="accent-zinc-900"
+                    checked={selectedClassIds.includes(c.id)}
+                    onChange={() => toggleClass(c.id)}
+                  />
+                  <span className="text-sm text-zinc-700">{c.label}</span>
+                </label>
+              ))
+            )}
+          </div>
+        </div>
+
         <InputField
           label="학부모 전화번호 (선택)"
           name="parentPhone"

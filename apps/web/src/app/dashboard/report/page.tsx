@@ -9,7 +9,7 @@ export default async function ReportPage() {
   const { data: { user } } = await supabase.auth.getUser()
   const userId = user!.id
 
-  const [reportsResult, scoresResult] = await Promise.all([
+  const [reportsResult, scoresResult, examResultsResult] = await Promise.all([
     supabase
       .from('reports')
       .select('id, created_at, image_url')
@@ -23,6 +23,13 @@ export default async function ReportPage() {
       .in('tests.exam_type', ['모의고사', '중간고사', '기말고사'])
       .order('tests(test_date)', { ascending: true })
       .limit(10),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any)
+      .from('exam_results')
+      .select('id, exam_name, exam_type, exam_date, score, max_score, grade_cuts, rank_in_exam, total_in_exam, auto_rank')
+      .eq('student_id', userId)
+      .order('exam_date', { ascending: false })
+      .limit(20),
   ])
 
   const reports = reportsResult.data ?? []
@@ -44,6 +51,20 @@ export default async function ReportPage() {
     imageUrl: r.image_url as string | null,
   }))
 
+  const EXAM_TYPE_LABELS: Record<string, string> = { mock: '모의고사', midterm: '중간고사', final: '기말고사', other: '기타' }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const examItems = ((examResultsResult.data ?? []) as any[]).map((r) => ({
+    id: r.id as string,
+    examName: r.exam_name as string,
+    examType: (EXAM_TYPE_LABELS[r.exam_type] ?? r.exam_type) as string,
+    examDate: r.exam_date as string,
+    score: r.score as number,
+    maxScore: r.max_score as number,
+    gradeCuts: (r.grade_cuts ?? {}) as Record<string, number>,
+    rankInExam: r.rank_in_exam as number | null,
+    totalInExam: r.total_in_exam as number | null,
+  }))
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold text-zinc-950">리포트</h1>
@@ -59,6 +80,51 @@ export default async function ReportPage() {
           )}
         </div>
       </Card>
+
+      {/* 특별 시험 결과 */}
+      {examItems.length > 0 && (
+        <Card>
+          <CardHeader title="특별 시험 결과" />
+          <div className="px-5 pb-5">
+            <ul className="divide-y divide-zinc-100">
+              {examItems.map((e) => {
+                // 등급 계산
+                let grade: string | null = null
+                if (Object.keys(e.gradeCuts).length > 0) {
+                  for (let g = 1; g <= 9; g++) {
+                    const cut = e.gradeCuts[String(g)]
+                    if (cut !== undefined && e.score >= cut) { grade = `${g}등급`; break }
+                  }
+                  if (!grade) grade = '9등급'
+                }
+                return (
+                  <li key={e.id} className="py-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-zinc-900">{e.examName}</p>
+                        <p className="text-xs text-zinc-400 mt-0.5">{e.examType} · {e.examDate}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-semibold text-zinc-900">{e.score} / {e.maxScore}점</p>
+                        <div className="flex gap-1.5 justify-end mt-0.5">
+                          {grade && (
+                            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-600">{grade}</span>
+                          )}
+                          {e.rankInExam != null && (
+                            <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-[11px] text-white">
+                              {e.rankInExam}/{e.totalInExam ?? '?'}등
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        </Card>
+      )}
 
       {/* 학습 리포트 목록 */}
       <Card>

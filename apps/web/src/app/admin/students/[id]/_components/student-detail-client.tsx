@@ -8,13 +8,25 @@ import { InputField, SelectField } from '@/components/ui/form-field'
 import { Card, CardHeader } from '@/components/ui/card'
 import {
   updateStudent,
-  changeStudentClass,
+  addStudentToClass,
+  removeStudentFromClass,
   linkParent,
   unlinkParent,
   resetStudentPassword,
+  setSuspension,
+  clearSuspension,
 } from '@/lib/actions/students'
 
 type ClassOption = { id: string; label: string }
+
+type ClassMembership = {
+  memberId:   string
+  classId:    string
+  className:  string
+  subject:    string
+  grade:      string
+  enrolledAt: string
+}
 
 type StudentDetailClientProps = {
   student: {
@@ -25,22 +37,17 @@ type StudentDetailClientProps = {
     grade: string | null
     is_active: boolean
     createdAt: string
+    suspendedFrom: string | null
+    suspendedUntil: string | null
   }
-  currentClass: {
-    memberId:   string
-    classId:    string
-    className:  string
-    subject:    string
-    grade:      string
-    enrolledAt: string
-  } | null
+  currentClasses: ClassMembership[]
   parents: Array<{ linkId: string; id: string; name: string; phone: string }>
   classOptions: ClassOption[]
 }
 
 export function StudentDetailClient({
   student,
-  currentClass,
+  currentClasses,
   parents,
   classOptions,
 }: StudentDetailClientProps) {
@@ -77,21 +84,27 @@ export function StudentDetailClient({
     })
   }
 
-  // 분반 변경
+  // 분반 추가
   const [classError, setClassError] = useState<string | null>(null)
 
-  function handleClassChange(e: React.FormEvent<HTMLFormElement>) {
+  function handleAddClass(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setClassError(null)
     const fd = new FormData(e.currentTarget)
     const newClassId = fd.get('newClassId') as string
+    if (!newClassId) return
     startTransition(async () => {
-      const res = await changeStudentClass(
-        student.id,
-        currentClass?.classId ?? null,
-        newClassId,
-      )
+      const res = await addStudentToClass(student.id, newClassId)
       if (!res.success) setClassError(res.error)
+      else { (e.target as HTMLFormElement).reset(); router.refresh() }
+    })
+  }
+
+  function handleRemoveClass(classId: string, className: string) {
+    if (!confirm(`${className} 분반에서 제거하시겠습니까?`)) return
+    startTransition(async () => {
+      const res = await removeStudentFromClass(student.id, classId)
+      if (!res.success) alert(res.error)
       else router.refresh()
     })
   }
@@ -109,6 +122,32 @@ export function StudentDetailClient({
       if (!res.success) { setParentError(res.error); return }
       setParentOpen(false)
       router.refresh()
+    })
+  }
+
+  // 휴원 설정
+  const [suspendFrom, setSuspendFrom] = useState(student.suspendedFrom ?? '')
+  const [suspendUntil, setSuspendUntil] = useState(student.suspendedUntil ?? '')
+  const [suspendError, setSuspendError] = useState<string | null>(null)
+
+  function handleSetSuspension(e: React.FormEvent) {
+    e.preventDefault()
+    setSuspendError(null)
+    if (!suspendFrom || !suspendUntil) { setSuspendError('기간을 모두 입력하세요.'); return }
+    if (suspendFrom > suspendUntil) { setSuspendError('시작일이 종료일보다 늦을 수 없습니다.'); return }
+    startTransition(async () => {
+      const res = await setSuspension(student.id, suspendFrom, suspendUntil)
+      if (!res.success) { setSuspendError(res.error); return }
+      router.refresh()
+    })
+  }
+
+  function handleClearSuspension() {
+    if (!confirm('휴원을 해제하시겠습니까?')) return
+    startTransition(async () => {
+      const res = await clearSuspension(student.id)
+      if (!res.success) alert(res.error)
+      else { setSuspendFrom(''); setSuspendUntil(''); router.refresh() }
     })
   }
 
@@ -185,36 +224,49 @@ export function StudentDetailClient({
           </form>
         </Card>
 
-        {/* 분반 변경 카드 */}
+        {/* 소속 분반 카드 */}
         <Card>
           <CardHeader title="소속 분반" />
           <div className="px-5 pb-5 space-y-3">
-            {currentClass ? (
-              <div className="rounded-xl bg-zinc-50 px-4 py-3 flex items-start justify-between">
-                <div>
-                  <Link
-                    href={`/admin/classes/${currentClass.classId}`}
-                    className="font-medium text-zinc-900 hover:underline"
-                  >
-                    {currentClass.className}
-                  </Link>
-                  <p className="text-xs text-zinc-500 mt-0.5">
-                    {currentClass.subject} · {currentClass.grade} ·&nbsp;
-                    {new Date(currentClass.enrolledAt).toLocaleDateString('ko-KR')} 등록
-                  </p>
-                </div>
-              </div>
-            ) : (
+            {currentClasses.length === 0 ? (
               <p className="text-sm text-zinc-400">소속 반 없음</p>
+            ) : (
+              <ul className="divide-y divide-zinc-100">
+                {currentClasses.map((m) => (
+                  <li key={m.memberId} className="flex items-center justify-between py-2.5">
+                    <div>
+                      <Link
+                        href={`/admin/classes/${m.classId}`}
+                        className="font-medium text-zinc-900 hover:underline text-sm"
+                      >
+                        {m.className}
+                      </Link>
+                      <p className="text-xs text-zinc-500 mt-0.5">
+                        {m.subject} · {m.grade} · {new Date(m.enrolledAt).toLocaleDateString('ko-KR')} 등록
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => handleRemoveClass(m.classId, m.className)}
+                      className="text-xs text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                    >
+                      제거
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
 
-            <form onSubmit={handleClassChange} className="flex gap-2 items-end">
+            <form onSubmit={handleAddClass} className="flex gap-2 items-end">
               <div className="flex-1">
-                <SelectField label="새 분반으로 변경" name="newClassId" required>
+                <SelectField label="분반 추가" name="newClassId">
                   <option value="">선택하세요</option>
-                  {classOptions.map((c) => (
-                    <option key={c.id} value={c.id}>{c.label}</option>
-                  ))}
+                  {classOptions
+                    .filter((c) => !currentClasses.some((m) => m.classId === c.id))
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>{c.label}</option>
+                    ))}
                 </SelectField>
               </div>
               <button
@@ -222,7 +274,7 @@ export function StudentDetailClient({
                 disabled={isPending}
                 className="shrink-0 rounded-lg border border-zinc-200 px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
               >
-                변경
+                추가
               </button>
             </form>
             {classError && (
@@ -232,8 +284,8 @@ export function StudentDetailClient({
         </Card>
       </div>
 
-      {/* 오른쪽 — 학부모 연결 */}
-      <div>
+      {/* 오른쪽 — 학부모 연결 + 휴원 */}
+      <div className="space-y-5">
         <Card>
           <CardHeader
             title="학부모 연결"
@@ -270,6 +322,59 @@ export function StudentDetailClient({
                 ))}
               </ul>
             )}
+          </div>
+        </Card>
+
+        {/* 휴원 설정 카드 */}
+        <Card>
+          <CardHeader title="휴원 설정" />
+          <div className="px-5 pb-5 space-y-3">
+            {student.suspendedFrom && student.suspendedUntil && (
+              <div className="rounded-xl bg-amber-50 px-4 py-3">
+                <p className="text-xs font-medium text-amber-700">현재 휴원 중</p>
+                <p className="text-sm text-amber-900 mt-0.5">
+                  {student.suspendedFrom} ~ {student.suspendedUntil}
+                </p>
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={handleClearSuspension}
+                  className="mt-2 text-xs text-amber-600 hover:text-amber-900 disabled:opacity-50"
+                >
+                  휴원 해제
+                </button>
+              </div>
+            )}
+            <form onSubmit={handleSetSuspension} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-zinc-700 mb-1">시작일</label>
+                  <input
+                    type="date"
+                    value={suspendFrom}
+                    onChange={(e) => setSuspendFrom(e.target.value)}
+                    className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-zinc-700 mb-1">종료일</label>
+                  <input
+                    type="date"
+                    value={suspendUntil}
+                    onChange={(e) => setSuspendUntil(e.target.value)}
+                    className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                  />
+                </div>
+              </div>
+              {suspendError && <p className="text-xs text-red-500">{suspendError}</p>}
+              <button
+                type="submit"
+                disabled={isPending}
+                className="w-full rounded-lg border border-zinc-200 py-2 text-sm text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 transition-colors"
+              >
+                {isPending ? '저장 중…' : '휴원 설정'}
+              </button>
+            </form>
           </div>
         </Card>
       </div>

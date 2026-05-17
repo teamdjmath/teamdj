@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { NavItem } from '../layout'
 
-export function SidebarNav({ items }: { items: readonly NavItem[] }) {
+export function SidebarNav({ items, badges }: { items: readonly NavItem[]; badges?: Record<string, number> }) {
   const pathname = usePathname()
 
   return (
@@ -14,6 +14,7 @@ export function SidebarNav({ items }: { items: readonly NavItem[] }) {
           href === '/admin/dashboard'
             ? pathname === href
             : pathname.startsWith(href)
+        const badge = badges?.[href] ?? 0
         return (
           <Link
             key={href}
@@ -26,7 +27,12 @@ export function SidebarNav({ items }: { items: readonly NavItem[] }) {
             ].join(' ')}
           >
             {icon}
-            {label}
+            <span className="flex-1">{label}</span>
+            {badge > 0 && (
+              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none ${active ? 'bg-white text-zinc-950' : 'bg-zinc-900 text-white'}`}>
+                {badge}
+              </span>
+            )}
           </Link>
         )
       })}

@@ -14,10 +14,11 @@ export default async function ExamResultsPage() {
       .from('class_members')
       .select('class_id, student_id, users!student_id(name)')
       .eq('is_active', true),
-    supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any)
       .from('exam_results')
       .select(
-        'id, exam_name, exam_type, exam_date, score, max_score, grade_cuts, study_suggestion, student_id, class_id, users!student_id(name), class_groups!class_id(name)',
+        'id, exam_name, exam_type, exam_date, score, max_score, grade_cuts, study_suggestion, student_id, class_id, rank_in_exam, total_in_exam, auto_rank, users!student_id(name), class_groups!class_id(name)',
       )
       .order('exam_date', { ascending: false })
       .order('created_at', { ascending: false }),
@@ -41,7 +42,8 @@ export default async function ExamResultsPage() {
   }
   students.sort((a, b) => a.name.localeCompare(b.name, 'ko'))
 
-  const results = (resultsResult.data ?? []).map((r) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const results = ((resultsResult.data ?? []) as any[]).map((r) => ({
     id: r.id as string,
     studentName: (r.users as { name: string } | null)?.name ?? '',
     className: (r.class_groups as { name: string } | null)?.name ?? '',
@@ -52,6 +54,9 @@ export default async function ExamResultsPage() {
     maxScore: r.max_score as number,
     gradeCuts: (r.grade_cuts ?? {}) as Record<string, number>,
     studySuggestion: r.study_suggestion as string | null,
+    rankInExam: r.rank_in_exam as number | null,
+    totalInExam: r.total_in_exam as number | null,
+    autoRank: r.auto_rank as boolean,
   }))
 
   return (

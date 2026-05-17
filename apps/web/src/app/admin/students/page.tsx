@@ -6,9 +6,9 @@ const PAGE_SIZE = 50
 export default async function StudentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; q?: string }>
+  searchParams: Promise<{ page?: string; q?: string; classId?: string }>
 }) {
-  const { page: pageParam = '1', q = '' } = await searchParams
+  const { page: pageParam = '1', q = '', classId: filterClassId = '' } = await searchParams
   const page = Math.max(1, parseInt(pageParam) || 1)
   const from = (page - 1) * PAGE_SIZE
   const to   = from + PAGE_SIZE - 1
@@ -35,6 +35,9 @@ export default async function StudentsPage({
   if (q) {
     studentsQuery = studentsQuery.or(`name.ilike.%${q}%,phone.ilike.%${q}%`) as typeof studentsQuery
   }
+  if (filterClassId) {
+    studentsQuery = studentsQuery.eq('class_members.class_id', filterClassId) as typeof studentsQuery
+  }
 
   const [studentsRes, classesRes] = await Promise.all([
     studentsQuery,
@@ -49,17 +52,16 @@ export default async function StudentsPage({
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
 
   const rows = (studentsRes.data ?? []).map((s) => {
-    const activeClass = (s.class_members as ClassMember[]).find((m) => m.is_active)
+    const activeClasses = (s.class_members as ClassMember[]).filter((m) => m.is_active)
     return {
-      id:           s.id,
-      name:         s.name,
-      phone:        s.phone ?? '',
-      school:       s.school,
-      grade:        s.grade,
-      is_active:    s.is_active,
-      className:    activeClass?.class_groups?.name ?? null,
-      classId:      activeClass?.class_id ?? null,
-      hasParent:    (s.parent_links as { id: string }[]).length > 0,
+      id:        s.id,
+      name:      s.name,
+      phone:     s.phone ?? '',
+      school:    s.school,
+      grade:     s.grade,
+      is_active: s.is_active,
+      classes:   activeClasses.map((m) => ({ id: m.class_id, name: m.class_groups?.name ?? '' })),
+      hasParent: (s.parent_links as { id: string }[]).length > 0,
     }
   })
 
@@ -76,6 +78,7 @@ export default async function StudentsPage({
       page={page}
       totalPages={totalPages}
       q={q}
+      filterClassId={filterClassId}
     />
   )
 }

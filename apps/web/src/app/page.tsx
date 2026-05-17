@@ -2,6 +2,7 @@ import { AcmeHero } from "@/components/landing/acme-hero";
 import { TeacherIntro } from "@/components/landing/teacher-intro";
 import { CurriculumSection } from "@/components/landing/curriculum-section";
 import { ClosingSection } from "@/components/landing/closing-section";
+import { ConsultationSection } from "@/components/landing/consultation-section";
 
 export const metadata = {
   title: "dongdongmath",
@@ -22,6 +23,9 @@ export default function LandingPage() {
 
       {/* 4. 마무리: ClosingSection (마무리 멘트 및 상담 신청) */}
       <ClosingSection />
+
+      {/* 5. 상담 신청 섹션 */}
+      <ConsultationSection />
 
       {/* 푸터 (심플) */}
       <footer className="py-12 bg-zinc-50 border-t border-zinc-200">

@@ -14,7 +14,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // 1. Supabase 세션 갱신
-  const { supabaseResponse, user } = await updateSession(request)
+  const { supabaseResponse, user, supabase } = await updateSession(request)
 
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p))
 
@@ -53,6 +53,33 @@ export async function proxy(request: NextRequest) {
       const dashboardUrl = request.nextUrl.clone()
       dashboardUrl.pathname = '/dashboard'
       return NextResponse.redirect(dashboardUrl)
+    }
+  }
+
+  // 6. 휴원 학생 → /suspended (학생 역할 + /dashboard/* 접근 시)
+  const SUSPENDED_PATH = '/suspended'
+  if (
+    user &&
+    user.user_metadata?.role === 'student' &&
+    (pathname.startsWith('/dashboard') || pathname === '/') &&
+    pathname !== SUSPENDED_PATH
+  ) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: dbUser } = await (supabase as any)
+      .from('users')
+      .select('suspended_from, suspended_until')
+      .eq('id', user.id)
+      .single()
+
+    if (dbUser) {
+      const today = new Date().toISOString().slice(0, 10)
+      const from = dbUser.suspended_from as string | null
+      const until = dbUser.suspended_until as string | null
+      if (from && until && from <= today && today <= until) {
+        const suspendedUrl = request.nextUrl.clone()
+        suspendedUrl.pathname = SUSPENDED_PATH
+        return NextResponse.redirect(suspendedUrl)
+      }
     }
   }
 

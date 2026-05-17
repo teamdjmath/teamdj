@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { createExamResult, deleteExamResult } from '@/lib/actions/exam-results'
+import { createExamResult, deleteExamResult, autoRankExam } from '@/lib/actions/exam-results'
 import { EmptyState } from '@/components/ui/empty-state'
 
 interface ClassOption { id: string; name: string }
@@ -18,6 +18,9 @@ interface ExamResult {
   maxScore: number
   gradeCuts: Record<string, number>
   studySuggestion: string | null
+  rankInExam: number | null
+  totalInExam: number | null
+  autoRank: boolean
 }
 
 const EXAM_TYPES = [
@@ -70,6 +73,9 @@ export function ExamResultsClient({
     maxScore: '100',
     studySuggestion: '',
     gradeCuts: {} as Record<string, string>,
+    rankInExam: '',
+    totalInExam: '',
+    autoRank: false,
   })
 
   const filteredStudents = form.classId
@@ -87,6 +93,9 @@ export function ExamResultsClient({
       maxScore: '100',
       studySuggestion: '',
       gradeCuts: {},
+      rankInExam: '',
+      totalInExam: '',
+      autoRank: false,
     })
     setError(null)
   }
@@ -110,6 +119,9 @@ export function ExamResultsClient({
       }
     }
 
+    const rankInExam = form.rankInExam !== '' ? Number(form.rankInExam) : null
+    const totalInExam = form.totalInExam !== '' ? Number(form.totalInExam) : null
+
     startTransition(async () => {
       const res = await createExamResult({
         studentId: form.studentId,
@@ -121,10 +133,21 @@ export function ExamResultsClient({
         maxScore,
         gradeCuts,
         studySuggestion: form.studySuggestion,
+        rankInExam,
+        totalInExam,
+        autoRank: form.autoRank,
       })
       if (!res.success) { setError(res.error); return }
       setCreateOpen(false)
       resetForm()
+    })
+  }
+
+  function handleAutoRank(examName: string, examDate: string) {
+    if (!confirm(`"${examName}" (${examDate}) 시험 결과에 자동 등수를 산정합니다.`)) return
+    startTransition(async () => {
+      const res = await autoRankExam(examName, examDate)
+      if (!res.success) alert(res.error)
     })
   }
 
@@ -223,6 +246,14 @@ export function ExamResultsClient({
                 <span>최고 <strong className="text-zinc-900">{max}</strong></span>
                 <span>최저 <strong className="text-zinc-900">{min}</strong></span>
               </div>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => handleAutoRank(first.examName, first.examDate)}
+                className="shrink-0 rounded-lg border border-zinc-200 px-2.5 py-1 text-xs text-zinc-600 hover:bg-zinc-50 disabled:opacity-50 transition-colors"
+              >
+                등수 자동 산정
+              </button>
             </div>
 
             {/* 등급 분포 (등급컷 있는 경우) */}
@@ -253,6 +284,11 @@ export function ExamResultsClient({
                   >
                     <p className="flex-1 text-sm text-zinc-800">{r.studentName}</p>
                     <p className="text-xs text-zinc-400">{r.className}</p>
+                    {r.rankInExam != null && (
+                      <p className="text-xs text-zinc-500 w-16 text-right">
+                        {r.rankInExam}/{r.totalInExam ?? '?'}등{r.autoRank && <span className="text-zinc-300 ml-0.5">A</span>}
+                      </p>
+                    )}
                     <p className="text-sm font-semibold text-zinc-900 w-16 text-right">
                       {r.score} / {r.maxScore}
                     </p>
@@ -401,6 +437,44 @@ export function ExamResultsClient({
                 <p className="text-[10px] text-zinc-400 ml-1">각 등급의 최저 기준 점수를 입력하면 등급이 자동 계산됩니다.</p>
               </div>
 
+              {/* 등수 입력 */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <label className="block text-xs font-bold text-zinc-900 uppercase tracking-widest">
+                    등수 (선택)
+                  </label>
+                  <label className="ml-auto flex items-center gap-1.5 text-xs text-zinc-500">
+                    <input
+                      type="checkbox"
+                      className="accent-zinc-900"
+                      checked={form.autoRank}
+                      onChange={(e) => setForm((f) => ({ ...f, autoRank: e.target.checked }))}
+                    />
+                    자동 산정 (저장 후 그룹 내 자동 계산)
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField
+                    label="등수"
+                    type="number"
+                    min={1}
+                    value={form.rankInExam}
+                    onChange={(e) => setForm((f) => ({ ...f, rankInExam: e.target.value }))}
+                    placeholder="예: 3"
+                    disabled={form.autoRank}
+                  />
+                  <InputField
+                    label="전체 인원"
+                    type="number"
+                    min={1}
+                    value={form.totalInExam}
+                    onChange={(e) => setForm((f) => ({ ...f, totalInExam: e.target.value }))}
+                    placeholder="예: 30"
+                    disabled={form.autoRank}
+                  />
+                </div>
+              </div>
+
               {/* 학습 제안 */}
               <TextareaField
                 label="학습 제안 및 피드백"
@@ -458,6 +532,12 @@ export function ExamResultsClient({
               <Row label="유형" value={examTypeLabel(detailResult.examType)} />
               <Row label="날짜" value={detailResult.examDate} />
               <Row label="점수" value={`${detailResult.score} / ${detailResult.maxScore}`} />
+              {detailResult.rankInExam != null && (
+                <Row
+                  label="등수"
+                  value={`${detailResult.rankInExam} / ${detailResult.totalInExam ?? '?'}등${detailResult.autoRank ? ' (자동)' : ''}`}
+                />
+              )}
               {Object.keys(detailResult.gradeCuts).length > 0 && (
                 <Row
                   label="등급"

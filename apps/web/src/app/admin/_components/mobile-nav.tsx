@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import type { NavItem } from '../layout'
 
-export function MobileNav({ items }: { items: readonly NavItem[] }) {
+export function MobileNav({ items, badges }: { items: readonly NavItem[]; badges?: Record<string, number> }) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -50,17 +50,25 @@ export function MobileNav({ items }: { items: readonly NavItem[] }) {
           </button>
         </div>
         <nav className="px-3 py-4 space-y-0.5">
-          {items.map(({ href, label, icon }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
-            >
-              {icon}
-              {label}
-            </Link>
-          ))}
+          {items.map(({ href, label, icon }) => {
+            const badge = badges?.[href] ?? 0
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+              >
+                {icon}
+                <span className="flex-1">{label}</span>
+                {badge > 0 && (
+                  <span className="rounded-full bg-zinc-900 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                    {badge}
+                  </span>
+                )}
+              </Link>
+            )
+          })}
         </nav>
       </div>
     </>

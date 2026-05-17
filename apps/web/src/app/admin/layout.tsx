@@ -7,6 +7,7 @@ import { SidebarNav } from './_components/sidebar-nav'
 import { NotificationsProvider } from '@/contexts/notifications-context'
 import { NotificationBell } from '@/components/ui/notification-bell'
 import { ToastContainer } from '@/components/ui/toast'
+import { getUnreadConsultationCount } from '@/lib/actions/consultations'
 
 const NAV_ITEMS = [
   {
@@ -133,6 +134,15 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    href: '/admin/consultations',
+    label: '상담',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+      </svg>
+    ),
+  },
 ] as const
 
 export type NavItem = (typeof NAV_ITEMS)[number]
@@ -147,6 +157,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   if (role !== 'teacher' && role !== 'ta') redirect('/dashboard')
 
   const displayName = user.user_metadata?.name ?? user.email ?? ''
+  const unreadConsultations = await getUnreadConsultationCount()
+  const badges: Record<string, number> = unreadConsultations > 0 ? { '/admin/consultations': unreadConsultations } : {}
 
   return (
     <NotificationsProvider userId={user.id}>
@@ -163,7 +175,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           </div>
 
           {/* 네비게이션 (클라이언트 — usePathname으로 활성 상태 처리) */}
-          <SidebarNav items={NAV_ITEMS} />
+          <SidebarNav items={NAV_ITEMS} badges={badges} />
 
           {/* 하단 유저 정보 */}
           <div className="border-t border-zinc-100 px-4 py-4 space-y-2">
@@ -181,7 +193,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <div className="flex items-center gap-2">
             <NotificationBell />
             <span className="text-sm text-zinc-500">{displayName}</span>
-            <MobileNav items={NAV_ITEMS} />
+            <MobileNav items={NAV_ITEMS} badges={badges} />
           </div>
         </div>
 
