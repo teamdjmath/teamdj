@@ -196,15 +196,13 @@ export function NewQuestionForm({
         ))}
       </SelectField>
 
-      {/* 문항 번호 (교재 선택 시 표시) */}
-      {textbookId && (
-        <InputField
-          label="문항 번호"
-          value={problemNumber}
-          onChange={(e) => setProblemNumber(e.target.value)}
-          placeholder="예: 15, 3-2, p.42"
-        />
-      )}
+      {/* 문항 번호 */}
+      <InputField
+        label="문항 번호"
+        value={problemNumber}
+        onChange={(e) => setProblemNumber(e.target.value)}
+        placeholder="예: 30번, 3-2번"
+      />
 
       {/* 같은 문제 질문 목록 */}
       {similarQuestions.length > 0 && (

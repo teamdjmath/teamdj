@@ -1,5 +1,4 @@
 import { type ReactNode } from 'react'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { BottomNav } from './_components/bottom-nav'
@@ -30,21 +29,6 @@ export default async function DashboardLayout({
   const suspUntil = dbUser?.suspended_until as string | null
   const isSuspended = !!(suspFrom && suspUntil && suspFrom <= today && today <= suspUntil)
 
-  // 활성 분반 ID 목록 (알림 카운트용)
-  const { data: memberships } = await supabase
-    .from('class_members')
-    .select('class_id')
-    .eq('student_id', user.id)
-    .eq('is_active', true)
-
-  const classIds = (memberships ?? []).map((m) => m.class_id as string)
-
-  const { count: unreadCount } = await supabase
-    .from('push_messages')
-    .select('*', { count: 'exact', head: true })
-    .or(`student_id.eq.${user.id}${classIds.length > 0 ? `,class_id.in.(${classIds.join(',')})` : ''}`)
-    .eq('is_read', false)
-
   return (
     <NotificationsProvider userId={user.id}>
       <div className="flex flex-col min-h-screen bg-zinc-50">
@@ -57,16 +41,6 @@ export default async function DashboardLayout({
 
             <div className="flex items-center gap-2">
               <NotificationBell />
-              <Link href="/dashboard/messages" className="relative group p-1.5 rounded-xl hover:bg-zinc-100 transition-colors">
-                <svg className="w-5 h-5 text-zinc-600" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
-                </svg>
-                {(unreadCount ?? 0) > 0 && (
-                  <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white">
-                    {unreadCount}
-                  </span>
-                )}
-              </Link>
               <span className="text-sm font-semibold text-zinc-600">
                 {user.user_metadata?.name ?? user.email}
               </span>

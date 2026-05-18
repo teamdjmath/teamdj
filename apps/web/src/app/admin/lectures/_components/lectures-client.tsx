@@ -467,6 +467,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
       <div className="mt-10 rounded-2xl border border-zinc-200 bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-zinc-100">
           <h2 className="text-sm font-bold text-zinc-900">사용 교재 관리</h2>
+          <p className="mt-1 text-xs text-zinc-400">여기에 교재를 추가해야 학생의 Q&amp;A 등록 시 교재 선택이 가능합니다.</p>
         </div>
         <div className="p-5 space-y-4">
           {/* 교재 목록 */}
