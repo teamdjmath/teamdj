@@ -152,18 +152,6 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: '/admin/schedule',
-    label: '근무',
-    visibility: 'all' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <rect x="3" y="4" width="18" height="18" rx="2" strokeLinecap="round" strokeLinejoin="round" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16 2v4M8 2v4M3 10h18" />
-        <circle cx="19" cy="7" r="2.5" fill="currentColor" className="text-emerald-400" stroke="none" />
-      </svg>
-    ),
-  },
-  {
     href: '/admin/qna/stats',
     label: '답변 통계',
     visibility: 'senior' as NavVisibility,

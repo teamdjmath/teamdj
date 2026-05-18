@@ -1,215 +1,292 @@
 import { createClient } from '@/lib/supabase/server'
-import { Card, CardHeader } from '@/components/ui/card'
-import { EmptyState } from '@/components/ui/empty-state'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { DashboardScheduleClient } from './_components/dashboard-schedule-client'
+import type { StaffStatus } from '@/lib/actions/staff'
+
+function getMonthRange() {
+  const now   = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+  const end   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+  return { start, end }
+}
+
+function toStatus(s?: string | null): StaffStatus {
+  if (s === 'online' || s === 'busy' || s === 'offline') return s
+  return 'offline'
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+}
+
+type ClassRow = {
+  id: string; name: string; subject: string; grade: string
+  start_time: string | null; end_time: string | null; day_of_week: number[] | null
+}
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
-  const today = new Date().toISOString().split('T')[0]
+  const role        = user.user_metadata?.role as string | undefined
+  const displayName = user.user_metadata?.name ?? user.email ?? ''
+  const admin       = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db          = supabase as any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const adminDb     = admin as any
 
-  // ── 모든 데이터 동시 페칭 (워터폴 방지)
-  const [
-    { count: totalStudents },
-    { data: todayAttendance },
-    { count: openQnaCount },
-    { data: notices }
-  ] = await Promise.all([
-    supabase
-      .from('users')
-      .select('id', { count: 'exact', head: true })
-      .eq('role', 'student')
-      .eq('is_active', true),
-    supabase
-      .from('attendance_logs')
-      .select('status')
-      .eq('session_date', today),
+  const today       = new Date()
+  const todayDow    = today.getDay()
+  const { start: monthStart, end: monthEnd } = getMonthRange()
+
+  // ── 역할별 담당 분반 fetch ──
+  let classes: ClassRow[] = []
+  if (role === 'teacher') {
+    const { data } = await admin
+      .from('class_groups')
+      .select('id, name, subject, grade, start_time, end_time, day_of_week')
+      .eq('is_active', true).not('day_of_week', 'is', null).order('name')
+    classes = data ?? []
+  } else if (role === 'ta_admin' || role === 'ta_assistant') {
+    const { data: allAccess } = await adminDb
+      .from('ta_class_access').select('is_all_classes')
+      .eq('ta_id', user.id).eq('is_all_classes', true).limit(1)
+
+    if (allAccess && allAccess.length > 0) {
+      const { data } = await admin
+        .from('class_groups')
+        .select('id, name, subject, grade, start_time, end_time, day_of_week')
+        .eq('is_active', true).not('day_of_week', 'is', null).order('name')
+      classes = data ?? []
+    } else {
+      const { data: access } = await adminDb
+        .from('ta_class_access').select('class_id')
+        .eq('ta_id', user.id).not('class_id', 'is', null)
+      const ids = (access ?? []).map((a: { class_id: string }) => a.class_id)
+      if (ids.length > 0) {
+        const { data } = await admin
+          .from('class_groups')
+          .select('id, name, subject, grade, start_time, end_time, day_of_week')
+          .in('id', ids).eq('is_active', true).not('day_of_week', 'is', null).order('name')
+        classes = data ?? []
+      }
+    }
+  }
+
+  // ── 병렬 fetch ──
+  const [noticesRes, openQnaRes, staffUsersRes, extraSchedulesRes, taAccessRes] = await Promise.all([
+    db.from('notices')
+      .select('id, title, created_at, is_pinned, class_id, class_groups!class_id(name)')
+      .order('is_pinned', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(4),
     supabase
       .from('qna_questions')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'open'),
     supabase
-      .from('notices')
-      .select('id, title, created_at, is_pinned')
-      .order('is_pinned', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(5)
+      .from('users')
+      .select('id, name, role')
+      .in('role', ['teacher', 'ta_admin', 'ta_assistant'])
+      .eq('is_active', true)
+      .order('role').order('name'),
+    adminDb
+      .from('extra_schedules')
+      .select('id, title, scheduled_date, start_time, end_time, note')
+      .eq('user_id', user.id)
+      .gte('scheduled_date', monthStart)
+      .lte('scheduled_date', monthEnd)
+      .order('scheduled_date').order('start_time'),
+    adminDb
+      .from('ta_class_access')
+      .select('ta_id, class_id, is_all_classes'),
   ])
 
-  const presentCount = todayAttendance?.filter((a) => a.status === 'present').length ?? 0
-  const absentCount  = todayAttendance?.filter((a) => a.status === 'absent').length ?? 0
-  const lateCount    = todayAttendance?.filter((a) => a.status === 'late').length ?? 0
-  const totalChecked = todayAttendance?.length ?? 0
+  // ── 공지사항 가공 ──
+  type NoticeRow = { id: string; title: string; created_at: string; is_pinned: boolean; class_id: string | null; className: string | null }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const notices: NoticeRow[] = (noticesRes.data ?? []).map((n: any) => ({
+    id:        n.id        as string,
+    title:     n.title     as string,
+    created_at: n.created_at as string,
+    is_pinned: (n.is_pinned ?? false) as boolean,
+    class_id:  (n.class_id ?? null) as string | null,
+    className: ((n.class_groups as { name?: string } | null)?.name ?? null) as string | null,
+  }))
 
-  const displayName = user?.user_metadata?.name ?? user?.email ?? ''
-  const role = user?.user_metadata?.role as string | undefined
+  const openQnaCount = openQnaRes.count ?? 0
+
+  // ── TA 수 계산 ──
+  const taAccessRows = (taAccessRes.data ?? []) as {
+    ta_id: string; class_id: string | null; is_all_classes: boolean
+  }[]
+  const allClassesTaIds = new Set(
+    taAccessRows.filter((r) => r.is_all_classes).map((r) => r.ta_id),
+  )
+  const allClassesTaCount = allClassesTaIds.size
+  const taCountByClass = new Map<string, number>()
+  for (const row of taAccessRows) {
+    if (row.class_id && !row.is_all_classes) {
+      taCountByClass.set(row.class_id, (taCountByClass.get(row.class_id) ?? 0) + 1)
+    }
+  }
+
+  // ── 오늘 수업 ──
+  const todayClasses = classes
+    .filter((c) => c.day_of_week?.includes(todayDow) && c.start_time && c.end_time)
+    .sort((a, b) => a.start_time!.localeCompare(b.start_time!))
+
+  // ── 스태프 + 상태 ──
+  const staffIds = (staffUsersRes.data ?? []).map((u) => u.id as string)
+  const { data: statusRows } = staffIds.length > 0
+    ? await adminDb
+        .from('staff_status')
+        .select('user_id, status, updated_at')
+        .in('user_id', staffIds)
+    : { data: [] as { user_id: string; status: string; updated_at: string }[] }
+
+  const statusMap: Record<string, { status: string; updatedAt: string }> = {}
+  for (const row of (statusRows ?? []) as { user_id: string; status: string; updated_at: string }[]) {
+    statusMap[row.user_id] = { status: row.status, updatedAt: row.updated_at }
+  }
+
+  const initialStaff = (staffUsersRes.data ?? []).map((u) => ({
+    userId:    u.id   as string,
+    name:      u.name as string,
+    role:      u.role as string,
+    status:    toStatus(statusMap[u.id as string]?.status),
+    updatedAt: statusMap[u.id as string]?.updatedAt ?? null,
+  }))
+
+  const roleLabel = role === 'teacher' ? '선생님' : '조교'
 
   return (
     <div className="space-y-6">
 
-      {/* 페이지 타이틀 */}
+      {/* 헤더 */}
       <div>
         <h1 className="text-xl font-bold text-zinc-950">
           안녕하세요, {displayName}
           {role && (
-            <span className="ml-2 text-sm font-normal text-zinc-400">
-              ({role === 'teacher' ? '선생님' : '조교'})
-            </span>
+            <span className="ml-2 text-sm font-normal text-zinc-400">({roleLabel})</span>
           )}
         </h1>
         <p className="mt-0.5 text-sm text-zinc-400">
-          {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}
+          {today.toLocaleDateString('ko-KR', {
+            year: 'numeric', month: 'long', day: 'numeric', weekday: 'short',
+          })}
         </p>
       </div>
 
-      {/* 통계 카드 그리드 */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard
-          label="전체 학생"
-          value={totalStudents ?? 0}
-          unit="명"
-        />
-        <StatCard
-          label="오늘 출석"
-          value={presentCount}
-          unit="명"
-          sub={totalChecked > 0 ? `총 ${totalChecked}명 체크` : '미체크'}
-        />
-        <StatCard
-          label="결석 · 지각"
-          value={absentCount + lateCount}
-          unit="명"
-          sub={lateCount > 0 ? `지각 ${lateCount}명 포함` : undefined}
-        />
-        <StatCard
-          label="미답변 질문"
-          value={openQnaCount ?? 0}
-          unit="건"
-          highlight={(openQnaCount ?? 0) > 0}
-        />
+      {/* 미답변 질문 */}
+      <div className={[
+        'rounded-2xl border p-5 flex items-center justify-between',
+        openQnaCount > 0
+          ? 'border-zinc-900 bg-zinc-950'
+          : 'border-zinc-200 bg-white',
+      ].join(' ')}>
+        <div>
+          <p className="text-xs font-medium text-zinc-400">미답변 질문</p>
+          <p className={`mt-1 text-3xl font-bold ${openQnaCount > 0 ? 'text-white' : 'text-zinc-900'}`}>
+            {openQnaCount}
+            <span className={`ml-1 text-sm font-normal ${openQnaCount > 0 ? 'text-zinc-400' : 'text-zinc-500'}`}>
+              건
+            </span>
+          </p>
+        </div>
+        <Link
+          href="/admin/qna?status=open"
+          className={[
+            'rounded-xl px-4 py-2 text-sm font-medium transition-colors',
+            openQnaCount > 0
+              ? 'bg-white/10 text-white hover:bg-white/20'
+              : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200',
+          ].join(' ')}
+        >
+          질의응답 →
+        </Link>
       </div>
 
-      {/* 출석 현황 바 */}
-      {totalChecked > 0 && (
-        <Card>
-          <CardHeader title="오늘 출석 현황" />
-          <div className="px-5 pb-5 space-y-3">
-            <AttendanceBar
-              present={presentCount}
-              absent={absentCount}
-              late={lateCount}
-            />
-            <div className="flex gap-4 text-xs text-zinc-500">
-              <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-zinc-900 inline-block" />
-                출석 {presentCount}명
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-zinc-400 inline-block" />
-                결석 {absentCount}명
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-zinc-300 inline-block" />
-                지각 {lateCount}명
-              </span>
-            </div>
-          </div>
-        </Card>
-      )}
+      {/* 오늘 수업 현황 */}
+      <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-zinc-100">
+          <h2 className="text-sm font-semibold text-zinc-900">오늘 수업 현황</h2>
+          <span className="text-xs text-zinc-400">
+            {today.toLocaleDateString('ko-KR', { weekday: 'long' })}
+          </span>
+        </div>
+        {todayClasses.length === 0 ? (
+          <p className="px-5 py-6 text-center text-sm text-zinc-400">오늘 예정된 수업이 없습니다.</p>
+        ) : (
+          <ul className="divide-y divide-zinc-100">
+            {todayClasses.map((cls) => {
+              const taCount = (taCountByClass.get(cls.id) ?? 0) + allClassesTaCount
+              return (
+                <li key={cls.id} className="flex items-center gap-3 px-5 py-3.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-zinc-900">{cls.name}</p>
+                    <p className="text-xs text-zinc-400">{cls.subject}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-medium text-zinc-700">
+                      {cls.start_time!.slice(0, 5)} – {cls.end_time!.slice(0, 5)}
+                    </p>
+                    {taCount > 0 && (
+                      <p className="text-xs text-zinc-400">조교 {taCount}명</p>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
 
       {/* 최근 공지사항 */}
-      <Card>
-        <CardHeader title="최근 공지사항" />
-        <div className="px-5 pb-5">
-          {notices && notices.length > 0 ? (
-            <ul className="divide-y divide-zinc-100">
-              {notices.map((n) => (
-                <li key={n.id} className="flex items-center gap-2 py-3">
-                  {n.is_pinned && (
-                    <span className="shrink-0 rounded bg-zinc-900 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                      고정
-                    </span>
-                  )}
-                  <span className="flex-1 truncate text-sm text-zinc-800">{n.title}</span>
-                  <span className="shrink-0 text-xs text-zinc-400">
-                    {new Date(n.created_at).toLocaleDateString('ko-KR', {
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <EmptyState message="등록된 공지사항이 없습니다." />
-          )}
+      <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-zinc-100">
+          <h2 className="text-sm font-semibold text-zinc-900">최근 공지사항</h2>
+          <Link
+            href="/admin/notices"
+            className="text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+          >
+            더보기 →
+          </Link>
         </div>
-      </Card>
-    </div>
-  )
-}
+        {notices.length === 0 ? (
+          <p className="px-5 py-6 text-center text-sm text-zinc-400">등록된 공지사항이 없습니다.</p>
+        ) : (
+          <ul className="divide-y divide-zinc-100">
+            {notices.map((n) => (
+              <li key={n.id} className="flex items-center gap-2 px-5 py-3">
+                {n.is_pinned && (
+                  <span className="shrink-0 rounded bg-zinc-900 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                    고정
+                  </span>
+                )}
+                <span className="flex-1 truncate text-sm text-zinc-800">{n.title}</span>
+                <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-500">
+                  {n.class_id ? (n.className ?? '분반') : '전체'}
+                </span>
+                <span className="shrink-0 text-xs text-zinc-400">{formatDate(n.created_at)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
-// ── 통계 카드
-function StatCard({
-  label,
-  value,
-  unit,
-  sub,
-  highlight = false,
-}: {
-  label: string
-  value: number
-  unit: string
-  sub?: string
-  highlight?: boolean
-}) {
-  return (
-    <div
-      className={[
-        'rounded-2xl border p-4',
-        highlight
-          ? 'border-zinc-900 bg-zinc-950 text-white'
-          : 'border-zinc-200 bg-white text-zinc-900',
-      ].join(' ')}
-    >
-      <p className={`text-xs font-medium ${highlight ? 'text-zinc-400' : 'text-zinc-400'}`}>
-        {label}
-      </p>
-      <p className="mt-1 text-3xl font-bold">
-        {value}
-        <span className={`ml-1 text-sm font-normal ${highlight ? 'text-zinc-400' : 'text-zinc-500'}`}>
-          {unit}
-        </span>
-      </p>
-      {sub && (
-        <p className={`mt-1 text-[10px] ${highlight ? 'text-zinc-500' : 'text-zinc-400'}`}>{sub}</p>
-      )}
-    </div>
-  )
-}
-
-// ── 출석 비율 바
-function AttendanceBar({
-  present,
-  absent,
-  late,
-}: {
-  present: number
-  absent: number
-  late: number
-}) {
-  const total = present + absent + late
-  if (total === 0) return null
-
-  const pPct = Math.round((present / total) * 100)
-  const aPct = Math.round((absent  / total) * 100)
-  const lPct = 100 - pPct - aPct
-
-  return (
-    <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-zinc-100">
-      <div className="bg-zinc-900 transition-all" style={{ width: `${pPct}%` }} />
-      <div className="bg-zinc-400 transition-all" style={{ width: `${aPct}%` }} />
-      <div className="bg-zinc-300 transition-all" style={{ width: `${lPct}%` }} />
+      {/* 주간 시간표 + 추가 근무 + 스태프 현황 (클라이언트 — Realtime) */}
+      <DashboardScheduleClient
+        classes={classes}
+        extraSchedules={extraSchedulesRes.data ?? []}
+        initialStaff={initialStaff}
+        currentUserId={user.id}
+        myInitialStatus={toStatus(statusMap[user.id]?.status)}
+      />
     </div>
   )
 }
