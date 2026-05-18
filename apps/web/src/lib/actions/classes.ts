@@ -43,10 +43,18 @@ export async function createClass(formData: FormData): Promise<ActionResult> {
     const { day_of_week, start_time, end_time, schedule } = parseScheduleFields(formData)
     const adminSupabase = createAdminClient()
 
-    const { error } = await adminSupabase.from('class_groups').insert({
+    const { data, error } = await adminSupabase.from('class_groups').insert({
       name, subject, grade, schedule, day_of_week, start_time, end_time, teacher_id: user.id,
-    })
+    }).select('id').single()
     if (error) throw error
+
+    const taIds = (formData.getAll('taIds') as string[]).filter(Boolean)
+    if (taIds.length > 0 && data?.id) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (adminSupabase as any).from('ta_class_access').insert(
+        taIds.map((taId) => ({ ta_id: taId, class_id: data.id, is_all_classes: false })),
+      )
+    }
 
     revalidatePath('/admin/classes')
     revalidatePath('/admin/schedule')
@@ -77,6 +85,17 @@ export async function updateClass(formData: FormData): Promise<ActionResult> {
       .update({ name, subject, grade, schedule, day_of_week, start_time, end_time, is_active: isActive })
       .eq('id', classId)
     if (error) throw error
+
+    // TA 배정 갱신: 기존 class-specific 행 삭제 후 새로 insert
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = adminSupabase as any
+    await db.from('ta_class_access').delete().eq('class_id', classId).eq('is_all_classes', false)
+    const taIds = (formData.getAll('taIds') as string[]).filter(Boolean)
+    if (taIds.length > 0) {
+      await db.from('ta_class_access').insert(
+        taIds.map((taId) => ({ ta_id: taId, class_id: classId, is_all_classes: false })),
+      )
+    }
 
     revalidatePath('/admin/classes')
     revalidatePath(`/admin/classes/${classId}`)

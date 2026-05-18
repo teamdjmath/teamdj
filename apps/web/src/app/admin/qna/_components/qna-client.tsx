@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 
 type ClassOption = { id: string; name: string }
 type TextbookOption = { id: string; name: string }
+type TaOption = { id: string; name: string; role: string }
 type Question = {
   id: string
   title: string
@@ -22,6 +23,14 @@ type Question = {
   assignedTaName: string | null
   textbookName: string | null
   isDuplicate: boolean
+}
+type MyStats = {
+  total: number
+  monthly: number
+  low: number
+  mid: number
+  high: number
+  unset: number
 }
 
 const STATUS_OPTIONS = [
@@ -43,6 +52,13 @@ const STATUS_LABEL: Record<string, string> = {
   answered: '답변완료',
 }
 
+function roleLabel(role: string) {
+  if (role === 'teacher') return '선생님'
+  if (role === 'ta_admin') return '사무'
+  if (role === 'ta_assistant') return '첨삭'
+  return role
+}
+
 function formatDate(iso: string) {
   const d = new Date(iso)
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
@@ -51,21 +67,29 @@ function formatDate(iso: string) {
 interface Props {
   classOptions: ClassOption[]
   textbookOptions: TextbookOption[]
+  taOptions: TaOption[]
   selectedStatus: string
   selectedClassId: string | null
   selectedTextbookId: string | null
   selectedProblemNumber: string
+  selectedTaId: string | null
   questions: Question[]
+  myStats: MyStats | null
+  currentUserId: string | null
 }
 
 export function QnaClient({
   classOptions,
   textbookOptions,
+  taOptions,
   selectedStatus,
   selectedClassId,
   selectedTextbookId,
   selectedProblemNumber,
+  selectedTaId,
   questions,
+  myStats,
+  currentUserId,
 }: Props) {
   const router = useRouter()
   const [problemInput, setProblemInput] = useState(selectedProblemNumber)
@@ -75,17 +99,20 @@ export function QnaClient({
     classId?: string
     textbookId?: string
     problemNumber?: string
+    taId?: string
   }) {
     const p = new URLSearchParams()
     const status = params.status ?? selectedStatus
-    const classId = params.classId ?? selectedClassId ?? ''
-    const textbookId = params.textbookId ?? selectedTextbookId ?? ''
-    const problemNumber = params.problemNumber ?? problemInput
+    const classId = 'classId' in params ? (params.classId ?? '') : (selectedClassId ?? '')
+    const textbookId = 'textbookId' in params ? (params.textbookId ?? '') : (selectedTextbookId ?? '')
+    const problemNumber = 'problemNumber' in params ? (params.problemNumber ?? '') : problemInput
+    const taId = 'taId' in params ? (params.taId ?? '') : (selectedTaId ?? '')
 
     if (status && status !== 'all') p.set('status', status)
     if (classId) p.set('classId', classId)
     if (textbookId) p.set('textbookId', textbookId)
     if (problemNumber) p.set('problemNumber', problemNumber)
+    if (taId) p.set('taId', taId)
     router.push(`/admin/qna?${p.toString()}`)
   }
 
@@ -108,12 +135,58 @@ export function QnaClient({
     answered: questions.filter((q) => q.status === 'answered').length,
   }
 
+  const isMyFilter = !!selectedTaId && selectedTaId === currentUserId
+  const hasActiveFilter = selectedTaId || selectedTextbookId || selectedProblemNumber
+
   return (
     <div>
       {/* 헤더 */}
       <div className="mb-6">
         <h1 className="text-xl font-bold text-zinc-950">질의응답</h1>
       </div>
+
+      {/* 내 답변 현황 카드 */}
+      {myStats && myStats.total > 0 && (
+        <button
+          type="button"
+          onClick={() => currentUserId && applyFilter({ taId: isMyFilter ? '' : currentUserId })}
+          className={[
+            'mb-5 w-full text-left rounded-2xl border px-5 py-4 transition-colors',
+            isMyFilter
+              ? 'border-zinc-950 bg-zinc-950 text-white'
+              : 'border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50',
+          ].join(' ')}
+        >
+          <p className={`mb-2 text-xs font-semibold uppercase tracking-wider ${isMyFilter ? 'text-zinc-400' : 'text-zinc-400'}`}>
+            내 답변 현황 {isMyFilter && '· 필터 적용 중'}
+          </p>
+          <div className="flex flex-wrap gap-x-6 gap-y-1.5">
+            <span className="text-sm">
+              <span className={`font-bold text-lg ${isMyFilter ? 'text-white' : 'text-zinc-950'}`}>{myStats.total}</span>
+              <span className={`ml-1 ${isMyFilter ? 'text-zinc-300' : 'text-zinc-400'}`}>전체</span>
+            </span>
+            <span className="text-sm">
+              <span className={`font-bold text-lg ${isMyFilter ? 'text-white' : 'text-zinc-950'}`}>{myStats.monthly}</span>
+              <span className={`ml-1 ${isMyFilter ? 'text-zinc-300' : 'text-zinc-400'}`}>이번 달</span>
+            </span>
+            <span className={`self-center h-4 w-px ${isMyFilter ? 'bg-zinc-700' : 'bg-zinc-200'}`} />
+            <span className="text-sm">
+              <span className={`font-semibold ${isMyFilter ? 'text-zinc-200' : 'text-zinc-600'}`}>하 {myStats.low}</span>
+            </span>
+            <span className="text-sm">
+              <span className={`font-semibold ${isMyFilter ? 'text-zinc-200' : 'text-zinc-600'}`}>중 {myStats.mid}</span>
+            </span>
+            <span className="text-sm">
+              <span className={`font-semibold ${isMyFilter ? 'text-zinc-200' : 'text-zinc-600'}`}>상 {myStats.high}</span>
+            </span>
+            {myStats.unset > 0 && (
+              <span className="text-sm">
+                <span className={`${isMyFilter ? 'text-zinc-500' : 'text-zinc-300'}`}>미설정 {myStats.unset}</span>
+              </span>
+            )}
+          </div>
+        </button>
+      )}
 
       {/* 상태 필터 */}
       <div className="mb-4 flex flex-wrap gap-2">
@@ -161,7 +234,7 @@ export function QnaClient({
         ))}
       </div>
 
-      {/* 교재 + 문항번호 필터 */}
+      {/* 교재 + 문항번호 + 담당 조교 필터 */}
       <div className="mb-6 flex flex-wrap gap-2 items-center">
         <select
           value={selectedTextbookId ?? ''}
@@ -173,6 +246,7 @@ export function QnaClient({
             <option key={t.id} value={t.id}>{t.name}</option>
           ))}
         </select>
+
         <div className="flex items-center gap-1.5">
           <input
             type="text"
@@ -188,15 +262,30 @@ export function QnaClient({
           >
             검색
           </button>
-          {(selectedTextbookId || selectedProblemNumber) && (
-            <button
-              onClick={() => { setProblemInput(''); applyFilter({ textbookId: '', problemNumber: '' }) }}
-              className="rounded-xl px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-700 transition-colors"
-            >
-              초기화
-            </button>
-          )}
         </div>
+
+        {/* 담당 조교 필터 */}
+        <select
+          value={selectedTaId ?? ''}
+          onChange={(e) => applyFilter({ taId: e.target.value })}
+          className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-700 focus:border-zinc-900 focus:outline-none"
+        >
+          <option value="">담당 조교 전체</option>
+          {taOptions.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name} ({roleLabel(t.role)})
+            </option>
+          ))}
+        </select>
+
+        {hasActiveFilter && (
+          <button
+            onClick={() => { setProblemInput(''); applyFilter({ textbookId: '', problemNumber: '', taId: '' }) }}
+            className="rounded-xl px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-700 transition-colors"
+          >
+            필터 초기화
+          </button>
+        )}
       </div>
 
       {/* 질문 목록 */}
@@ -248,8 +337,18 @@ export function QnaClient({
                       {STATUS_LABEL[q.status]}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-zinc-500 hidden md:table-cell">
-                    {q.assignedTaName ?? <span className="text-zinc-300">-</span>}
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    {q.assignedTaName ? (
+                      <button
+                        type="button"
+                        onClick={() => applyFilter({ taId: q.assigned_ta_id ?? '' })}
+                        className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 hover:bg-zinc-200 transition-colors"
+                      >
+                        {q.assignedTaName}
+                      </button>
+                    ) : (
+                      <span className="text-zinc-300">-</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-zinc-400 hidden lg:table-cell">{formatDate(q.created_at)}</td>
                   <td className="px-4 py-3 text-right">

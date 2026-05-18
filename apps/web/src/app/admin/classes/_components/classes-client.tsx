@@ -18,6 +18,8 @@ const DAYS = [
   { label: '일', value: 0 },
 ]
 
+type TaInfo = { id: string; name: string; role: string }
+
 type ClassRow = {
   id: string
   name: string
@@ -29,6 +31,13 @@ type ClassRow = {
   day_of_week: number[] | null
   is_active: boolean
   studentCount: number
+  tas: TaInfo[]
+}
+
+function roleLabel(role: string) {
+  if (role === 'ta_admin') return '사무'
+  if (role === 'ta_assistant') return '첨삭'
+  return role
 }
 
 function DayCheckboxes({ defaultDays }: { defaultDays?: number[] | null }) {
@@ -72,7 +81,54 @@ function TimeFields({ defaultStart, defaultEnd }: { defaultStart?: string | null
   )
 }
 
-export function ClassesClient({ classes }: { classes: ClassRow[] }) {
+function TaCheckboxes({ allTas, assignedIds }: { allTas: TaInfo[]; assignedIds?: string[] }) {
+  if (allTas.length === 0) return null
+  return (
+    <div className="space-y-2">
+      <label className="block text-xs font-medium text-zinc-600">담당 조교</label>
+      <div className="max-h-40 overflow-y-auto rounded-xl border border-zinc-200 divide-y divide-zinc-100">
+        {allTas.map((ta) => (
+          <label
+            key={ta.id}
+            className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-zinc-50 transition-colors"
+          >
+            <input
+              type="checkbox"
+              name="taIds"
+              value={ta.id}
+              defaultChecked={assignedIds?.includes(ta.id) ?? false}
+              className="h-4 w-4 rounded border-zinc-300 accent-zinc-900"
+            />
+            <span className="flex-1 text-sm text-zinc-800">{ta.name}</span>
+            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500">
+              {roleLabel(ta.role)}
+            </span>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function TaTags({ tas }: { tas: TaInfo[] }) {
+  if (tas.length === 0) return <span className="text-zinc-300">—</span>
+  const visible = tas.slice(0, 2)
+  const rest = tas.length - 2
+  return (
+    <div className="flex flex-wrap gap-1">
+      {visible.map((ta) => (
+        <span key={ta.id} className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600">
+          {ta.name}
+        </span>
+      ))}
+      {rest > 0 && (
+        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-400">+{rest}</span>
+      )}
+    </div>
+  )
+}
+
+export function ClassesClient({ classes, allTas }: { classes: ClassRow[]; allTas: TaInfo[] }) {
   const router = useRouter()
   const [createOpen, setCreateOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<ClassRow | null>(null)
@@ -150,6 +206,7 @@ export function ClassesClient({ classes }: { classes: ClassRow[] }) {
               <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500">과목</th>
               <th className="hidden sm:table-cell px-5 py-3 text-left text-xs font-semibold text-zinc-500">학년</th>
               <th className="hidden md:table-cell px-5 py-3 text-left text-xs font-semibold text-zinc-500">수업 일정</th>
+              <th className="hidden lg:table-cell px-5 py-3 text-left text-xs font-semibold text-zinc-500">담당 조교</th>
               <th className="px-5 py-3 text-center text-xs font-semibold text-zinc-500">학생 수</th>
               <th className="px-5 py-3 text-center text-xs font-semibold text-zinc-500">상태</th>
               <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">관리</th>
@@ -158,7 +215,7 @@ export function ClassesClient({ classes }: { classes: ClassRow[] }) {
           <tbody className="divide-y divide-zinc-100">
             {classes.length === 0 ? (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={8}>
                   <EmptyState message="등록된 분반이 없습니다." description="분반 추가 버튼으로 새 반을 만드세요." />
                 </td>
               </tr>
@@ -173,6 +230,9 @@ export function ClassesClient({ classes }: { classes: ClassRow[] }) {
                   <td className="px-5 py-3.5 text-zinc-600">{c.subject}</td>
                   <td className="hidden sm:table-cell px-5 py-3.5 text-zinc-600">{c.grade}</td>
                   <td className="hidden md:table-cell px-5 py-3.5 text-zinc-500">{c.schedule ?? '—'}</td>
+                  <td className="hidden lg:table-cell px-5 py-3.5">
+                    <TaTags tas={c.tas} />
+                  </td>
                   <td className="px-5 py-3.5 text-center text-zinc-700">{c.studentCount}명</td>
                   <td className="px-5 py-3.5 text-center">
                     <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${
@@ -216,6 +276,7 @@ export function ClassesClient({ classes }: { classes: ClassRow[] }) {
           <InputField label="학년"   name="grade"   placeholder="예: 고1" required />
           <DayCheckboxes />
           <TimeFields />
+          <TaCheckboxes allTas={allTas} />
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>}
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={() => setCreateOpen(false)} className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50">
@@ -239,6 +300,7 @@ export function ClassesClient({ classes }: { classes: ClassRow[] }) {
             <InputField label="학년"   name="grade"   defaultValue={editTarget.grade}   required />
             <DayCheckboxes defaultDays={editTarget.day_of_week} />
             <TimeFields defaultStart={editTarget.start_time} defaultEnd={editTarget.end_time} />
+            <TaCheckboxes allTas={allTas} assignedIds={editTarget.tas.map((t) => t.id)} />
             <div className="flex items-center gap-2">
               <input
                 id="is_active_toggle"

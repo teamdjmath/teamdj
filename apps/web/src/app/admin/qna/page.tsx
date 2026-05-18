@@ -4,17 +4,37 @@ import { QnaClient } from './_components/qna-client'
 export default async function QnaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; classId?: string; textbookId?: string; problemNumber?: string }>
+  searchParams: Promise<{
+    status?: string
+    classId?: string
+    textbookId?: string
+    problemNumber?: string
+    taId?: string
+  }>
 }) {
-  const { status: selectedStatus, classId: selectedClassId, textbookId: selectedTextbookId, problemNumber: selectedProblemNumber } = await searchParams
+  const {
+    status: selectedStatus,
+    classId: selectedClassId,
+    textbookId: selectedTextbookId,
+    problemNumber: selectedProblemNumber,
+    taId: selectedTaId,
+  } = await searchParams
+
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
 
-  const [classesRes, textbooksRes] = await Promise.all([
+  const [classesRes, textbooksRes, taListRes] = await Promise.all([
     supabase.from('class_groups').select('id, name').eq('is_active', true).order('name'),
     db.from('textbooks').select('id, name').order('name'),
+    supabase
+      .from('users')
+      .select('id, name, role')
+      .in('role', ['teacher', 'ta_admin', 'ta_assistant'])
+      .eq('is_active', true)
+      .order('name'),
   ])
 
   // textbook_id/problem_number/textbooks join available after migration - using any cast
@@ -36,6 +56,9 @@ export default async function QnaPage({
   }
   if (selectedProblemNumber) {
     query = query.ilike('problem_number', `%${selectedProblemNumber}%`)
+  }
+  if (selectedTaId) {
+    query = query.eq('assigned_ta_id', selectedTaId)
   }
 
   const { data: rows } = await query
@@ -75,16 +98,47 @@ export default async function QnaPage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const questionsWithDup = questions.map((q: any) => ({ ...q, isDuplicate: isDuplicate(q) }))
 
+  // 내 답변 통계 (ta_id = 현재 유저)
+  let myStats = null
+  if (user) {
+    const { data: myAnswers } = await db
+      .from('qna_answers')
+      .select('difficulty, created_at')
+      .eq('ta_id', user.id)
+
+    if (myAnswers && myAnswers.length > 0) {
+      const now = new Date()
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+      myStats = {
+        total: myAnswers.length,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        monthly: myAnswers.filter((a: any) => a.created_at >= monthStart).length,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        low: myAnswers.filter((a: any) => a.difficulty >= 1 && a.difficulty <= 4).length,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        mid: myAnswers.filter((a: any) => a.difficulty >= 5 && a.difficulty <= 6).length,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        high: myAnswers.filter((a: any) => a.difficulty >= 7 && a.difficulty <= 8).length,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        unset: myAnswers.filter((a: any) => a.difficulty === null || a.difficulty === undefined).length,
+      }
+    }
+  }
+
   return (
     <QnaClient
       classOptions={(classesRes.data ?? []).map((c) => ({ id: c.id, name: c.name }))}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       textbookOptions={(textbooksRes.data ?? []).map((t: any) => ({ id: t.id as string, name: t.name as string }))}
+      taOptions={(taListRes.data ?? []).map((t) => ({ id: t.id, name: t.name as string, role: t.role as string }))}
       selectedStatus={selectedStatus ?? 'all'}
       selectedClassId={selectedClassId ?? null}
       selectedTextbookId={selectedTextbookId ?? null}
       selectedProblemNumber={selectedProblemNumber ?? ''}
+      selectedTaId={selectedTaId ?? null}
       questions={questionsWithDup}
+      myStats={myStats}
+      currentUserId={user?.id ?? null}
     />
   )
 }
