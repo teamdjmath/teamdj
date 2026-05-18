@@ -210,28 +210,17 @@ export function QnaClient({
       </div>
 
       {/* 분반 필터 */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        <button
-          onClick={() => applyFilter({ classId: '' })}
-          className={[
-            'rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors',
-            !selectedClassId ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200',
-          ].join(' ')}
+      <div className="mb-4">
+        <select
+          value={selectedClassId ?? ''}
+          onChange={(e) => applyFilter({ classId: e.target.value })}
+          className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-700 focus:border-zinc-900 focus:outline-none"
         >
-          전체 분반
-        </button>
-        {classOptions.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => applyFilter({ classId: c.id })}
-            className={[
-              'rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors',
-              selectedClassId === c.id ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200',
-            ].join(' ')}
-          >
-            {c.name}
-          </button>
-        ))}
+          <option value="">전체 분반</option>
+          {classOptions.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
       </div>
 
       {/* 교재 + 문항번호 + 담당 조교 필터 */}
@@ -295,18 +284,18 @@ export function QnaClient({
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[780px] text-sm">
             <thead>
               <tr className="border-b border-zinc-100 text-left text-xs text-zinc-400">
-                <th className="px-4 py-3 font-medium">학생</th>
-                <th className="px-4 py-3 font-medium hidden sm:table-cell">분반</th>
-                <th className="px-4 py-3 font-medium hidden md:table-cell">교재</th>
-                <th className="px-4 py-3 font-medium hidden md:table-cell">문항</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap min-w-[80px]">학생</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap min-w-[120px] hidden sm:table-cell">분반</th>
+                <th className="px-4 py-3 font-medium min-w-[100px] hidden md:table-cell">교재</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap min-w-[60px] hidden md:table-cell">문항</th>
                 <th className="px-4 py-3 font-medium">질문 내용</th>
-                <th className="px-4 py-3 font-medium">상태</th>
-                <th className="px-4 py-3 font-medium hidden md:table-cell">담당 조교</th>
-                <th className="px-4 py-3 font-medium hidden lg:table-cell">등록일</th>
-                <th className="px-4 py-3 font-medium text-right">상세</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap min-w-[80px]">상태</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap min-w-[90px] hidden md:table-cell">담당 조교</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap min-w-[100px] hidden lg:table-cell">등록일</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap min-w-[80px] text-right">상세</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50">
@@ -318,26 +307,26 @@ export function QnaClient({
                     q.isDuplicate ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-zinc-50',
                   ].join(' ')}
                 >
-                  <td className="px-4 py-3 font-medium text-zinc-900">{q.studentName}</td>
-                  <td className="px-4 py-3 text-zinc-500 hidden sm:table-cell">
+                  <td className="px-4 py-3 font-medium text-zinc-900 whitespace-nowrap">{q.studentName}</td>
+                  <td className="px-4 py-3 text-zinc-500 whitespace-nowrap hidden sm:table-cell">
                     {q.className ?? <span className="text-zinc-300">-</span>}
                   </td>
-                  <td className="px-4 py-3 text-zinc-500 hidden md:table-cell">
-                    {q.textbookName ?? <span className="text-zinc-300">-</span>}
+                  <td className="px-4 py-3 text-zinc-500 max-w-[140px] hidden md:table-cell">
+                    <span className="block truncate">{q.textbookName ?? <span className="text-zinc-300">-</span>}</span>
                   </td>
-                  <td className="px-4 py-3 text-zinc-500 hidden md:table-cell">
+                  <td className="px-4 py-3 text-zinc-500 whitespace-nowrap hidden md:table-cell">
                     {q.problem_number ?? <span className="text-zinc-300">-</span>}
                   </td>
-                  <td className="px-4 py-3 text-zinc-600 max-w-xs">
+                  <td className="px-4 py-3 text-zinc-600 w-full max-w-0">
                     <p className="font-medium text-zinc-800 truncate">{q.title}</p>
-                    <span className="line-clamp-1 text-xs text-zinc-400">{q.content}</span>
+                    <span className="block truncate text-xs text-zinc-400">{q.content}</span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[q.status]}`}>
                       {STATUS_LABEL[q.status]}
                     </span>
                   </td>
-                  <td className="px-4 py-3 hidden md:table-cell">
+                  <td className="px-4 py-3 whitespace-nowrap hidden md:table-cell">
                     {q.assignedTaName ? (
                       <button
                         type="button"
@@ -350,8 +339,8 @@ export function QnaClient({
                       <span className="text-zinc-300">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-zinc-400 hidden lg:table-cell">{formatDate(q.created_at)}</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-zinc-400 whitespace-nowrap hidden lg:table-cell">{formatDate(q.created_at)}</td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
                     <Link
                       href={`/admin/qna/${q.id}`}
                       className="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 transition-colors"
