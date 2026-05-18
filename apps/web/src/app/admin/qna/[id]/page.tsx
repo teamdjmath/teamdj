@@ -57,6 +57,7 @@ export default async function QnaDetailPage({
   }))
 
   const currentUserName = (user.user_metadata?.name as string | undefined) ?? ''
+  const currentUserRole = (user.user_metadata?.role as string | undefined) ?? ''
 
   return (
     <div>
@@ -83,6 +84,7 @@ export default async function QnaDetailPage({
         answers={answers}
         currentUserId={user.id}
         currentUserName={currentUserName}
+        currentUserRole={currentUserRole}
       />
     </div>
   )

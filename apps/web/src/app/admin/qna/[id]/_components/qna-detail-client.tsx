@@ -37,6 +37,7 @@ interface Props {
   answers: Answer[]
   currentUserId: string
   currentUserName: string
+  currentUserRole: string
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -284,7 +285,7 @@ function AnswerEditor({
   )
 }
 
-export function QnaDetailClient({ question, answers, currentUserId }: Props) {
+export function QnaDetailClient({ question, answers, currentUserId, currentUserRole }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -497,7 +498,7 @@ export function QnaDetailClient({ question, answers, currentUserId }: Props) {
                       </span>
                     )}
                   </div>
-                  {a.taId === currentUserId && (
+                  {(a.taId === currentUserId || currentUserRole === 'teacher') && (
                     <div className="flex items-center gap-2">
                       <button type="button" onClick={() => startEdit(a)} disabled={pending}
                         className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors disabled:opacity-50">수정</button>

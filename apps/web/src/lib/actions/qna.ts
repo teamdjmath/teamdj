@@ -102,11 +102,14 @@ export async function updateAnswer(data: {
   if (!['teacher', 'ta_admin', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  let updateQuery = (supabase as any)
     .from('qna_answers')
     .update({ content: data.content, media_urls: data.mediaUrls, difficulty: data.difficulty ?? null })
     .eq('id', data.answerId)
-    .eq('ta_id', user.id)
+  if (role !== 'teacher') {
+    updateQuery = updateQuery.eq('ta_id', user.id)
+  }
+  const { error } = await updateQuery
 
   if (error) return { error: '답변 수정에 실패했습니다.' }
 
@@ -128,11 +131,10 @@ export async function cancelAnswer(data: {
   const role = user.user_metadata?.role as string | undefined
   if (!['teacher', 'ta_admin', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
 
-  const { error: deleteError } = await supabase
-    .from('qna_answers')
-    .delete()
-    .eq('id', data.answerId)
-    .eq('ta_id', user.id)
+  const baseDeleteQuery = supabase.from('qna_answers').delete().eq('id', data.answerId)
+  const { error: deleteError } = await (
+    role === 'teacher' ? baseDeleteQuery : baseDeleteQuery.eq('ta_id', user.id)
+  )
 
   if (deleteError) return { error: '답변 취소에 실패했습니다.' }
 
