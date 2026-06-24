@@ -21,6 +21,12 @@ export function LandingNav() {
             상담 신청
           </Link>
           <Link
+            href="/report-builder"
+            className="rounded-full border border-zinc-200 px-4 py-1.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors"
+          >
+            학습 리포트
+          </Link>
+          <Link
             href="/login"
             className="rounded-full border border-zinc-200 px-4 py-1.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors"
           >
