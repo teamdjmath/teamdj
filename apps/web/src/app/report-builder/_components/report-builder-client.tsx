@@ -6,6 +6,7 @@ import { toPng } from 'html-to-image'
 import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
 import { StudentReportCard, type StudentData } from './student-report-card'
+import { DatePicker } from '@/components/ui/date-picker'
 
 const DAYS_KR = ['일', '월', '화', '수', '목', '금', '토']
 const MAX_ASSIGNMENTS = 5
@@ -200,11 +201,11 @@ export function ReportBuilderClient() {
 
       {/* ── 컨트롤 패널 */}
       <div className="sticky top-14 z-30 bg-white border-b border-zinc-200 shadow-sm">
-        <div className="container max-w-5xl mx-auto px-4 py-4">
-          <div className="flex flex-wrap items-end gap-4">
+        <div className="container max-w-5xl mx-auto px-4 py-5">
+          <div className="flex flex-wrap items-end gap-5">
             {/* 리포트 제목 */}
-            <div className="flex flex-col gap-1 min-w-[220px]">
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+            <div className="flex flex-col gap-2 min-w-[260px]">
+              <label className="text-sm font-bold text-zinc-600">
                 리포트 제목
               </label>
               <input
@@ -212,30 +213,27 @@ export function ReportBuilderClient() {
                 value={reportTitle}
                 onChange={(e) => setReportTitle(e.target.value)}
                 placeholder="예: 기말고사 내신대비"
-                className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
+                className="rounded-xl border border-zinc-200 px-4 py-3 text-base text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
               />
             </div>
 
             {/* 날짜 */}
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+            <div className="flex flex-col gap-2 w-[220px]">
+              <label className="text-sm font-bold text-zinc-600">
                 날짜
               </label>
-              <input
-                type="date"
+              <DatePicker
                 value={reportDate}
-                onChange={(e) => setReportDate(e.target.value)}
-                className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
+                onChange={setReportDate}
+                placeholder="날짜 선택"
               />
             </div>
 
             {/* 제목 미리보기 */}
             {dateLabel && (
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-                  제목 미리보기
-                </span>
-                <span className="text-sm font-semibold text-zinc-800 py-2">
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-bold text-zinc-600">제목 미리보기</span>
+                <span className="text-base font-semibold text-zinc-800 py-3">
                   {dateLabel}{reportTitle ? `  ${reportTitle}` : ''}
                 </span>
               </div>
@@ -244,8 +242,8 @@ export function ReportBuilderClient() {
             <div className="flex-1" />
 
             {/* 엑셀 업로드 */}
-            <label className="cursor-pointer rounded-lg border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <label className="cursor-pointer rounded-xl border-2 border-zinc-200 px-5 py-3 text-base font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors flex items-center gap-2.5">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
@@ -258,7 +256,7 @@ export function ReportBuilderClient() {
               <button
                 onClick={handleDownloadAll}
                 disabled={downloading}
-                className="rounded-lg bg-zinc-950 px-5 py-2 text-sm font-semibold text-white hover:bg-zinc-800 transition-colors disabled:opacity-60 flex items-center gap-2"
+                className="rounded-xl bg-zinc-950 px-5 py-3 text-base font-semibold text-white hover:bg-zinc-800 transition-colors disabled:opacity-60 flex items-center gap-2.5"
               >
                 {downloading ? (
                   <>
