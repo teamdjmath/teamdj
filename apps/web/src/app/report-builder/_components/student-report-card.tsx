@@ -1,219 +1,360 @@
+'use client'
+
 import { forwardRef } from 'react'
+
+export interface AssignmentItem {
+  slotNum: number     // circular display slot 1-10
+  lectureNum: number  // actual lecture number shown in table
+  issueDate: string   // 출제일 "M/D" format
+  submitDate: string  // 제출일 "M/D" format
+  completion: number  // 이행도 0-5
+}
 
 export interface StudentData {
   school: string
   grade: string
   name: string
+  attendance: string     // 출석여부 (blank → "출석")
   arrivalTime: string
   departureTime: string
-  studyContent: string
-  specialNote: string
-  assignments: Array<{ name: string; score: number }>
+  studyContent: string   // 학습내용
+  testScore: number | null
+  specialNote: string    // 특이사항&공지사항
+  assignments: AssignmentItem[]
 }
 
 interface Props {
   student: StudentData
-  reportTitle: string
-  reportDateLabel: string
+  className: string        // 분반명 (from filename)
+  dateString: string       // "7/2" or "7/2, 7/3"
+  maxScore: number | null
+  classAvg: number | null
+  classStdDev: number | null
+  classNotice: string      // 반 공통 공지사항 (한 셀 공유)
 }
 
-// ─── 팔레트
-const W = {
-  primary:   '#ffffff',
-  secondary: 'rgba(255,255,255,0.82)',
-  tertiary:  'rgba(255,255,255,0.50)',
-  ghost:     'rgba(255,255,255,0.12)',
-}
-const B = {
-  title:   '#0f0f0f',
-  body:    '#1e1e1e',
-  sub:     '#4a4a4a',
-  hint:    '#9a9a9a',
-  border:  '#e0e0e0',
-  divider: '#f0f0f0',
-  white:   '#ffffff',
-  dark:    '#0f0f0f',
+const C = {
+  dark:   '#111111',
+  body:   '#1e1e1e',
+  sub:    '#555555',
+  hint:   '#999999',
+  border: '#e0e0e0',
+  rowBg:  '#f5f5f5',
+  white:  '#ffffff',
 }
 
-// ─── 섹션 라벨
-function SectionLabel({ num, title }: { num: string; title: string }) {
+function Circles({ count }: { count: number }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}>
-      <div style={{
-        width: 26, height: 26,
-        backgroundColor: B.dark,
-        borderRadius: 6,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0,
-      }}>
-        <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', letterSpacing: 0.3 }}>
-          {num}
-        </span>
-      </div>
-      <span style={{ fontSize: 16, fontWeight: 700, color: B.title, letterSpacing: -0.2 }}>
-        {title}
-      </span>
+    <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div
+          key={i}
+          style={{
+            width: 10,
+            height: 10,
+            borderRadius: '50%',
+            backgroundColor: i < count ? C.dark : C.white,
+            border: `1.5px solid ${i < count ? C.dark : '#b5b5b5'}`,
+            flexShrink: 0,
+          }}
+        />
+      ))}
     </div>
   )
 }
 
-// ─── 과제 진도 행
-function ProgressRow({ name, score, isLast }: { name: string; score: number; isLast: boolean }) {
-  const n = Math.min(5, Math.max(0, score))
+function SectionHeader({ label }: { label: string }) {
   return (
     <div style={{
-      display: 'flex', alignItems: 'center',
-      padding: '10px 0',
-      borderBottom: isLast ? 'none' : `1px solid ${B.divider}`,
-      gap: 8,
+      padding: '5px 10px',
+      backgroundColor: C.rowBg,
+      borderTop: `1px solid ${C.border}`,
+      borderBottom: `1px solid ${C.border}`,
+      fontSize: 11,
+      fontWeight: 700,
+      color: C.sub,
+      textAlign: 'center' as const,
+      letterSpacing: 0.5,
     }}>
-      <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: B.body, lineHeight: 1.3 }}>
-        {name}
-      </span>
-      <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} style={{
-            width: 20, height: 20, borderRadius: '50%',
-            backgroundColor: i < n ? B.dark : B.white,
-            border: `2px solid ${i < n ? B.dark : '#bdbdbd'}`,
-          }} />
-        ))}
-      </div>
-      <span style={{ fontSize: 12, fontWeight: 700, color: B.hint, minWidth: 26, textAlign: 'right' as const }}>
-        {n}/5
-      </span>
+      {label}
     </div>
   )
 }
 
-// ─── 카드
+function AssignmentTable({ assignments }: { assignments: AssignmentItem[] }) {
+  const slotMap = new Map<number, AssignmentItem>()
+  for (const a of assignments) {
+    slotMap.set(a.slotNum, a)
+  }
+
+  // 강좌 컬럼: "10강"(~24px 텍스트) + 양측 패딩 3px = 30px 최소 → 36px 확보
+  // 날짜 컬럼: "10/31"(~28px) + 패딩 = 34px 최소 → 38px 확보
+  // 이행도 컬럼: 나머지 공간 (auto) — 5×10px circles + 4×3px gap = 62px 충분히 수용
+  const th: React.CSSProperties = {
+    padding: '3px 4px',
+    fontSize: 10,
+    fontWeight: 700,
+    color: C.sub,
+    backgroundColor: '#fafafa',
+    borderBottom: `1px solid ${C.border}`,
+    borderRight: `1px solid ${C.border}`,
+    textAlign: 'center' as const,
+    whiteSpace: 'nowrap' as const,
+  }
+  const td: React.CSSProperties = {
+    padding: '3px 4px',
+    fontSize: 11,
+    color: C.body,
+    borderBottom: `1px solid ${C.border}`,
+    borderRight: `1px solid ${C.border}`,
+    textAlign: 'center' as const,
+    whiteSpace: 'nowrap' as const,
+    verticalAlign: 'middle' as const,
+  }
+
+  const renderSlot = (slot: number) => {
+    const item = slotMap.get(slot)
+    return (
+      <tr key={slot}>
+        <td style={td}>{item ? `${item.lectureNum}강` : ''}</td>
+        <td style={td}>{item?.issueDate ?? ''}</td>
+        <td style={td}>{item?.submitDate ?? ''}</td>
+        <td style={{ ...td, borderRight: 'none', padding: '3px 4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            {item ? <Circles count={item.completion} /> : null}
+          </div>
+        </td>
+      </tr>
+    )
+  }
+
+  const tStyle: React.CSSProperties = {
+    flex: 1,
+    borderCollapse: 'collapse',
+    border: `1px solid ${C.border}`,
+    tableLayout: 'fixed' as const,
+    width: '100%',
+  }
+
+  const cols = (
+    <colgroup>
+      <col style={{ width: 36 }} />
+      <col style={{ width: 38 }} />
+      <col style={{ width: 38 }} />
+      <col />
+    </colgroup>
+  )
+
+  const thead = (
+    <thead>
+      <tr>
+        <th style={th}>강좌</th>
+        <th style={th}>출제일</th>
+        <th style={th}>제출일</th>
+        <th style={{ ...th, borderRight: 'none' }}>이행도</th>
+      </tr>
+    </thead>
+  )
+
+  return (
+    <div style={{ display: 'flex', gap: 6 }}>
+      <table style={tStyle}>
+        {cols}
+        {thead}
+        <tbody>{[1, 2, 3, 4, 5].map(renderSlot)}</tbody>
+      </table>
+
+      <table style={tStyle}>
+        {cols}
+        {thead}
+        <tbody>{[6, 7, 8, 9, 10].map(renderSlot)}</tbody>
+      </table>
+    </div>
+  )
+}
+
 export const StudentReportCard = forwardRef<HTMLDivElement, Props>(
-  ({ student, reportTitle, reportDateLabel }, ref) => {
-    const { school, grade, name, arrivalTime, departureTime, studyContent, specialNote, assignments } = student
-    const hasNote = !!specialNote?.trim()
-    const headerLine = [reportDateLabel, reportTitle].filter(Boolean).join('  ·  ')
+  ({ student, className: classNameProp, dateString, maxScore, classAvg, classStdDev, classNotice }, ref) => {
+    const {
+      school, grade, name, attendance,
+      arrivalTime, departureTime,
+      studyContent, testScore, specialNote, assignments,
+    } = student
+
+    const title = dateString
+      ? `${dateString} 역전의 수학 학습결과`
+      : '역전의 수학 학습결과'
+
+    const infoTh: React.CSSProperties = {
+      padding: '7px 8px',
+      fontSize: 11,
+      fontWeight: 700,
+      color: C.sub,
+      backgroundColor: C.rowBg,
+      borderRight: `1px solid ${C.border}`,
+      borderBottom: `1px solid ${C.border}`,
+      textAlign: 'center' as const,
+      whiteSpace: 'nowrap' as const,
+    }
+    const infoTd: React.CSSProperties = {
+      padding: '7px 10px',
+      fontSize: 13,
+      fontWeight: 500,
+      color: C.body,
+      borderRight: `1px solid ${C.border}`,
+      borderBottom: `1px solid ${C.border}`,
+    }
 
     return (
       <div
         ref={ref}
         style={{
-          // ★ 420px → ×2 = 840px PNG
-          // iPhone(390pt)에서 840px PNG ≈ 93% 화면 폭 → 폰트 14~16pt로 선명하게 표시
           width: 420,
-          backgroundColor: B.white,
-          color: B.body,
+          backgroundColor: C.white,
+          color: C.body,
           fontFamily: "'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif",
           boxSizing: 'border-box',
           overflow: 'hidden',
+          border: `1px solid ${C.border}`,
         }}
       >
-        {/* ══ HEADER ══════════════════════════════ */}
-        <div style={{ backgroundColor: B.dark }}>
-
-          {/* TeamDJ 로고 */}
-          <div style={{
-            padding: '12px 24px',
-            textAlign: 'center',
-            borderBottom: `1px solid ${W.ghost}`,
+        {/* TeamDJ Header */}
+        <div style={{
+          backgroundColor: C.dark,
+          padding: '7px 16px',
+          textAlign: 'center' as const,
+        }}>
+          <span style={{
+            fontFamily: 'var(--font-geist-sans), system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif',
+            fontSize: 13,
+            fontWeight: 900,
+            letterSpacing: '-0.05em',
+            textTransform: 'uppercase' as const,
+            color: '#ffffff',
+            fontStyle: 'italic',
           }}>
-            <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: 2, color: W.primary, fontStyle: 'italic' }}>
-              TeamDJ
-            </span>
-          </div>
-
-          {/* 날짜 · 이름 · 학교 */}
-          <div style={{ padding: '18px 24px 14px', textAlign: 'center' }}>
-            {/* 날짜·제목 */}
-            <p style={{
-              margin: 0, marginBottom: 8,
-              fontSize: 13, color: headerLine ? W.secondary : W.tertiary,
-              fontWeight: 500, letterSpacing: 0.2,
-              fontStyle: headerLine ? 'normal' : 'italic',
-            }}>
-              {headerLine || '날짜와 제목을 입력해주세요'}
-            </p>
-
-            {/* 이름 */}
-            <p style={{
-              margin: 0,
-              fontSize: 40, fontWeight: 800, color: W.primary,
-              letterSpacing: -1.5, lineHeight: 1,
-            }}>
-              {name}
-            </p>
-
-            {/* 학년·학교 */}
-            <p style={{
-              margin: 0, marginTop: 8,
-              fontSize: 13, color: W.tertiary, letterSpacing: 0.6,
-            }}>
-              {grade}&nbsp;·&nbsp;{school}
-            </p>
-          </div>
-
-          {/* 등원·하원 */}
-          <div style={{ display: 'flex', borderTop: `1px solid ${W.ghost}` }}>
-            {[
-              { label: '등원', value: arrivalTime || '—' },
-              { label: '하원', value: departureTime || '—' },
-            ].map(({ label, value }, i) => (
-              <div key={label} style={{
-                flex: 1, padding: '12px 0', textAlign: 'center' as const,
-                borderLeft: i > 0 ? `1px solid ${W.ghost}` : 'none',
-              }}>
-                <p style={{ margin: 0, marginBottom: 4, fontSize: 9, fontWeight: 700, letterSpacing: 2.5, color: W.tertiary }}>
-                  {label}
-                </p>
-                <p style={{ margin: 0, fontSize: 24, fontWeight: 700, color: W.primary, letterSpacing: 0.5 }}>
-                  {value}
-                </p>
-              </div>
-            ))}
-          </div>
+            TeamDJ
+          </span>
         </div>
 
-        {/* ══ 01 당일 수업 내용 ══════════════════════ */}
-        <div style={{ padding: '18px 24px', borderBottom: `1px solid ${B.border}` }}>
-          <SectionLabel num="01" title="당일 수업 내용" />
-          <p style={{ margin: 0, fontSize: 15, color: B.body, lineHeight: 1.85, whiteSpace: 'pre-line' }}>
+        {/* Report Title */}
+        <div style={{
+          padding: '9px 16px',
+          textAlign: 'center' as const,
+          borderBottom: `2px solid ${C.dark}`,
+          backgroundColor: C.white,
+        }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: C.dark }}>
+            {title}
+          </span>
+        </div>
+
+        {/* Student Info Table */}
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <tbody>
+            <tr>
+              <td style={{ ...infoTh, width: 36 }}>학교</td>
+              <td style={infoTd}>{school || '—'}</td>
+              <td style={{ ...infoTh, width: 36 }}>학년</td>
+              <td style={infoTd}>{grade || '—'}</td>
+              <td style={{ ...infoTh, width: 36 }}>이름</td>
+              <td style={{ ...infoTd, borderRight: 'none' }}>{name}</td>
+            </tr>
+            <tr>
+              <td style={{ ...infoTh, borderBottom: 'none' }}>출석</td>
+              <td style={{ ...infoTd, borderBottom: 'none' }}>{attendance || '출석'}</td>
+              <td style={{ ...infoTh, borderBottom: 'none' }}>강좌</td>
+              <td style={{ ...infoTd, borderBottom: 'none', borderRight: 'none' }} colSpan={3}>
+                {classNameProp || '—'}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* 등원/하원 */}
+        <div style={{
+          display: 'flex',
+          borderTop: `1px solid ${C.border}`,
+          borderBottom: `1px solid ${C.border}`,
+        }}>
+          {(['등원', '하원'] as const).map((label, i) => {
+            const val = i === 0 ? arrivalTime : departureTime
+            return (
+              <div
+                key={label}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 2,
+                  padding: '7px 10px',
+                  borderLeft: i > 0 ? `1px solid ${C.border}` : 'none',
+                }}
+              >
+                <span style={{ fontSize: 10, fontWeight: 700, color: C.sub, letterSpacing: 0.5 }}>{label}</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: C.body, lineHeight: 1 }}>{val || '—'}</span>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* 학습내용 */}
+        <SectionHeader label="학습내용" />
+        <div style={{ padding: '10px 12px', borderBottom: `1px solid ${C.border}` }}>
+          <p style={{ margin: 0, fontSize: 13, color: C.body, lineHeight: 1.85, whiteSpace: 'pre-line' as const }}>
             {studyContent || '—'}
           </p>
         </div>
 
-        {/* ══ 02 진도 현황 ═══════════════════════════ */}
-        <div style={{ padding: '18px 24px', borderBottom: hasNote ? `1px solid ${B.border}` : 'none' }}>
-          <SectionLabel num="02" title="내신대비 진도 현황" />
-          {assignments.length > 0 ? (
-            <div>
-              {assignments.map((a, i) => (
-                <ProgressRow key={i} name={a.name} score={a.score} isLast={i === assignments.length - 1} />
-              ))}
-            </div>
-          ) : (
-            <p style={{ margin: 0, fontSize: 14, color: B.hint }}>과제 데이터 없음</p>
-          )}
-        </div>
-
-        {/* ══ 03 특이사항 ════════════════════════════ */}
-        {hasNote && (
-          <div style={{ padding: '18px 24px' }}>
-            <SectionLabel num="03" title="특이사항" />
-            <p style={{ margin: 0, fontSize: 15, color: B.body, lineHeight: 1.85, whiteSpace: 'pre-line' }}>
-              {specialNote}
-            </p>
+        {/* 테스트 점수 */}
+        <SectionHeader label="테스트 점수" />
+        <div style={{ padding: '9px 12px', borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 6 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: C.body }}>
+              {testScore !== null
+                ? `${testScore}점${maxScore ? ` / ${maxScore}점` : ''}`
+                : '—'}
+            </span>
+            {classAvg !== null && (
+              <span style={{ fontSize: 12, color: C.sub }}>
+                반 평균&nbsp;
+                <span style={{ fontWeight: 700 }}>{classAvg}점</span>
+                &nbsp;&nbsp;표준편차&nbsp;
+                <span style={{ fontWeight: 700 }}>{classStdDev}점</span>
+              </span>
+            )}
           </div>
-        )}
-
-        {/* ══ FOOTER ══════════════════════════════ */}
-        <div style={{
-          backgroundColor: B.dark,
-          padding: '9px 24px',
-          textAlign: 'center',
-        }}>
-          <span style={{ fontSize: 10, color: W.tertiary, letterSpacing: 0.3 }}>
-            Designed by Akileox
-          </span>
         </div>
+
+        {/* 과제검사 */}
+        <SectionHeader label="과제검사" />
+        <div style={{ padding: '8px 10px', borderBottom: `1px solid ${C.border}` }}>
+          <AssignmentTable assignments={assignments} />
+        </div>
+
+        {/* 특이사항 & 공지사항 (하나라도 있으면 표시) */}
+        {(specialNote?.trim() || classNotice?.trim()) && (
+          <>
+            <SectionHeader label="특이사항 & 공지사항" />
+            <div style={{ padding: '10px 12px' }}>
+              {specialNote?.trim() && (
+                <p style={{ margin: 0, fontSize: 13, color: C.body, lineHeight: 1.85, whiteSpace: 'pre-line' as const }}>
+                  {specialNote}
+                </p>
+              )}
+              {specialNote?.trim() && classNotice?.trim() && (
+                <div style={{ height: 8 }} />
+              )}
+              {classNotice?.trim() && (
+                <p style={{ margin: 0, fontSize: 13, color: C.body, lineHeight: 1.85, whiteSpace: 'pre-line' as const }}>
+                  {classNotice}
+                </p>
+              )}
+            </div>
+          </>
+        )}
       </div>
     )
   }
