@@ -256,16 +256,23 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
   }
 
   // ─ 강좌 자료 관리
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>, courseName: string) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     setFileUploadErr('')
     setFileUploading(true)
     try {
       const supabase = createBrowserClient()
-      const ext = file.name.split('.').pop() ?? 'bin'
-      const path = `${courseName}/${Date.now()}-${crypto.randomUUID()}.${ext}`
-      const { error } = await supabase.storage.from('course-materials').upload(path, file)
+      // 경로는 UUID + 확장자만 사용 (한글·특수문자 경로 오류 방지)
+      const ext = (file.name.split('.').pop() ?? 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin'
+      const path = `${crypto.randomUUID()}.${ext}`
+      const { error } = await supabase.storage.from('course-materials').upload(path, file, {
+        contentType: file.type || 'application/octet-stream',
+        headers: {
+          // RFC 5987: 한글 파일명도 다운로드 시 원본 이름으로 전달
+          'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(file.name)}`,
+        },
+      })
       if (error) throw error
       const { data: { publicUrl } } = supabase.storage.from('course-materials').getPublicUrl(path)
       setMaterialForm((f) => ({
@@ -720,7 +727,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                       <div className="space-y-2">
                         <label className="block text-xs font-medium text-zinc-600">파일 선택</label>
                         <label className={`flex items-center justify-center gap-2 w-full rounded-xl border-2 border-dashed px-4 py-4 cursor-pointer transition-colors ${fileUploading ? 'border-zinc-200 bg-zinc-50 opacity-60 pointer-events-none' : materialForm.url ? 'border-zinc-300 bg-zinc-50' : 'border-zinc-200 hover:border-zinc-400 hover:bg-zinc-50'}`}>
-                          <input type="file" className="sr-only" onChange={(e) => handleFileChange(e, modal.courseName)} disabled={fileUploading} />
+                          <input type="file" className="sr-only" onChange={handleFileChange} disabled={fileUploading} />
                           {fileUploading ? (
                             <span className="text-xs text-zinc-400">업로드 중…</span>
                           ) : materialForm.url ? (
