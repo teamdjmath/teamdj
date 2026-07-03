@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/modal'
 import { InputField } from '@/components/ui/form-field'
 import {
   createCourse,
+  renameCourse,
   updateCourseClasses,
   deleteCourse,
   createLecture,
@@ -15,16 +16,19 @@ import {
   updateLectureOrder,
   deleteLecture,
   syncYouTubePlaylistToCourse,
+  addCourseMaterial,
+  deleteCourseMaterial,
 } from '@/lib/actions/lectures'
 import { createTextbook, deleteTextbook } from '@/lib/actions/textbooks'
 
 type ClassOption = { id: string; name: string }
 type TextbookItem = { id: string; name: string }
+type CourseMaterial = { id: string; title: string; url: string }
 type LectureItem = {
   id: string; title: string; videoId: string; orderNum: number; syncedAt: string | null; materialUrl?: string | null
 }
 type Course = {
-  courseName: string; allowedClassIds: string[]; lectures: LectureItem[]
+  courseName: string; allowedClassIds: string[]; lectures: LectureItem[]; materials: CourseMaterial[]
 }
 
 interface Props {
@@ -43,10 +47,12 @@ function fmtDate(iso: string) {
 
 type ModalType =
   | { kind: 'createCourse' }
+  | { kind: 'renameCourse'; courseName: string }
   | { kind: 'editAccess'; courseName: string; currentClassIds: string[] }
   | { kind: 'sync'; courseName: string }
   | { kind: 'addLecture'; courseName: string; nextOrder: number }
   | { kind: 'editLecture'; lecture: LectureItem }
+  | { kind: 'materials'; courseName: string }
   | null
 
 export function LecturesClient({ classOptions, courses, textbooks: initialTextbooks }: Props) {
@@ -69,6 +75,9 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
   const [newCourseName, setNewCourseName] = useState('')
   const [newCourseClasses, setNewCourseClasses] = useState<string[]>([])
 
+  // 강좌 이름 수정 폼
+  const [renameValue, setRenameValue] = useState('')
+
   // 접근 분반 수정 폼
   const [editAccessClasses, setEditAccessClasses] = useState<string[]>([])
 
@@ -78,6 +87,9 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
 
   // 강의 폼
   const [lectureForm, setLectureForm] = useState({ title: '', videoId: '', orderNum: '1', materialUrl: '' })
+
+  // 강좌 자료 폼
+  const [materialForm, setMaterialForm] = useState({ title: '', url: '' })
 
   function toggleCollapse(cn: string) {
     setCollapsed((prev) => ({ ...prev, [cn]: !prev[cn] }))
@@ -97,6 +109,23 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
     setErr('')
     startTransition(async () => {
       const res = await createCourse(newCourseName.trim(), newCourseClasses)
+      if (!res.success) { setErr(res.error); return }
+      setModal(null)
+      router.refresh()
+    })
+  }
+
+  // ─ 강좌 이름 수정
+  function openRenameCourse(course: Course) {
+    setRenameValue(course.courseName); setErr('')
+    setModal({ kind: 'renameCourse', courseName: course.courseName })
+  }
+  function handleRenameCourse() {
+    if (modal?.kind !== 'renameCourse') return
+    if (!renameValue.trim()) { setErr('강좌명을 입력하세요.'); return }
+    setErr('')
+    startTransition(async () => {
+      const res = await renameCourse(modal.courseName, renameValue.trim())
       if (!res.success) { setErr(res.error); return }
       setModal(null)
       router.refresh()
@@ -219,6 +248,32 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
     })
   }
 
+  // ─ 강좌 자료 관리
+  function openMaterials(course: Course) {
+    setMaterialForm({ title: '', url: '' }); setErr('')
+    setModal({ kind: 'materials', courseName: course.courseName })
+  }
+  function handleAddMaterial() {
+    if (modal?.kind !== 'materials') return
+    if (!materialForm.title.trim()) { setErr('제목을 입력하세요.'); return }
+    if (!materialForm.url.trim()) { setErr('URL을 입력하세요.'); return }
+    setErr('')
+    startTransition(async () => {
+      const res = await addCourseMaterial(modal.courseName, materialForm.title.trim(), materialForm.url.trim())
+      if (!res.success) { setErr(res.error); return }
+      setMaterialForm({ title: '', url: '' })
+      router.refresh()
+    })
+  }
+  function handleDeleteMaterial(id: string, title: string) {
+    if (!confirm(`"${title}" 자료를 삭제하시겠습니까?`)) return
+    startTransition(async () => {
+      const res = await deleteCourseMaterial(id)
+      if (!res.success) alert(res.error)
+      else router.refresh()
+    })
+  }
+
   // ─ 교재 추가
   function handleAddTextbook() {
     if (!newTextbookName.trim()) { setTextbookErr('교재명을 입력하세요.'); return }
@@ -313,6 +368,25 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
 
                   {/* 강좌 액션 */}
                   <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => openRenameCourse(course)}
+                      className="rounded-md px-2.5 py-1.5 text-xs text-zinc-500 hover:bg-zinc-100 transition-colors"
+                    >
+                      이름 수정
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openMaterials(course)}
+                      className="rounded-md px-2.5 py-1.5 text-xs text-zinc-500 hover:bg-zinc-100 transition-colors"
+                    >
+                      학습 자료
+                      {course.materials.length > 0 && (
+                        <span className="ml-1 rounded-full bg-zinc-200 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600">
+                          {course.materials.length}
+                        </span>
+                      )}
+                    </button>
                     <button
                       type="button"
                       onClick={() => openEditAccess(course)}
@@ -548,6 +622,28 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
         </div>
       </Modal>
 
+      {/* ─ 강좌 이름 수정 모달 */}
+      <Modal open={modal?.kind === 'renameCourse'} onClose={() => setModal(null)} title="강좌 이름 수정" size="md">
+        <div className="space-y-4">
+          {modal?.kind === 'renameCourse' && (
+            <p className="text-xs text-zinc-500">현재 이름: <span className="font-medium text-zinc-800">{modal.courseName}</span></p>
+          )}
+          <InputField
+            label="새 강좌명"
+            required
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleRenameCourse()}
+            placeholder="새 강좌 이름 입력"
+          />
+          {err && <p className="text-sm text-red-500">{err}</p>}
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50">취소</button>
+            <button type="button" onClick={handleRenameCourse} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">{pending ? '저장 중…' : '저장'}</button>
+          </div>
+        </div>
+      </Modal>
+
       {/* ─ 접근 분반 수정 모달 */}
       <Modal open={modal?.kind === 'editAccess'} onClose={() => setModal(null)} title="접근 허용 분반 수정" size="md">
         <div className="space-y-4">
@@ -599,6 +695,74 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
             {!syncResult && (
               <button type="button" onClick={handleSync} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">{pending ? '동기화 중…' : '동기화'}</button>
             )}
+          </div>
+        </div>
+      </Modal>
+
+      {/* ─ 강좌 학습 자료 모달 */}
+      <Modal open={modal?.kind === 'materials'} onClose={() => setModal(null)} title="학습 자료 관리" size="md">
+        <div className="space-y-5">
+          {modal?.kind === 'materials' && (
+            <p className="text-xs text-zinc-500">강좌: <span className="font-medium text-zinc-800">{modal.courseName}</span></p>
+          )}
+
+          {/* 기존 자료 목록 */}
+          {(() => {
+            if (modal?.kind !== 'materials') return null
+            const course = courses.find((c) => c.courseName === modal.courseName)
+            const mats = course?.materials ?? []
+            return mats.length === 0 ? (
+              <p className="text-xs text-zinc-400 py-2">등록된 자료가 없습니다.</p>
+            ) : (
+              <div className="space-y-2">
+                {mats.map((m) => (
+                  <div key={m.id} className="flex items-center gap-2 rounded-xl bg-zinc-50 px-3 py-2.5">
+                    <a
+                      href={m.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 min-w-0 text-sm font-medium text-zinc-800 hover:text-zinc-950 truncate hover:underline"
+                    >
+                      {m.title}
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteMaterial(m.id, m.title)}
+                      disabled={pending}
+                      className="shrink-0 text-xs text-red-400 hover:text-red-600 disabled:opacity-50"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
+
+          {/* 자료 추가 폼 */}
+          <div className="space-y-3 border-t border-zinc-100 pt-4">
+            <p className="text-xs font-medium text-zinc-600">새 자료 추가</p>
+            <InputField
+              label="제목"
+              required
+              value={materialForm.title}
+              onChange={(e) => setMaterialForm((f) => ({ ...f, title: e.target.value }))}
+              placeholder="예: 3월 모의고사 해설"
+            />
+            <InputField
+              label="링크 (URL)"
+              required
+              value={materialForm.url}
+              onChange={(e) => setMaterialForm((f) => ({ ...f, url: e.target.value }))}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddMaterial()}
+              placeholder="PDF, Google Drive 등 자료 링크"
+            />
+          </div>
+
+          {err && <p className="text-sm text-red-500">{err}</p>}
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50">닫기</button>
+            <button type="button" onClick={handleAddMaterial} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">{pending ? '추가 중…' : '자료 추가'}</button>
           </div>
         </div>
       </Modal>

@@ -57,6 +57,36 @@ export async function updateCourseClasses(courseName: string, classIds: string[]
   })
 }
 
+export async function renameCourse(oldName: string, newName: string): Promise<ActionResult> {
+  const user = await getStaffUser()
+
+  return withAction('renameCourse', user?.id, async () => {
+    if (!user) return { success: false, error: '인증이 필요합니다.' }
+    const role = user.user_metadata?.role as string | undefined
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+    if (!newName.trim()) return { success: false, error: '강좌명을 입력하세요.' }
+    if (oldName.trim() === newName.trim()) return { success: true }
+
+    const admin = createAdminClient()
+
+    const { error: e1 } = await admin
+      .from('lectures')
+      .update({ course_name: newName.trim() })
+      .eq('course_name', oldName)
+    if (e1) throw e1
+
+    const { error: e2 } = await admin
+      .from('lecture_class_access')
+      .update({ course_name: newName.trim() })
+      .eq('course_name', oldName)
+    if (e2) throw e2
+
+    revalidatePath('/admin/lectures')
+    revalidatePath('/dashboard/learning')
+    return { success: true }
+  })
+}
+
 export async function deleteCourse(courseName: string): Promise<ActionResult> {
   const user = await getStaffUser()
 
@@ -161,6 +191,49 @@ export async function deleteLecture(id: string): Promise<ActionResult> {
 
     const admin = createAdminClient()
     const { error } = await admin.from('lectures').delete().eq('id', id)
+    if (error) throw error
+
+    revalidatePath('/admin/lectures')
+    return { success: true }
+  })
+}
+
+export async function addCourseMaterial(courseName: string, title: string, url: string): Promise<ActionResult> {
+  const user = await getStaffUser()
+
+  return withAction('addCourseMaterial', user?.id, async () => {
+    if (!user) return { success: false, error: '인증이 필요합니다.' }
+    const role = user.user_metadata?.role as string | undefined
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+    if (!title.trim()) return { success: false, error: '제목을 입력하세요.' }
+    if (!url.trim()) return { success: false, error: 'URL을 입력하세요.' }
+
+    const admin = createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (admin as any).from('course_materials').insert({
+      course_name: courseName,
+      title: title.trim(),
+      url: url.trim(),
+    })
+    if (error) throw error
+
+    revalidatePath('/admin/lectures')
+    revalidatePath(`/dashboard/learning/course/${encodeURIComponent(courseName)}`)
+    return { success: true }
+  })
+}
+
+export async function deleteCourseMaterial(id: string): Promise<ActionResult> {
+  const user = await getStaffUser()
+
+  return withAction('deleteCourseMaterial', user?.id, async () => {
+    if (!user) return { success: false, error: '인증이 필요합니다.' }
+    const role = user.user_metadata?.role as string | undefined
+    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+
+    const admin = createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (admin as any).from('course_materials').delete().eq('id', id)
     if (error) throw error
 
     revalidatePath('/admin/lectures')

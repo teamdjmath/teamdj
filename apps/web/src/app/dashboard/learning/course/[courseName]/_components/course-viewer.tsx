@@ -9,12 +9,19 @@ type Lecture = {
   orderNum: number
 }
 
+type CourseMaterial = {
+  id: string
+  title: string
+  url: string
+}
+
 interface Props {
   courseName: string
   lectures: Lecture[]
+  materials: CourseMaterial[]
 }
 
-export function CourseViewer({ courseName, lectures }: Props) {
+export function CourseViewer({ courseName, lectures, materials }: Props) {
   return (
     <div className="flex flex-col h-full bg-white">
       {/* 헤더 영역 */}
@@ -39,9 +46,28 @@ export function CourseViewer({ courseName, lectures }: Props) {
           </svg>
           강의 자료
         </h2>
-        <div className="bg-white rounded-lg p-4 text-center border border-zinc-200 border-dashed">
-          <p className="text-xs text-zinc-400">등록된 강의 자료가 없습니다.</p>
-        </div>
+        {materials.length === 0 ? (
+          <div className="bg-white rounded-lg p-4 text-center border border-zinc-200 border-dashed">
+            <p className="text-xs text-zinc-400">등록된 강의 자료가 없습니다.</p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {materials.map((m) => (
+              <a
+                key={m.id}
+                href={m.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-white border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700 hover:border-zinc-400 hover:text-zinc-950 transition-all"
+              >
+                <svg className="w-3.5 h-3.5 text-zinc-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                </svg>
+                {m.title}
+              </a>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 강의 목록 영역 */}

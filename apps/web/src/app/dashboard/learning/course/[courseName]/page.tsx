@@ -57,10 +57,25 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
     orderNum: (row.order_num ?? 0) as number,
   }))
 
+  // 3. Fetch course materials
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: materialRows } = await (admin as any)
+    .from('course_materials')
+    .select('id, title, url')
+    .eq('course_name', decodedCourseName)
+    .order('created_at')
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const materials = (materialRows as any[] ?? []).map((row) => ({
+    id: row.id as string,
+    title: row.title as string,
+    url: row.url as string,
+  }))
+
   return (
     <div className="h-[calc(100vh-120px)] bg-white rounded-xl border border-zinc-200 overflow-hidden">
       <div className="h-full">
-        <CourseViewer courseName={decodedCourseName} lectures={lectures} />
+        <CourseViewer courseName={decodedCourseName} lectures={lectures} materials={materials} />
       </div>
     </div>
   )
