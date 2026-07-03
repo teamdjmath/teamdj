@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { InputField } from '@/components/ui/form-field'
+import { createClient as createBrowserClient } from '@/lib/supabase/client'
 import {
   createCourse,
   renameCourse,
@@ -90,6 +91,9 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
 
   // 강좌 자료 폼
   const [materialForm, setMaterialForm] = useState({ title: '', url: '' })
+  const [materialInputMode, setMaterialInputMode] = useState<'file' | 'url'>('file')
+  const [fileUploading, setFileUploading] = useState(false)
+  const [fileUploadErr, setFileUploadErr] = useState('')
 
   // 강좌 설정 탭
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('rename')
@@ -123,6 +127,8 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
     setRenameValue(course.courseName)
     setEditAccessClasses([...course.allowedClassIds])
     setMaterialForm({ title: '', url: '' })
+    setMaterialInputMode('file')
+    setFileUploadErr('')
     setErr('')
     setSettingsTab(tab)
     setModal({ kind: 'settings', courseName: course.courseName })
@@ -250,6 +256,30 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
   }
 
   // ─ 강좌 자료 관리
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>, courseName: string) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setFileUploadErr('')
+    setFileUploading(true)
+    try {
+      const supabase = createBrowserClient()
+      const ext = file.name.split('.').pop() ?? 'bin'
+      const path = `${courseName}/${Date.now()}-${crypto.randomUUID()}.${ext}`
+      const { error } = await supabase.storage.from('course-materials').upload(path, file)
+      if (error) throw error
+      const { data: { publicUrl } } = supabase.storage.from('course-materials').getPublicUrl(path)
+      setMaterialForm((f) => ({
+        title: f.title || file.name.replace(/\.[^.]+$/, ''),
+        url: publicUrl,
+      }))
+    } catch (err) {
+      setFileUploadErr(err instanceof Error ? err.message : '업로드 실패')
+    } finally {
+      setFileUploading(false)
+      e.target.value = ''
+    }
+  }
+
   function handleAddMaterial() {
     if (modal?.kind !== 'settings') return
     if (!materialForm.title.trim()) { setErr('제목을 입력하세요.'); return }
@@ -348,10 +378,10 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                   </button>
 
                   {/* 접근 분반 배지 */}
-                  <div className="hidden md:flex items-center gap-1 flex-wrap">
+                  <div className="hidden md:flex items-center gap-1">
                     {course.allowedClassIds.length === 0 ? (
                       <span className="text-[11px] text-zinc-300">분반 미설정</span>
-                    ) : (
+                    ) : course.allowedClassIds.length <= 2 ? (
                       course.allowedClassIds.map((cid) => {
                         const cls = classOptions.find((c) => c.id === cid)
                         return cls ? (
@@ -360,6 +390,13 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                           </span>
                         ) : null
                       })
+                    ) : (
+                      <>
+                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-600">
+                          {classOptions.find((c) => c.id === course.allowedClassIds[0])?.name ?? '?'}
+                        </span>
+                        <span className="text-[11px] text-zinc-400">외 {course.allowedClassIds.length - 1}개</span>
+                      </>
                     )}
                   </div>
 
@@ -653,6 +690,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
               {/* 학습 자료 */}
               {settingsTab === 'materials' && (
                 <div className="space-y-3">
+                  {/* 등록된 자료 목록 */}
                   {mats.length === 0 ? (
                     <p className="text-xs text-zinc-400 py-1">등록된 자료가 없습니다.</p>
                   ) : (
@@ -667,14 +705,47 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                       ))}
                     </div>
                   )}
-                  <div className="space-y-2 border-t border-zinc-100 pt-3">
+
+                  {/* 자료 추가 폼 */}
+                  <div className="space-y-3 border-t border-zinc-100 pt-3">
+                    {/* 파일 / 링크 토글 */}
+                    <div className="flex gap-1 rounded-lg bg-zinc-100 p-0.5">
+                      <button type="button" onClick={() => { setMaterialInputMode('file'); setMaterialForm((f) => ({ ...f, url: '' })); setFileUploadErr('') }} className={`flex-1 rounded-md py-1 text-xs font-medium transition-colors ${materialInputMode === 'file' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>파일 업로드</button>
+                      <button type="button" onClick={() => { setMaterialInputMode('url'); setMaterialForm((f) => ({ ...f, url: '' })); setFileUploadErr('') }} className={`flex-1 rounded-md py-1 text-xs font-medium transition-colors ${materialInputMode === 'url' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>링크 입력</button>
+                    </div>
+
                     <InputField label="제목" required value={materialForm.title} onChange={(e) => setMaterialForm((f) => ({ ...f, title: e.target.value }))} placeholder="예: 3월 모의고사 해설" />
-                    <InputField label="링크 (URL)" required value={materialForm.url} onChange={(e) => setMaterialForm((f) => ({ ...f, url: e.target.value }))} onKeyDown={(e) => e.key === 'Enter' && handleAddMaterial()} placeholder="PDF, Google Drive 등 자료 링크" />
+
+                    {materialInputMode === 'file' ? (
+                      <div className="space-y-2">
+                        <label className="block text-xs font-medium text-zinc-600">파일 선택</label>
+                        <label className={`flex items-center justify-center gap-2 w-full rounded-xl border-2 border-dashed px-4 py-4 cursor-pointer transition-colors ${fileUploading ? 'border-zinc-200 bg-zinc-50 opacity-60 pointer-events-none' : materialForm.url ? 'border-zinc-300 bg-zinc-50' : 'border-zinc-200 hover:border-zinc-400 hover:bg-zinc-50'}`}>
+                          <input type="file" className="sr-only" onChange={(e) => handleFileChange(e, modal.courseName)} disabled={fileUploading} />
+                          {fileUploading ? (
+                            <span className="text-xs text-zinc-400">업로드 중…</span>
+                          ) : materialForm.url ? (
+                            <span className="text-xs text-zinc-600 font-medium truncate max-w-full">업로드 완료 ✓</span>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                              <span className="text-xs text-zinc-400">PDF, 이미지, 문서 등</span>
+                            </>
+                          )}
+                        </label>
+                        {fileUploadErr && <p className="text-xs text-red-500">{fileUploadErr}</p>}
+                        {materialForm.url && (
+                          <p className="text-[11px] text-zinc-400 truncate">{materialForm.url}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <InputField label="링크 (URL)" required value={materialForm.url} onChange={(e) => setMaterialForm((f) => ({ ...f, url: e.target.value }))} onKeyDown={(e) => e.key === 'Enter' && handleAddMaterial()} placeholder="https://..." />
+                    )}
                   </div>
+
                   {err && <p className="text-sm text-red-500">{err}</p>}
                   <div className="flex gap-2">
                     <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50">닫기</button>
-                    <button type="button" onClick={handleAddMaterial} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">{pending ? '추가 중…' : '자료 추가'}</button>
+                    <button type="button" onClick={handleAddMaterial} disabled={pending || fileUploading || !materialForm.url} className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">{pending ? '추가 중…' : '자료 추가'}</button>
                   </div>
                 </div>
               )}
