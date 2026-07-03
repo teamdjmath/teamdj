@@ -10,9 +10,9 @@ export default function IntroPage() {
       <div className="pt-24">
         <FeatureShowcase />
       </div>
-      <footer className="py-12 bg-zinc-50 border-t border-zinc-200">
+      <footer className="py-8 bg-zinc-950 border-t border-zinc-800">
         <div className="container max-w-5xl mx-auto px-4 text-center">
-          <p className="text-sm text-zinc-400">© 2026 TeamDJ. All rights reserved.</p>
+          <p className="text-sm text-zinc-600">© 2026 TeamDJ. All rights reserved.</p>
         </div>
       </footer>
     </div>

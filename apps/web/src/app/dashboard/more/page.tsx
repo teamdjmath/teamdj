@@ -50,7 +50,8 @@ export default function MorePage() {
   })
 
   // FAQ
-  const [openFaq, setOpenFaq] = useState<number | null>(null)
+  const [faqOpen, setFaqOpen] = useState(false)
+  const [openFaqItem, setOpenFaqItem] = useState<number | null>(null)
 
   // 1:1 문의
   const [inquiryOpen, setInquiryOpen] = useState(false)
@@ -122,7 +123,7 @@ export default function MorePage() {
           <li>
             <button
               type="button"
-              onClick={() => setOpenFaq(openFaq === -1 ? null : -1)}
+              onClick={() => { setFaqOpen(!faqOpen); setOpenFaqItem(null) }}
               className="flex w-full items-center justify-between px-6 py-5 text-[15px] font-bold text-zinc-800 hover:bg-zinc-50 transition-colors"
             >
               자주 묻는 질문
@@ -147,7 +148,7 @@ export default function MorePage() {
       </Card>
 
       {/* FAQ 아코디언 (인라인) */}
-      {openFaq === -1 && (
+      {faqOpen && (
         <Card>
           <CardHeader title="자주 묻는 질문" />
           <ul className="divide-y divide-zinc-50 px-0">
@@ -155,12 +156,12 @@ export default function MorePage() {
               <li key={idx}>
                 <button
                   type="button"
-                  onClick={() => setOpenFaq(openFaq === idx ? -1 : idx)}
+                  onClick={() => setOpenFaqItem(openFaqItem === idx ? null : idx)}
                   className="flex w-full items-start justify-between gap-3 px-6 py-5 text-left"
                 >
                   <span className="text-[15px] font-bold text-zinc-800">{item.q}</span>
                   <svg
-                    className={`mt-0.5 h-5 w-5 shrink-0 text-zinc-200 transition-transform ${openFaq === idx ? 'rotate-90' : ''}`}
+                    className={`mt-0.5 h-5 w-5 shrink-0 text-zinc-200 transition-transform ${openFaqItem === idx ? 'rotate-90' : ''}`}
                     fill="none"
                     stroke="currentColor"
                     strokeWidth={2}
@@ -169,7 +170,7 @@ export default function MorePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
                   </svg>
                 </button>
-                {openFaq === idx && (
+                {openFaqItem === idx && (
                   <div className="px-6 pb-5">
                     <p className="text-sm text-zinc-500 leading-relaxed font-medium">{item.a}</p>
                   </div>

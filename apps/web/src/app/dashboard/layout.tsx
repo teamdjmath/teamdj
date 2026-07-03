@@ -34,7 +34,7 @@ export default async function DashboardLayout({
       <div className="flex flex-col min-h-screen bg-zinc-50">
         {/* 상단 헤더 */}
         <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white px-5 py-3">
-          <div className="flex items-center justify-between max-w-lg mx-auto">
+          <div className="flex items-center justify-between max-w-lg lg:max-w-5xl mx-auto">
             <div className="flex flex-col">
               <span className="text-sm font-black tracking-tighter text-zinc-950 uppercase italic">TeamDJ</span>
             </div>
@@ -51,7 +51,7 @@ export default async function DashboardLayout({
         {/* 휴원 배너 */}
         {isSuspended && suspUntil && (
           <div className="border-b border-amber-200 bg-amber-50 px-4 py-2.5">
-            <div className="max-w-lg mx-auto flex items-center gap-2">
+            <div className="max-w-lg lg:max-w-5xl mx-auto flex items-center gap-2">
               <svg className="h-4 w-4 shrink-0 text-amber-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
               </svg>
@@ -65,7 +65,7 @@ export default async function DashboardLayout({
         )}
 
         {/* 페이지 본문 */}
-        <main className="flex-1 max-w-lg mx-auto w-full px-4 py-5 pb-24">
+        <main className="flex-1 max-w-lg lg:max-w-5xl mx-auto w-full px-4 py-5 pb-24">
           {children}
         </main>
 
