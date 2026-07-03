@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { ReportCard } from '../../_components/report-card'
 import { saveReport } from '@/lib/actions/reports'
@@ -29,7 +29,7 @@ type StudentData = {
     difficulty?: string
     classAverage?: number
   }>
-  assignments: Array<{ title: string; completionPct: number }>
+  assignments: Array<{ title: string; completionPct: number; issueDate?: string; submitDate?: string }>
   avgAssignmentPct: number
   initialNotes?: string
 }
@@ -81,6 +81,16 @@ export function ReportFormClient({
   const [done, setDone] = useState<number | null>(null)
   const [err, setErr] = useState('')
 
+  const classStdDev = useMemo(() => {
+    const scores = students
+      .map(s => selectedTestId ? s.scores[selectedTestId]?.score : undefined)
+      .filter((s): s is number => s !== undefined)
+    if (scores.length < 2) return null
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length
+    const variance = scores.reduce((sum, s) => sum + (s - avg) ** 2, 0) / scores.length
+    return Math.round(Math.sqrt(variance) * 10) / 10
+  }, [students, selectedTestId])
+
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
   function nav(classId: string, date: string) {
@@ -108,11 +118,13 @@ export function ReportFormClient({
         homework:         common.homework        ?? '',
         announcement:     common.announcement    ?? '',
         notes:            sd.notes               ?? '',
-        todayAttendance:  (sd.att || null) as ReportContent['todayAttendance'],
-        recentScore:      testScore ?? null,
-        avgAssignmentPct: s.avgAssignmentPct,
-        absenceReason:    s.absenceReason,
+        todayAttendance:   (sd.att || null) as ReportContent['todayAttendance'],
+        recentScore:       testScore ?? null,
+        avgAssignmentPct:  s.avgAssignmentPct,
+        absenceReason:     s.absenceReason,
         lastAssignmentTitle: assignmentDetails,
+        classStdDev:       classStdDev ?? undefined,
+        assignmentsDetail: s.assignments,
       },
     }
   }

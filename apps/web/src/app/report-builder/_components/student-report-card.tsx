@@ -103,6 +103,7 @@ function AssignmentTable({ assignments }: { assignments: AssignmentItem[] }) {
   }
   const td: React.CSSProperties = {
     padding: '3px 4px',
+    height: 20,
     fontSize: 11,
     color: C.body,
     borderBottom: `1px solid ${C.border}`,

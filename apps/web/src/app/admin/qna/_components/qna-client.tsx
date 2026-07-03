@@ -78,6 +78,128 @@ interface Props {
   currentUserId: string | null
 }
 
+const EXAMPLE_QUESTION = {
+  title: '수능 수학 - f\'(x) = 0에서 극대·극소 판단하는 법을 모르겠어요',
+  content: '안녕하세요. 교재 p.87의 12번에서 f(x) = x³ − 3x + 2의 극값을 구하는 과정이 이해가 안 됩니다. f\'(x) = 0이 되는 x를 구하고 나서 극대·극소를 어떻게 판단하는 건가요?',
+}
+
+const EXAMPLE_ANSWER_ADMIN = `### 칭찬
+도함수를 이용해 극값을 구하려는 방향은 완벽히 맞습니다! 좋은 질문이에요.
+
+### 핵심 포인트
+f'(x) = 0인 점에서 f'(x)의 **부호 변화**로 극대/극소를 판단합니다.
+ - f'(x): 양 → 음 ⟹ **극대**
+ - f'(x): 음 → 양 ⟹ **극소**
+
+### 풀이
+f'(x) = 3x² − 3 = 3(x+1)(x−1) = 0 이므로 x = −1 또는 x = 1
+
+증감표를 그리면
+ - x = −1 좌우: f'(x) 양 → 음 → **극대**, f(−1) = 4
+ - x = 1  좌우: f'(x) 음 → 양 → **극소**, f(1) = 0`
+
+// 학생에게 보이는 형식 (buildStudentContent 로직과 동일)
+const EXAMPLE_ANSWER_STUDENT = `안녕하세요 홍길동 학생, 김조교 조교입니다.
+
+도함수를 이용해 극값을 구하려는 방향은 완벽히 맞습니다! 좋은 질문이에요.
+
+f'(x) = 0인 점에서 f'(x)의 부호 변화로 극대/극소를 판단합니다.
+ - f'(x): 양 → 음 ⟹ 극대
+ - f'(x): 음 → 양 ⟹ 극소
+
+f'(x) = 3x² − 3 = 3(x+1)(x−1) = 0 이므로 x = −1 또는 x = 1
+
+증감표를 그리면
+ - x = −1 좌우: f'(x) 양 → 음 → 극대, f(−1) = 4
+ - x = 1  좌우: f'(x) 음 → 양 → 극소, f(1) = 0
+
+──────────────────
+감사합니다. 더 궁금하신 내용이 있다면 언제든 질문해주시기 바랍니다.
+
+AI가 초안을 생성 후 조교가 검수·수정을 거쳐 답변됩니다.`
+
+function PinnedGuide() {
+  const [open, setOpen] = useState(false)
+  const [tab, setTab] = useState<'format' | 'preview'>('format')
+
+  return (
+    <div className="mb-6 rounded-2xl border border-zinc-200 bg-white overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-zinc-50 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">조교 답변 가이드</span>
+          <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold text-zinc-400">예시 고정</span>
+        </div>
+        <svg
+          className={`w-4 h-4 text-zinc-400 transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="border-t border-zinc-100">
+          {/* 2-column on lg+, stacked on mobile */}
+          <div className="grid grid-cols-1 lg:grid-cols-2">
+
+            {/* LEFT: 학생 질문 */}
+            <div className="p-5 lg:border-r border-zinc-100 border-b lg:border-b-0">
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-zinc-400">학생 질문</p>
+              <p className="mb-2 text-sm font-bold text-zinc-900">{EXAMPLE_QUESTION.title}</p>
+              <p className="text-sm text-zinc-600 leading-relaxed whitespace-pre-wrap">{EXAMPLE_QUESTION.content}</p>
+            </div>
+
+            {/* RIGHT: 조교 입력 형식 + 학생 화면 미리보기 */}
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">답변 작성법</p>
+                <div className="flex gap-1 bg-zinc-100 rounded-lg p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setTab('format')}
+                    className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${tab === 'format' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}
+                  >
+                    조교 입력
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTab('preview')}
+                    className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${tab === 'preview' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'}`}
+                  >
+                    학생 화면
+                  </button>
+                </div>
+              </div>
+
+              {tab === 'format' ? (
+                <div className="rounded-xl bg-zinc-950 p-4">
+                  <pre className="text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap font-mono overflow-x-auto">
+                    {EXAMPLE_ANSWER_ADMIN}
+                  </pre>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+                  <p className="text-[11px] font-bold text-zinc-400 mb-2 uppercase tracking-wider">학생에게 보이는 모습</p>
+                  <p className="text-sm text-zinc-700 leading-relaxed whitespace-pre-wrap">{EXAMPLE_ANSWER_STUDENT}</p>
+                </div>
+              )}
+
+              <p className="mt-3 text-[11px] text-zinc-400 leading-relaxed">
+                <span className="font-bold text-zinc-500">팁:</span> AI 초안 버튼으로 초안을 생성한 후 수정해 제출하세요. 반드시 내용을 검수해야 합니다.
+              </p>
+            </div>
+
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function QnaClient({
   classOptions,
   textbookOptions,
@@ -144,6 +266,9 @@ export function QnaClient({
       <div className="mb-6">
         <h1 className="text-xl font-bold text-zinc-950">질의응답</h1>
       </div>
+
+      {/* 고정 조교 가이드 */}
+      <PinnedGuide />
 
       {/* 내 답변 현황 카드 */}
       {myStats && myStats.total > 0 && (

@@ -9,6 +9,7 @@ import type { ActionResult } from '@/lib/types/actions'
 export type ProgressEntry = {
   studentId: string
   completionPct: number
+  submitDate?: string
 }
 
 export async function createAssignment(data: {
@@ -107,10 +108,12 @@ export async function saveProgress(
       student_id:     e.studentId,
       completion_pct: e.completionPct,
       is_overdue:     dueDate ? dueDate < today && e.completionPct < 100 : false,
+      ...(e.submitDate ? { submit_date: e.submitDate } : {}),
     }))
 
     const adminSupabase = createAdminClient()
-    const { error, count } = await adminSupabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error, count } = await (adminSupabase as any)
       .from('assignment_progress')
       .upsert(rows, { onConflict: 'assignment_id,student_id', count: 'exact' })
     if (error) throw error

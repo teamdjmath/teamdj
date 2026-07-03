@@ -33,9 +33,11 @@ export interface ReportContent {
     difficulty?:  string
     classAverage?: number
   } | null
-  avgAssignmentPct:     number
-  absenceReason?:       string
-  lastAssignmentTitle?: string
+  avgAssignmentPct:      number
+  absenceReason?:        string
+  lastAssignmentTitle?:  string
+  classStdDev?:          number
+  assignmentsDetail?:    Array<{ title: string; completionPct: number; issueDate?: string; submitDate?: string }>
 }
 
 /** exam_results.grade_cuts 컬럼 구조  예: { "A": 90, "B": 80 } */

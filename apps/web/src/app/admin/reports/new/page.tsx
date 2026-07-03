@@ -46,7 +46,7 @@ export default async function NewReportPage({
       difficulty?: string
       classAverage?: number
     }>
-    assignments: Array<{ title: string; completionPct: number }>
+    assignments: Array<{ title: string; completionPct: number; issueDate?: string; submitDate?: string }>
     avgAssignmentPct: number
   }
 
@@ -89,12 +89,13 @@ export default async function NewReportPage({
         .eq('class_id', selectedClassId)
         .order('test_date', { ascending: false })
         .limit(10),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       admin
         .from('assignments')
-        .select('id, title')
+        .select('id, title, issue_date, due_date')
         .eq('class_id', selectedClassId)
         .order('created_at', { ascending: false })
-        .limit(5),
+        .limit(10) as unknown as Promise<{ data: Array<{ id: string; title: string; issue_date: string | null; due_date: string | null }> | null }>,
       // attRows: studentIds 의존이지만 빈 배열이면 limit(0)으로 안전하게 처리
       studentIds.length > 0
         ? admin
@@ -161,18 +162,24 @@ export default async function NewReportPage({
     const assignmentPctMap: Record<string, number> = {}
     if (studentIds.length > 0 && assignments && assignments.length > 0) {
       const aIds = assignments.map((a) => a.id)
-      const { data: progress } = await admin
+      type ProgressRow = { student_id: string; assignment_id: string; completion_pct: number; submit_date: string | null }
+      const { data: progress } = (await admin
         .from('assignment_progress')
-        .select('student_id, assignment_id, completion_pct')
+        .select('student_id, assignment_id, completion_pct, submit_date')
         .in('assignment_id', aIds)
-        .in('student_id', studentIds)
+        .in('student_id', studentIds)) as unknown as { data: ProgressRow[] | null }
 
       for (const row of progress ?? []) {
         const sid = row.student_id
         const aid = row.assignment_id
-        const title = assignments.find((a) => a.id === aid)?.title ?? ''
+        const asgn = assignments.find((a) => a.id === aid)
         if (!studentAssignments[sid]) studentAssignments[sid] = []
-        studentAssignments[sid].push({ title, completionPct: row.completion_pct })
+        studentAssignments[sid].push({
+          title:         asgn?.title ?? '',
+          completionPct: row.completion_pct,
+          issueDate:     asgn?.issue_date ?? undefined,
+          submitDate:    (row.submit_date ?? asgn?.due_date) ?? undefined,
+        })
       }
       for (const sid of studentIds) {
         const items = studentAssignments[sid] ?? []

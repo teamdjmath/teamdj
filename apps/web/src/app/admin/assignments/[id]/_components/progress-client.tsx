@@ -11,11 +11,12 @@ interface Props {
   dueDate: string | null
   students: Student[]
   existingProgress: Record<string, number>
+  existingSubmitDates?: Record<string, string>
 }
 
 const TODAY = new Date().toISOString().split('T')[0]
 
-export function ProgressClient({ assignmentId, dueDate, students, existingProgress }: Props) {
+export function ProgressClient({ assignmentId, dueDate, students, existingProgress, existingSubmitDates = {} }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [resultMsg, setResultMsg] = useState('')
@@ -23,8 +24,14 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
 
   const [pctMap, setPctMap] = useState<Record<string, number>>(() => {
     const init: Record<string, number> = {}
+    for (const s of students) init[s.id] = existingProgress[s.id] ?? 0
+    return init
+  })
+
+  const [submitDateMap, setSubmitDateMap] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {}
     for (const s of students) {
-      init[s.id] = existingProgress[s.id] ?? 0
+      if (existingSubmitDates[s.id]) init[s.id] = existingSubmitDates[s.id]
     }
     return init
   })
@@ -36,10 +43,22 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
     setPctMap((m) => ({ ...m, [studentId]: clamped }))
   }
 
+  function setSubmitDate(studentId: string, value: string) {
+    setSubmitDateMap((m) => ({ ...m, [studentId]: value }))
+  }
+
   function setAll100() {
     setPctMap((m) => {
       const updated = { ...m }
       for (const s of students) updated[s.id] = 100
+      return updated
+    })
+    // 전원 100% 시 제출일 기본값: 오늘
+    setSubmitDateMap((m) => {
+      const updated = { ...m }
+      for (const s of students) {
+        if (!updated[s.id]) updated[s.id] = TODAY
+      }
       return updated
     })
   }
@@ -55,8 +74,9 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
   function handleSave() {
     setResultMsg('')
     const entries = students.map((s) => ({
-      studentId: s.id,
+      studentId:     s.id,
       completionPct: pctMap[s.id] ?? 0,
+      submitDate:    submitDateMap[s.id] || undefined,
     }))
     startTransition(async () => {
       const result = await saveProgress(assignmentId, dueDate, entries)
@@ -101,49 +121,57 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
 
       {/* 테이블 */}
       <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-zinc-100 text-left text-xs text-zinc-400">
-              <th className="px-4 py-3 font-medium">학생</th>
-              <th className="px-4 py-3 font-medium">완료율 (%)</th>
-              <th className="px-4 py-3 font-medium text-center hidden sm:table-cell">상태</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-50">
-            {students.map((s) => {
-              const pct = pctMap[s.id] ?? 0
-              const incomplete = pct < 100
-              return (
-                <tr
-                  key={s.id}
-                  className={incomplete ? 'bg-red-50' : ''}
-                >
-                  <td className="px-4 py-3 font-medium text-zinc-900">{s.name}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-100 text-left text-xs text-zinc-400">
+                <th className="px-4 py-3 font-medium">학생</th>
+                <th className="px-4 py-3 font-medium">완료율 (%)</th>
+                <th className="px-4 py-3 font-medium">제출일</th>
+                <th className="px-4 py-3 font-medium text-center hidden sm:table-cell">상태</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-50">
+              {students.map((s) => {
+                const pct = pctMap[s.id] ?? 0
+                const isIncomplete = pct < 100
+                return (
+                  <tr key={s.id} className={isIncomplete ? 'bg-red-50' : ''}>
+                    <td className="px-4 py-3 font-medium text-zinc-900 whitespace-nowrap">{s.name}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={pct}
+                          onChange={(e) => setPct(s.id, parseInt(e.target.value) || 0)}
+                          className="w-20 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-base font-bold text-zinc-950 text-center focus:border-zinc-950 focus:outline-none focus:ring-0 transition-all"
+                        />
+                        <span className="text-zinc-500 font-medium">/ 100</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
                       <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={pct}
-                        onChange={(e) => setPct(s.id, parseInt(e.target.value) || 0)}
-                        className="w-24 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-base font-bold text-zinc-950 text-center focus:border-zinc-950 focus:outline-none focus:ring-0 transition-all"
+                        type="date"
+                        value={submitDateMap[s.id] ?? ''}
+                        onChange={(e) => setSubmitDate(s.id, e.target.value)}
+                        className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:border-zinc-950 focus:outline-none focus:ring-0 transition-all"
                       />
-                      <span className="text-zinc-500 font-medium">/ 100</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-center hidden sm:table-cell">
-                    {incomplete ? (
-                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600">미완료</span>
-                    ) : (
-                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600">완료</span>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+                    </td>
+                    <td className="px-4 py-3 text-center hidden sm:table-cell">
+                      {isIncomplete ? (
+                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600">미완료</span>
+                      ) : (
+                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600">완료</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* 하단 액션 바 */}
