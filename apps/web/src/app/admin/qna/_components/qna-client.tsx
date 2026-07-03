@@ -34,6 +34,12 @@ type MyStats = {
   avgRating: number | null
   ratedCount: number
 }
+type TaRating = {
+  taId: string
+  taName: string
+  avgRating: number | null
+  ratedCount: number
+}
 
 const STATUS_OPTIONS = [
   { value: 'all', label: '전체' },
@@ -77,6 +83,7 @@ interface Props {
   selectedTaId: string | null
   questions: Question[]
   myStats: MyStats | null
+  taRatings: TaRating[]
   currentUserId: string | null
 }
 
@@ -213,6 +220,7 @@ export function QnaClient({
   selectedTaId,
   questions,
   myStats,
+  taRatings,
   currentUserId,
 }: Props) {
   const router = useRouter()
@@ -313,22 +321,54 @@ export function QnaClient({
                 <span className={`${isMyFilter ? 'text-zinc-500' : 'text-zinc-300'}`}>미설정 {myStats.unset}</span>
               </span>
             )}
-            {myStats.avgRating != null && (
-              <>
-                <span className={`self-center h-4 w-px ${isMyFilter ? 'bg-zinc-700' : 'bg-zinc-200'}`} />
-                <span className="text-sm flex items-center gap-1">
-                  <span className="text-yellow-400">★</span>
-                  <span className={`font-bold text-lg ${isMyFilter ? 'text-white' : 'text-zinc-950'}`}>
-                    {myStats.avgRating.toFixed(1)}
-                  </span>
-                  <span className={`${isMyFilter ? 'text-zinc-400' : 'text-zinc-400'}`}>
-                    ({myStats.ratedCount}건)
-                  </span>
+            <span className={`self-center h-4 w-px ${isMyFilter ? 'bg-zinc-700' : 'bg-zinc-200'}`} />
+            {myStats.avgRating != null ? (
+              <span className="text-sm flex items-center gap-1">
+                <span className="text-yellow-400">★</span>
+                <span className={`font-bold text-lg ${isMyFilter ? 'text-white' : 'text-zinc-950'}`}>
+                  {myStats.avgRating.toFixed(1)}
                 </span>
-              </>
+                <span className={`${isMyFilter ? 'text-zinc-400' : 'text-zinc-400'}`}>
+                  ({myStats.ratedCount}건)
+                </span>
+              </span>
+            ) : (
+              <span className={`text-sm ${isMyFilter ? 'text-zinc-500' : 'text-zinc-300'}`}>아직 평가 없음</span>
             )}
           </div>
         </button>
+      )}
+
+      {/* 조교별 평균 별점 */}
+      {taRatings.length > 0 && (
+        <div className="mb-5 rounded-2xl border border-zinc-200 bg-white px-5 py-4">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">조교별 평균 별점</p>
+          <div className="flex flex-col gap-2">
+            {taRatings.map((t) => (
+              <div key={t.taId} className="flex items-center gap-3">
+                <span className="w-24 truncate text-sm font-medium text-zinc-700">{t.taName}</span>
+                <div className="flex items-center gap-0.5">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <span
+                      key={star}
+                      className={`text-base leading-none ${
+                        t.avgRating != null && star <= Math.round(t.avgRating)
+                          ? 'text-yellow-400'
+                          : 'text-zinc-200'
+                      }`}
+                    >★</span>
+                  ))}
+                </div>
+                {t.avgRating != null ? (
+                  <span className="text-sm font-bold text-zinc-800">{t.avgRating.toFixed(1)}</span>
+                ) : (
+                  <span className="text-sm text-zinc-300">—</span>
+                )}
+                <span className="text-xs text-zinc-400">({t.ratedCount}건 평가)</span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* 상태 필터 */}
