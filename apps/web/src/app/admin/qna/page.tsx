@@ -103,12 +103,19 @@ export default async function QnaPage({
   if (user) {
     const { data: myAnswers } = await db
       .from('qna_answers')
-      .select('difficulty, created_at')
+      .select('difficulty, created_at, student_rating')
       .eq('ta_id', user.id)
 
     if (myAnswers && myAnswers.length > 0) {
       const now = new Date()
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rated = myAnswers.filter((a: any) => a.student_rating != null)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const avgRating = rated.length > 0
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ? rated.reduce((sum: number, a: any) => sum + (a.student_rating as number), 0) / rated.length
+        : null
       myStats = {
         total: myAnswers.length,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -121,6 +128,8 @@ export default async function QnaPage({
         high: myAnswers.filter((a: any) => a.difficulty >= 7 && a.difficulty <= 8).length,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         unset: myAnswers.filter((a: any) => a.difficulty === null || a.difficulty === undefined).length,
+        avgRating,
+        ratedCount: rated.length,
       }
     }
   }

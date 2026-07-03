@@ -30,6 +30,7 @@ type Answer = {
   taId: string
   taName: string
   difficulty?: number | null
+  studentRating?: number | null
 }
 
 interface Props {
@@ -495,6 +496,12 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
                     {a.difficulty !== null && a.difficulty !== undefined && (
                       <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-600">
                         난이도 {a.difficulty}
+                      </span>
+                    )}
+                    {a.studentRating != null && (
+                      <span className="rounded-full bg-yellow-50 border border-yellow-200 px-2 py-0.5 text-[11px] font-bold text-yellow-700 flex items-center gap-0.5">
+                        <span>★</span>
+                        <span>{a.studentRating}</span>
                       </span>
                     )}
                   </div>

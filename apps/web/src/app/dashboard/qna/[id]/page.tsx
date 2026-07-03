@@ -31,18 +31,21 @@ export default async function QnaDetailPage({ params }: { params: Promise<{ id: 
     assignedTaName: qData.ta?.name || null,
   }
 
-  const { data: aData } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: aData } = await (supabase as any)
     .from('qna_answers')
-    .select('*, ta:users!qna_answers_ta_id_fkey(name)')
+    .select('id, content, media_urls, answered_at, student_rating, ta:users!qna_answers_ta_id_fkey(name)')
     .eq('question_id', id)
     .order('answered_at', { ascending: true })
 
-  const answers = (aData || []).map((a: { id: string; content: string; media_urls: string[]; answered_at: string; ta: { name: string } | null }) => ({
-    id: a.id,
-    content: a.content,
-    media_urls: a.media_urls,
-    answered_at: a.answered_at,
-    taName: a.ta?.name || 'TA',
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const answers = (aData || []).map((a: any) => ({
+    id: a.id as string,
+    content: a.content as string,
+    media_urls: (a.media_urls as string[]) ?? [],
+    answered_at: a.answered_at as string,
+    taName: (a.ta as { name?: string } | null)?.name || 'TA',
+    studentRating: (a.student_rating as number | null) ?? null,
   }))
 
   return (

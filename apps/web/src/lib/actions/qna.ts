@@ -150,6 +150,40 @@ export async function cancelAnswer(data: {
   return {}
 }
 
+export async function rateAnswer(answerId: string, rating: number): Promise<{ error?: string }> {
+  if (rating < 1 || rating > 5) return { error: '1~5점 사이의 값을 입력해주세요.' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '인증이 필요합니다.' }
+
+  // 학생 본인의 질문에 달린 답변인지 확인
+  const admin = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: answer } = await (admin as any)
+    .from('qna_answers')
+    .select('id, question_id, qna_questions!question_id(student_id)')
+    .eq('id', answerId)
+    .single()
+
+  if (!answer) return { error: '답변을 찾을 수 없습니다.' }
+
+  const studentId = (answer.qna_questions as { student_id: string } | null)?.student_id
+  if (studentId !== user.id) return { error: '본인의 질문에 달린 답변만 평가할 수 있습니다.' }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (admin as any)
+    .from('qna_answers')
+    .update({ student_rating: rating, rated_at: new Date().toISOString() })
+    .eq('id', answerId)
+
+  if (error) return { error: '평점 저장에 실패했습니다.' }
+
+  revalidatePath(`/dashboard/qna/${answer.question_id as string}`)
+  revalidatePath('/admin/qna')
+  return {}
+}
+
 export async function generateAiDraft(
   questionContent: string,
   imageUrls: string[] = [],

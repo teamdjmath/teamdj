@@ -41,7 +41,7 @@ export default async function QnaDetailPage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: answerRows } = await (supabase as any)
     .from('qna_answers')
-    .select('id, content, media_urls, answered_at, ta_id, difficulty, ta:users!ta_id(name)')
+    .select('id, content, media_urls, answered_at, ta_id, difficulty, student_rating, ta:users!ta_id(name)')
     .eq('question_id', id)
     .order('answered_at', { ascending: true })
 
@@ -54,6 +54,7 @@ export default async function QnaDetailPage({
     taId: (ar.ta_id as string) ?? '',
     taName: ((ar.ta as { name?: string } | null)?.name ?? '') as string,
     difficulty: (ar.difficulty as number | null) ?? null,
+    studentRating: (ar.student_rating as number | null) ?? null,
   }))
 
   const currentUserName = (user.user_metadata?.name as string | undefined) ?? ''

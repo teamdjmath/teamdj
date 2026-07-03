@@ -5,7 +5,7 @@ import { useState, useTransition } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
-import { deleteQuestion } from '@/lib/actions/qna'
+import { deleteQuestion, rateAnswer } from '@/lib/actions/qna'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 
 type Question = {
@@ -25,6 +25,61 @@ type Answer = {
   media_urls: string[]
   answered_at: string
   taName: string
+  studentRating: number | null
+}
+
+function StarRating({
+  answerId,
+  initial,
+  disabled,
+}: {
+  answerId: string
+  initial: number | null
+  disabled: boolean
+}) {
+  const [rating, setRating] = useState<number | null>(initial)
+  const [hover, setHover] = useState(0)
+  const [saving, startSave] = useTransition()
+  const [done, setDone] = useState(!!initial)
+
+  function handleRate(star: number) {
+    if (done || saving || disabled) return
+    startSave(async () => {
+      const res = await rateAnswer(answerId, star)
+      if (!res.error) { setRating(star); setDone(true) }
+    })
+  }
+
+  const display = done ? (rating ?? 0) : (hover || rating || 0)
+
+  return (
+    <div className="flex flex-col gap-1.5 mt-4 pt-4 border-t border-zinc-100">
+      <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+        {done ? '내 평가' : '이 답변이 도움이 되셨나요?'}
+      </p>
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            disabled={done || saving || disabled}
+            onClick={() => handleRate(star)}
+            onMouseEnter={() => !done && setHover(star)}
+            onMouseLeave={() => !done && setHover(0)}
+            className={`text-2xl leading-none transition-transform ${
+              done ? 'cursor-default' : 'cursor-pointer hover:scale-110 active:scale-95'
+            } ${saving ? 'opacity-50' : ''}`}
+            aria-label={`${star}점`}
+          >
+            <span className={star <= display ? 'text-yellow-400' : 'text-zinc-200'}>★</span>
+          </button>
+        ))}
+        {done && rating && (
+          <span className="ml-1 text-sm font-bold text-zinc-500">{rating}점</span>
+        )}
+      </div>
+    </div>
+  )
 }
 
 interface Props {
@@ -178,6 +233,13 @@ export function StudentQnaDetail({ question, answers, studentName }: Props) {
                         </a>
                       ))}
                     </div>
+                  )}
+                  {question.status === 'answered' && (
+                    <StarRating
+                      answerId={a.id}
+                      initial={a.studentRating}
+                      disabled={question.status !== 'answered'}
+                    />
                   )}
                 </CardContent>
               </Card>

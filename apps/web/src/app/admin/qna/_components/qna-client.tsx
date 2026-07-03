@@ -31,6 +31,8 @@ type MyStats = {
   mid: number
   high: number
   unset: number
+  avgRating: number | null
+  ratedCount: number
 }
 
 const STATUS_OPTIONS = [
@@ -240,14 +242,16 @@ export function QnaClient({
 
   useEffect(() => {
     const supabase = createClient()
+    let timeout: ReturnType<typeof setTimeout>
     const channel = supabase
       .channel('admin_qna_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'qna_questions' }, () => {
-        router.refresh()
+        clearTimeout(timeout)
+        timeout = setTimeout(() => router.refresh(), 600)
       })
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    return () => { clearTimeout(timeout); supabase.removeChannel(channel) }
   }, [router])
 
   const counts = {
@@ -308,6 +312,20 @@ export function QnaClient({
               <span className="text-sm">
                 <span className={`${isMyFilter ? 'text-zinc-500' : 'text-zinc-300'}`}>미설정 {myStats.unset}</span>
               </span>
+            )}
+            {myStats.avgRating != null && (
+              <>
+                <span className={`self-center h-4 w-px ${isMyFilter ? 'bg-zinc-700' : 'bg-zinc-200'}`} />
+                <span className="text-sm flex items-center gap-1">
+                  <span className="text-yellow-400">★</span>
+                  <span className={`font-bold text-lg ${isMyFilter ? 'text-white' : 'text-zinc-950'}`}>
+                    {myStats.avgRating.toFixed(1)}
+                  </span>
+                  <span className={`${isMyFilter ? 'text-zinc-400' : 'text-zinc-400'}`}>
+                    ({myStats.ratedCount}건)
+                  </span>
+                </span>
+              </>
             )}
           </div>
         </button>
