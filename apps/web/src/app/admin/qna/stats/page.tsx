@@ -32,6 +32,7 @@ export default async function QnaStatsPage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+  if (user.user_metadata?.role !== 'teacher') redirect('/admin/qna')
 
   const { period: rawPeriod } = await searchParams
   const period: Period =
@@ -56,7 +57,7 @@ export default async function QnaStatsPage({
   const periodStart = getPeriodStart(period)
   let answersQuery = db
     .from('qna_answers')
-    .select('ta_id, created_at, difficulty')
+    .select('ta_id, created_at, difficulty, student_rating')
     .in('ta_id', staffIds)
 
   if (periodStart) {
@@ -68,7 +69,7 @@ export default async function QnaStatsPage({
   // 전체 기간 집계 (비교용)
   const { data: allAnswers } = await db
     .from('qna_answers')
-    .select('ta_id, difficulty')
+    .select('ta_id, difficulty, student_rating')
     .in('ta_id', staffIds)
 
   // ta_id 기준 집계
@@ -80,6 +81,8 @@ export default async function QnaStatsPage({
   const diffSum: Record<string, number> = {}
   const diffSetCount: Record<string, number> = {}
   const diffUnset: Record<string, number> = {}
+  const ratingSum: Record<string, number> = {}
+  const ratingCount: Record<string, number> = {}
 
   for (const row of answers ?? []) {
     const id = row.ta_id as string
@@ -98,6 +101,11 @@ export default async function QnaStatsPage({
       else if (d <= 6) diffMid[id] = (diffMid[id] ?? 0) + 1
       else diffHigh[id] = (diffHigh[id] ?? 0) + 1
     }
+    const rating = row.student_rating as number | null
+    if (rating != null) {
+      ratingSum[id] = (ratingSum[id] ?? 0) + rating
+      ratingCount[id] = (ratingCount[id] ?? 0) + 1
+    }
   }
 
   const rows = (staffList ?? [])
@@ -115,6 +123,8 @@ export default async function QnaStatsPage({
         diffHigh: diffHigh[sid] ?? 0,
         diffAvg: setCount > 0 ? (diffSum[sid] ?? 0) / setCount : null,
         diffUnset: diffUnset[sid] ?? 0,
+        avgRating: (ratingCount[sid] ?? 0) > 0 ? (ratingSum[sid] ?? 0) / ratingCount[sid] : null,
+        ratedCount: ratingCount[sid] ?? 0,
       }
     })
     .sort((a, b) => b.periodCount - a.periodCount)
@@ -169,12 +179,13 @@ export default async function QnaStatsPage({
               <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">상 (7–8)</th>
               <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">평균</th>
               <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">미설정</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">학생 별점</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-50">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-5 py-10 text-center text-sm text-zinc-400">
+                <td colSpan={10} className="px-5 py-10 text-center text-sm text-zinc-400">
                   데이터가 없습니다.
                 </td>
               </tr>
@@ -207,6 +218,16 @@ export default async function QnaStatsPage({
                     {r.diffAvg !== null ? r.diffAvg.toFixed(2) : '—'}
                   </td>
                   <td className="px-5 py-3.5 text-right text-zinc-400 text-xs">{r.diffUnset || '—'}</td>
+                  <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                    {r.avgRating != null ? (
+                      <span className="font-semibold text-yellow-600">
+                        ★ {r.avgRating.toFixed(1)}
+                        <span className="ml-1 text-xs font-normal text-zinc-400">({r.ratedCount}건)</span>
+                      </span>
+                    ) : (
+                      <span className="text-zinc-300 text-xs">아직 없음</span>
+                    )}
+                  </td>
                 </tr>
               ))
             )}
@@ -230,7 +251,7 @@ export default async function QnaStatsPage({
                 <td className="px-5 py-3 text-right text-xs text-zinc-500">
                   {rows.reduce((s, r) => s + r.diffHigh, 0) || '—'}
                 </td>
-                <td colSpan={2} />
+                <td colSpan={3} />
               </tr>
             </tfoot>
           )}

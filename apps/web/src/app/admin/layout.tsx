@@ -154,7 +154,7 @@ const NAV_ITEMS = [
   {
     href: '/admin/qna/stats',
     label: '답변 통계',
-    visibility: 'senior' as NavVisibility,
+    visibility: 'teacher' as NavVisibility,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />

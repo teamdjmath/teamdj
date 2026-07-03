@@ -98,34 +98,6 @@ export default async function QnaPage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const questionsWithDup = questions.map((q: any) => ({ ...q, isDuplicate: isDuplicate(q) }))
 
-  // 조교별 별점 통계
-  type RatingRow = { ta_id: string; student_rating: number | null; ta: { name?: string } | null }
-  const { data: ratingRows } = await db
-    .from('qna_answers')
-    .select('ta_id, student_rating, ta:users!ta_id(name)')
-
-  const ratingMap = new Map<string, { name: string; ratings: number[] }>()
-  for (const row of (ratingRows ?? []) as RatingRow[]) {
-    if (!row.ta_id) continue
-    if (!ratingMap.has(row.ta_id)) {
-      ratingMap.set(row.ta_id, { name: row.ta?.name ?? '', ratings: [] })
-    }
-    if (row.student_rating != null) {
-      ratingMap.get(row.ta_id)!.ratings.push(row.student_rating)
-    }
-  }
-
-  const taRatings = Array.from(ratingMap.entries())
-    .map(([taId, d]) => ({
-      taId,
-      taName: d.name,
-      avgRating: d.ratings.length > 0
-        ? d.ratings.reduce((a: number, b: number) => a + b, 0) / d.ratings.length
-        : null,
-      ratedCount: d.ratings.length,
-    }))
-    .sort((a, b) => (b.avgRating ?? -1) - (a.avgRating ?? -1))
-
   // 내 답변 통계 (ta_id = 현재 유저)
   let myStats = null
   if (user) {
@@ -175,7 +147,6 @@ export default async function QnaPage({
       selectedTaId={selectedTaId ?? null}
       questions={questionsWithDup}
       myStats={myStats}
-      taRatings={taRatings}
       currentUserId={user?.id ?? null}
     />
   )
