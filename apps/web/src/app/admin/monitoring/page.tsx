@@ -14,10 +14,25 @@ export default async function MonitoringPage() {
 
   const admin = createAdminClient()
 
-  // 초기 데이터 — 서버에서 미리 가져와 SSR
+  // 순수 ping — SELECT 1만 실행
   const pingStart = Date.now()
-  const { error: pingErr } = await admin.from('users').select('id').limit(1)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: pingErr } = await (admin as any).rpc('monitoring_ping')
   const responseMs = Date.now() - pingStart
+
+  // cold start 감지: 첫 응답이 800ms 초과 시 재측정
+  let finalMs = responseMs
+  let coldStart = false
+  if (responseMs > 800) {
+    const s2 = Date.now()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (admin as any).rpc('monitoring_ping')
+    const ms2 = Date.now() - s2
+    if (ms2 < responseMs * 0.5) {
+      coldStart = true
+      finalMs = ms2
+    }
+  }
 
   const [connResult, slowResult] = await Promise.allSettled([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,23 +46,26 @@ export default async function MonitoringPage() {
       ? connResult.value.data
       : null
 
+  const rawSlow = slowResult.status === 'fulfilled' ? slowResult.value : null
+  const slowQueriesAvailable = rawSlow !== null && !rawSlow.error
   const slowQueries =
-    slowResult.status === 'fulfilled' && Array.isArray(slowResult.value.data)
-      ? slowResult.value.data
-      : null
+    slowQueriesAvailable && Array.isArray(rawSlow?.data) && rawSlow.data.length > 0
+      ? rawSlow.data
+      : slowQueriesAvailable ? [] : null
 
-  const hasSlowQuery = slowQueries?.some((q: { mean_ms: number }) => q.mean_ms > 500) ?? false
-  const connectionStrain = connections ? connections.total / 200 > 0.7 : false
+  const hasUrgent = (slowQueries ?? []).some((q: { mean_ms: number }) => q.mean_ms > 1000)
+  const connStrain = connections ? connections.total / 200 > 0.75 : false
   const status: HealthData['status'] =
-    !pingErr && responseMs < 300 && !hasSlowQuery && !connectionStrain ? 'ok'
-    : !pingErr && responseMs < 1500 ? 'warn'
+    !pingErr && finalMs < 400 && !hasUrgent && !connStrain ? 'ok'
+    : !pingErr && finalMs < 1500 && !hasUrgent ? 'warn'
     : 'error'
 
   const initial: HealthData = {
     status,
-    db: { responseMs, ok: !pingErr },
+    db: { responseMs: finalMs, ok: !pingErr, coldStart },
     connections,
     slowQueries,
+    slowQueriesAvailable,
     checkedAt: new Date().toISOString(),
   }
 

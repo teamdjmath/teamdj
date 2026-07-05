@@ -26,14 +26,15 @@ export type HealthData = {
   db: {
     responseMs: number
     ok: boolean
+    coldStart: boolean  // 첫 요청 warm-up 가능성 플래그
   }
   connections: ConnectionCount | null
-  slowQueries: SlowQuery[] | null
+  slowQueries: SlowQuery[] | null       // 앱 쿼리만 (시스템 쿼리 제외)
+  slowQueriesAvailable: boolean         // pg_stat_statements 활성 여부
   checkedAt: string
 }
 
 export async function GET(): Promise<NextResponse<HealthData | { error: string }>> {
-  // admin only
   const client = await createClient()
   const { data: { user } } = await client.auth.getUser()
   const role = user?.user_metadata?.role as string | undefined
@@ -43,12 +44,24 @@ export async function GET(): Promise<NextResponse<HealthData | { error: string }
 
   const admin = createAdminClient()
 
-  // 1. DB ping (users 테이블에서 1건 조회 — 실제 RLS 경로 측정)
+  // 1. 순수 DB 연결 왕복 시간 (SELECT 1 — 테이블 스캔 없음)
   const pingStart = Date.now()
-  const { error: pingErr } = await admin.from('users').select('id').limit(1)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: pingErr } = await (admin as any).rpc('monitoring_ping')
   const responseMs = Date.now() - pingStart
 
-  // 2. 연결 수, 느린 쿼리 병렬 조회
+  // Supabase 무료 플랜 cold start: 최초 요청 시 1~2s 소요 가능
+  // 두 번째 측정으로 실제 응답시간 확인
+  let responseMs2 = responseMs
+  if (responseMs > 800) {
+    const start2 = Date.now()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (admin as any).rpc('monitoring_ping')
+    responseMs2 = Date.now() - start2
+  }
+  const isColdStart = responseMs > 800 && responseMs2 < responseMs * 0.5
+
+  // 2. 연결 수 + 느린 앱 쿼리 병렬 조회
   const [connResult, slowResult] = await Promise.allSettled([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (admin as any).rpc('monitoring_connection_count'),
@@ -61,27 +74,31 @@ export async function GET(): Promise<NextResponse<HealthData | { error: string }
       ? (connResult.value.data as ConnectionCount)
       : null
 
+  const rawSlow = slowResult.status === 'fulfilled' ? slowResult.value : null
+  const slowQueriesAvailable = rawSlow !== null && !rawSlow.error
   const slowQueries: SlowQuery[] | null =
-    slowResult.status === 'fulfilled' && Array.isArray(slowResult.value.data)
-      ? (slowResult.value.data as SlowQuery[])
-      : null
+    slowQueriesAvailable && Array.isArray(rawSlow?.data) && rawSlow.data.length > 0
+      ? (rawSlow.data as SlowQuery[])
+      : slowQueriesAvailable ? [] : null
 
-  // 3. 상태 판정
-  const hasSlowQuery = slowQueries?.some((q) => q.mean_ms > 500) ?? false
-  const connectionStrain = connections ? connections.active / 200 > 0.7 : false
+  // 3. 상태 판정 (cold start는 warn으로 낮춤)
+  const effectiveMs = isColdStart ? responseMs2 : responseMs
+  const hasUrgentQuery = slowQueries?.some((q) => q.mean_ms > 1000) ?? false
+  const connectionStrain = connections ? connections.total / 200 > 0.75 : false
 
   const status: HealthStatus =
-    !pingErr && responseMs < 300 && !hasSlowQuery && !connectionStrain
+    !pingErr && effectiveMs < 400 && !hasUrgentQuery && !connectionStrain
       ? 'ok'
-      : !pingErr && responseMs < 1500
+      : !pingErr && effectiveMs < 1500 && !hasUrgentQuery
         ? 'warn'
         : 'error'
 
   const payload: HealthData = {
     status,
-    db: { responseMs, ok: !pingErr },
+    db: { responseMs: isColdStart ? responseMs2 : responseMs, ok: !pingErr, coldStart: isColdStart },
     connections,
     slowQueries,
+    slowQueriesAvailable,
     checkedAt: new Date().toISOString(),
   }
 
