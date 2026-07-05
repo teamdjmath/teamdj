@@ -33,7 +33,7 @@ export default async function NewReportPage({
     name: string
     school: string
     grade: string
-    attendance: 'present' | 'late' | 'absent' | null
+    attendance: 'present' | 'late' | 'absent' | 'absent_video' | null
     absenceReason: string
     scores: Record<string, {
       score: number
@@ -46,7 +46,7 @@ export default async function NewReportPage({
       difficulty?: string
       classAverage?: number
     }>
-    assignments: Array<{ title: string; completionPct: number; issueDate?: string; submitDate?: string }>
+    assignments: Array<{ title: string; completionPct: number; issueDate?: string; submitDate?: string; weekNum?: number }>
     avgAssignmentPct: number
   }
 
@@ -92,10 +92,10 @@ export default async function NewReportPage({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       admin
         .from('assignments')
-        .select('id, title, issue_date, due_date, created_at')
+        .select('id, title, issue_date, due_date, created_at, week_num')
         .eq('class_id', selectedClassId)
-        .order('created_at', { ascending: false })
-        .limit(10) as unknown as Promise<{ data: Array<{ id: string; title: string; issue_date: string | null; due_date: string | null; created_at: string }> | null }>,
+        .order('week_num', { ascending: true })
+        .limit(10) as unknown as Promise<{ data: Array<{ id: string; title: string; issue_date: string | null; due_date: string | null; created_at: string; week_num: number | null }> | null }>,
       // attRows: studentIds 의존이지만 빈 배열이면 limit(0)으로 안전하게 처리
       studentIds.length > 0
         ? admin
@@ -179,10 +179,13 @@ export default async function NewReportPage({
           completionPct: row.completion_pct ?? 0,  // null(미지참) → 0circles
           issueDate:     asgn?.issue_date ?? asgn?.created_at?.slice(0, 10) ?? undefined,
           submitDate:    row.submit_date ?? asgn?.due_date ?? undefined,
+          weekNum:       asgn?.week_num ?? undefined,
         })
       }
       for (const sid of studentIds) {
         const items = studentAssignments[sid] ?? []
+        // weekNum 기준 오름차순 정렬 — 강별 순서가 정확히 매핑되도록
+        items.sort((a, b) => (a.weekNum ?? 999) - (b.weekNum ?? 999))
         if (items.length > 0) {
           assignmentPctMap[sid] = Math.round(items.reduce((a, b) => a + b.completionPct, 0) / items.length)
         }
@@ -190,10 +193,10 @@ export default async function NewReportPage({
     }
 
     // 출석 맵 (병렬로 이미 받은 attRows 처리)
-    const attendanceMap: Record<string, { status: 'present' | 'late' | 'absent'; reason: string }> = {}
+    const attendanceMap: Record<string, { status: 'present' | 'late' | 'absent' | 'absent_video'; reason: string }> = {}
     for (const row of attRows ?? []) {
       attendanceMap[row.student_id] = {
-        status: row.status as 'present' | 'late' | 'absent',
+        status: row.status as 'present' | 'late' | 'absent' | 'absent_video',
         reason: row.absence_reason ?? '',
       }
     }

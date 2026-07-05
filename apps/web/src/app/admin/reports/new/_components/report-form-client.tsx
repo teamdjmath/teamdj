@@ -2,6 +2,7 @@
 
 import { useRef, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { ReportCard } from '../../_components/report-card'
 import { saveReport } from '@/lib/actions/reports'
 import { InputField, SelectField, TextareaField } from '@/components/ui/form-field'
@@ -16,7 +17,7 @@ type StudentData = {
   name: string
   school: string
   grade: string
-  attendance: 'present' | 'late' | 'absent' | null
+  attendance: 'present' | 'late' | 'absent' | 'absent_video' | null
   absenceReason: string
   scores: Record<string, {
     score: number
@@ -34,7 +35,7 @@ type StudentData = {
   initialNotes?: string
 }
 
-type Attendance = 'present' | 'late' | 'absent' | ''
+type Attendance = 'present' | 'late' | 'absent' | 'absent_video' | ''
 
 interface Props {
   classOptions: ClassOption[]
@@ -340,17 +341,19 @@ export function ReportFormClient({
                                 [s.id]: { ...p[s.id]!, att: e.target.value as Attendance },
                               }))
                             }
-                            className={`min-w-[80px] rounded-full border px-3 py-1.5 text-[11px] font-bold transition-all focus:outline-none ${
-                              sd.att === 'present' ? 'bg-zinc-900 text-white border-zinc-900' :
-                              sd.att === 'late'    ? 'bg-amber-500 text-white border-amber-500' :
-                              sd.att === 'absent'  ? 'bg-red-500 text-white border-red-500' :
+                            className={`min-w-[100px] rounded-full border px-3 py-1.5 text-[11px] font-bold transition-all focus:outline-none ${
+                              sd.att === 'present'      ? 'bg-zinc-900 text-white border-zinc-900' :
+                              sd.att === 'late'         ? 'bg-amber-500 text-white border-amber-500' :
+                              sd.att === 'absent'       ? 'bg-red-500 text-white border-red-500' :
+                              sd.att === 'absent_video' ? 'bg-orange-400 text-white border-orange-400' :
                               'bg-white text-zinc-400 border-zinc-200'
                             }`}
                           >
                             <option value="">미입력</option>
                             <option value="present">출석</option>
                             <option value="late">지각</option>
-                            <option value="absent">결석</option>
+                            <option value="absent">결석(차감)</option>
+                            <option value="absent_video">결석(영상)</option>
                           </select>
                         </td>
                         <td className="px-5 py-4 text-center">
@@ -395,7 +398,15 @@ export function ReportFormClient({
                   <span className="text-xs font-medium text-zinc-500">{progress.cur} / {progress.total}명 완료</span>
                 </div>
               ) : done !== null ? (
-                <p className="text-sm font-medium text-zinc-900">✓ {done}명의 리포트가 생성되었습니다.</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm font-medium text-zinc-900">✓ {done}명의 리포트가 생성되었습니다.</p>
+                  <Link
+                    href={`/admin/reports?classId=${selectedClassId ?? ''}&date=${selectedSessionDate ?? ''}`}
+                    className="rounded-lg border border-zinc-200 bg-white px-3.5 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
+                  >
+                    리포트 보기 →
+                  </Link>
+                </div>
               ) : err ? (
                 <p className="text-sm font-medium text-red-500">{err}</p>
               ) : (

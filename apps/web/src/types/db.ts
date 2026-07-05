@@ -21,7 +21,7 @@ export interface ReportContent {
   homework:         string
   announcement:     string
   notes:            string
-  todayAttendance:  'present' | 'late' | 'absent' | null
+  todayAttendance:  'present' | 'late' | 'absent' | 'absent_video' | null
   recentScore: {
     score:        number
     title:        string
@@ -37,7 +37,7 @@ export interface ReportContent {
   absenceReason?:        string
   lastAssignmentTitle?:  string
   classStdDev?:          number
-  assignmentsDetail?:    Array<{ title: string; completionPct: number; issueDate?: string; submitDate?: string }>
+  assignmentsDetail?:    Array<{ title: string; completionPct: number; issueDate?: string; submitDate?: string; weekNum?: number }>
 }
 
 /** exam_results.grade_cuts 컬럼 구조  예: { "A": 90, "B": 80 } */

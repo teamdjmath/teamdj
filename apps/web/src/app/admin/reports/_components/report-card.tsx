@@ -179,20 +179,26 @@ export function ReportCard({ data, cardRef }: Props) {
   const title = `${dateString} 역전의 수학 학습결과`
 
   const attendanceLabel =
-    todayAttendance === 'present' ? '출석' :
-    todayAttendance === 'late'    ? '지각' :
-    todayAttendance === 'absent'  ? '결석' : '출석'
+    todayAttendance === 'present'      ? '출석' :
+    todayAttendance === 'late'         ? '지각' :
+    todayAttendance === 'absent'       ? '결석(차감)' :
+    todayAttendance === 'absent_video' ? '결석(영상)' : '출석'
 
   // convert admin assignments (0-100%) → display items (0-5 circles)
+  // weekNum이 있으면 실제 강좌 번호 사용, 없으면 배열 순서 fallback
   const displayAssignments: DisplayAssignment[] = (assignmentsDetail ?? [])
     .slice(0, 10)
-    .map((a, i) => ({
-      slotNum:    i + 1,
-      lectureNum: i + 1,
-      issueDate:  a.issueDate ? formatAdminDate(a.issueDate) : '',
-      submitDate: a.submitDate ? formatAdminDate(a.submitDate) : '',
-      completion: Math.min(5, Math.round(a.completionPct / 20)),
-    }))
+    .map((a, i) => {
+      const lectureNum = a.weekNum ?? (i + 1)
+      const slotNum    = ((lectureNum - 1) % 10) + 1
+      return {
+        slotNum,
+        lectureNum,
+        issueDate:  a.issueDate ? formatAdminDate(a.issueDate) : '',
+        submitDate: a.submitDate ? formatAdminDate(a.submitDate) : '',
+        completion: Math.min(5, Math.round(a.completionPct / 20)),
+      }
+    })
 
   const maxScore    = recentScore?.totalQ ?? null
   const classAvg    = recentScore?.classAverage ?? null
