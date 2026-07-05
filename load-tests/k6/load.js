@@ -96,23 +96,40 @@ export function staffFlow({ staffToken }) {
 export function studentFlow({ studentToken }) {
   const h = authHeaders(studentToken)
 
-  // 학생 대시보드
+  // 학생 대시보드 (공개 진입점 — SSR 리다이렉트 없음)
   checkResponse(
     http.get(`${BASE_URL}/dashboard`, { headers: h, tags: { name: 'student_dashboard' } }),
     'student_dashboard'
   )
   sleep(3)
 
-  // 과제 목록
+  // 과제 목록 — Supabase REST API 직접 호출
+  // (SSR 페이지는 쿠키 세션 필요, k6는 Bearer만 지원하므로 API 레이어 직접 테스트)
+  const supabaseUrl  = __ENV.SUPABASE_URL
+  const supabaseAnon = __ENV.SUPABASE_ANON_KEY
   checkResponse(
-    http.get(`${BASE_URL}/dashboard/assignments`, { headers: h, tags: { name: 'student_assignments' } }),
+    http.get(`${supabaseUrl}/rest/v1/assignments?select=id,title,due_date,week_num&limit=20`, {
+      headers: {
+        apikey:        supabaseAnon,
+        Authorization: `Bearer ${studentToken}`,
+        Accept:        'application/json',
+      },
+      tags: { name: 'student_assignments' },
+    }),
     'student_assignments'
   )
   sleep(4)
 
-  // Q&A 목록
+  // Q&A 목록 — Supabase REST API 직접 호출
   checkResponse(
-    http.get(`${BASE_URL}/dashboard/qna`, { headers: h, tags: { name: 'student_qna' } }),
+    http.get(`${supabaseUrl}/rest/v1/qna_questions?select=id,title,status,created_at&order=created_at.desc&limit=20`, {
+      headers: {
+        apikey:        supabaseAnon,
+        Authorization: `Bearer ${studentToken}`,
+        Accept:        'application/json',
+      },
+      tags: { name: 'student_qna' },
+    }),
     'student_qna'
   )
   sleep(5)

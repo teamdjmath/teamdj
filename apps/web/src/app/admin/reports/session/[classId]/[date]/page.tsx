@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { notFound } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { SessionClient } from './_components/session-client'
 
@@ -9,6 +10,11 @@ export default async function ReportSessionPage({
   params: Promise<{ classId: string; date: string }>
 }) {
   const { classId, date } = await params
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
   const admin = createAdminClient()
 
   const { data: classRow } = await admin

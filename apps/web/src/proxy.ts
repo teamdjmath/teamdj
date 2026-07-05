@@ -10,26 +10,51 @@ const WINDOW_SEC     = 60
 // Rate limit 적용 경로 접두어
 const RATE_LIMITED_PREFIXES = ['/api/', '/admin/', '/dashboard/']
 
-async function redisIncr(key: string): Promise<number> {
-  const url   = process.env.UPSTASH_REDIS_REST_URL
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN
-  if (!url || !token) return 0
-  try {
-    const res = await fetch(`${url}/pipeline`, {
-      method:  'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body:    JSON.stringify([['INCR', key], ['EXPIRE', key, WINDOW_SEC]]),
-    })
-    const json = await res.json() as [{ result: number }, unknown]
-    return json[0]?.result ?? 0
-  } catch { return 0 }
+// 로컬/내부 IP는 rate limit 제외 (로컬 개발, Vercel health check)
+function isPrivateIp(ip: string): boolean {
+  return (
+    ip === 'unknown' ||
+    ip === '127.0.0.1' ||
+    ip === '::1' ||
+    ip.startsWith('::ffff:127.') ||
+    ip.startsWith('10.') ||
+    ip.startsWith('192.168.') ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(ip)
+  )
 }
 
-async function slackNotify(text: string): Promise<void> {
-  const url = process.env.SLACK_WEBHOOK_URL
-  if (!url) return
+async function redisPipeline(commands: unknown[][]): Promise<unknown[]> {
+  const url   = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  if (!url || !token) return []
   try {
-    await fetch(url, {
+    const res  = await fetch(`${url}/pipeline`, {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify(commands),
+    })
+    const json = await res.json() as { result: unknown }[]
+    return json.map((r) => r.result)
+  } catch { return [] }
+}
+
+async function redisIncr(key: string): Promise<number> {
+  const results = await redisPipeline([['INCR', key], ['EXPIRE', key, WINDOW_SEC]])
+  return (results[0] as number) ?? 0
+}
+
+// Slack 알림 중복 방지: IP별로 경고/차단 각각 분당 1회만 발송
+// SET NX EX 로 60초 TTL 플래그를 세워서 이미 보냈으면 건너뜀
+async function slackNotifyOnce(key: string, text: string): Promise<void> {
+  const slackUrl = process.env.SLACK_WEBHOOK_URL
+  if (!slackUrl) return
+
+  // Redis SET NX (Not eXists) — 이미 키가 있으면 0 반환 (이미 알림 보냄)
+  const results = await redisPipeline([['SET', key, '1', 'NX', 'EX', WINDOW_SEC]])
+  if (results[0] !== 'OK') return  // 이미 이번 분에 발송함
+
+  try {
+    await fetch(slackUrl, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ text }),
@@ -39,13 +64,16 @@ async function slackNotify(text: string): Promise<void> {
 // ────────────────────────────────────────────────────────────────
 
 // 로그인 없이 접근 가능한 공개 경로
-const PUBLIC_PATHS = ['/', '/intro', '/login', '/register', '/consultation']
+const PUBLIC_PATHS = ['/', '/intro', '/login', '/register', '/consultation', '/privacy', '/terms']
 
 // staff 전용 경로
 const ADMIN_PATH_PREFIX = '/admin'
 
 // 비밀번호 변경 경로 (인증 필요, 변경 완료 전까지 다른 경로 차단)
 const CHANGE_PASSWORD_PATH = '/change-password'
+
+// 약관 동의 경로 (인증 필요, 미동의 시 다른 경로 차단)
+const CONSENT_PATH = '/consent'
 
 // 스태프 역할 정의
 const STAFF_ROLES = ['teacher', 'ta_desk', 'ta_assistant']
@@ -76,15 +104,18 @@ export async function proxy(request: NextRequest) {
       request.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
       request.headers.get('x-real-ip') ??
       'unknown'
-    const count = await redisIncr(`${KEY_PREFIX}${ip}`)
+
+    const count = isPrivateIp(ip) ? 0 : await redisIncr(`${KEY_PREFIX}${ip}`)
 
     if (count === SLACK_WARN_AT) {
-      void slackNotify(
+      void slackNotifyOnce(
+        `${KEY_PREFIX}slack:warn:${ip}`,
         `⚠️ *TeamDJ 요청 급증 감지*\nIP: \`${ip}\`\n경로: \`${pathname}\`\n분당 ${count}회 → ${RATE_LIMIT_MAX}회 초과 시 차단`,
       )
     }
     if (count > RATE_LIMIT_MAX) {
-      await slackNotify(
+      void slackNotifyOnce(
+        `${KEY_PREFIX}slack:block:${ip}`,
         `🚨 *TeamDJ Rate Limit 차단*\nIP: \`${ip}\`\n경로: \`${pathname}\`\n분당 ${count}회 요청 — 429 응답 반환`,
       )
       return NextResponse.json(
@@ -127,7 +158,17 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse
   }
 
-  // 6. /admin/* 경로는 스태프만 접근 가능
+  // 6. 약관 동의 체크: user_metadata에서 확인 (DB 쿼리 없음)
+  if (user && !user.user_metadata?.agreed_terms_at) {
+    if (pathname !== CONSENT_PATH) {
+      const consentUrl = request.nextUrl.clone()
+      consentUrl.pathname = CONSENT_PATH
+      return NextResponse.redirect(consentUrl)
+    }
+    return supabaseResponse
+  }
+
+  // 7. /admin/* 경로는 스태프만 접근 가능
   if (user && pathname.startsWith(ADMIN_PATH_PREFIX)) {
     const role = user.user_metadata?.role as string | undefined
 

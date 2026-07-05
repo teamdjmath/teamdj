@@ -247,48 +247,49 @@ export async function sendKakaoReport(
   const imageUrl    = r.image_url as string
   const reportDate  = r.report_date as string
 
-  let sentCount = 0
-  const errors: string[] = []
+  const kakaoBody = (phone: string) => JSON.stringify({
+    receiver_type: 'phone',
+    receiver_phone: phone,
+    template_object: {
+      object_type: 'feed',
+      content: {
+        title:       `[TeamDJ] ${studentName} 학습 리포트`,
+        description: `${reportDate} 수업 학습 리포트입니다.`,
+        image_url:   imageUrl,
+        link: { web_url: imageUrl, mobile_web_url: imageUrl },
+      },
+      buttons: [
+        { title: '리포트 보기', link: { web_url: imageUrl, mobile_web_url: imageUrl } },
+      ],
+    },
+  })
 
-  for (const link of parentLinks) {
-    const lr     = link as Record<string, unknown>
-    const parent = lr.parent as { phone?: string; name?: string } | null
-    if (!parent?.phone) continue
-
-    const phone = parent.phone.replace(/-/g, '')
-
-    try {
-      const res = await fetch('https://kapi.kakao.com/v1/api/talk/friends/message/send', {
-        method: 'POST',
-        headers: {
-          Authorization:  `KakaoAK ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          receiver_type: 'phone',
-          receiver_phone: phone,
-          template_object: {
-            object_type: 'feed',
-            content: {
-              title:       `[TeamDJ] ${studentName} 학습 리포트`,
-              description: `${reportDate} 수업 학습 리포트입니다.`,
-              image_url:   imageUrl,
-              link: { web_url: imageUrl, mobile_web_url: imageUrl },
-            },
-            buttons: [
-              { title: '리포트 보기', link: { web_url: imageUrl, mobile_web_url: imageUrl } },
-            ],
-          },
-        }),
+  const sendResults = await Promise.allSettled(
+    parentLinks
+      .map((link) => {
+        const lr     = link as Record<string, unknown>
+        const parent = lr.parent as { phone?: string } | null
+        return parent?.phone ? parent.phone.replace(/-/g, '') : null
       })
+      .filter((phone): phone is string => !!phone)
+      .map((phone) =>
+        fetch('https://kapi.kakao.com/v1/api/talk/friends/message/send', {
+          method:  'POST',
+          headers: { Authorization: `KakaoAK ${apiKey}`, 'Content-Type': 'application/json' },
+          body:    kakaoBody(phone),
+        })
+      )
+  )
 
-      if (res.ok) {
-        sentCount++
-      } else {
-        const err = await res.json().catch(() => ({}))
-        errors.push((err as { msg?: string }).msg ?? `${res.status}`)
-      }
-    } catch {
+  const errors: string[] = []
+  let sentCount = 0
+  for (const r of sendResults) {
+    if (r.status === 'fulfilled' && r.value.ok) {
+      sentCount++
+    } else if (r.status === 'fulfilled') {
+      const err = await r.value.json().catch(() => ({}))
+      errors.push((err as { msg?: string }).msg ?? `${r.value.status}`)
+    } else {
       errors.push('네트워크 오류')
     }
   }
@@ -329,70 +330,101 @@ export async function sendBatchKakaoReports(
 
   if (!reports?.length) return { error: '해당 세션의 리포트가 없습니다.', sent: 0, failed: 0 }
 
-  let totalSent = 0
-  let totalFailed = 0
   const now = new Date().toISOString()
+  const validReports = reports.filter((r) => !!(r as Record<string, unknown>).image_url)
+  const studentIds   = validReports.map((r) => (r as Record<string, unknown>).student_id as string)
 
-  for (const report of reports) {
-    const r = report as Record<string, unknown>
-    if (!r.image_url) { totalFailed++; continue }
+  // 모든 학부모 링크를 한 번에 조회 (N개 순차 쿼리 → 1개 병렬 쿼리)
+  const { data: allLinks } = await admin
+    .from('parent_links')
+    .select('student_id, parent:users!parent_id(phone)')
+    .in('student_id', studentIds)
 
-    const { data: parentLinks } = await admin
-      .from('parent_links')
-      .select('parent_id, parent:users!parent_id(phone)')
-      .eq('student_id', r.student_id as string)
+  const linksByStudent = new Map<string, string[]>()
+  for (const link of allLinks ?? []) {
+    const lr     = link as Record<string, unknown>
+    const phone  = (lr.parent as { phone?: string } | null)?.phone
+    const sid    = lr.student_id as string
+    if (!phone || !sid) continue
+    const phones = linksByStudent.get(sid) ?? []
+    phones.push(phone.replace(/-/g, ''))
+    linksByStudent.set(sid, phones)
+  }
 
-    if (!parentLinks?.length) { totalFailed++; continue }
-
+  // 모든 발송을 병렬 처리
+  const sendJobs = validReports.flatMap((report) => {
+    const r           = report as Record<string, unknown>
+    const sid         = r.student_id as string
+    const phones      = linksByStudent.get(sid) ?? []
     const studentName = ((r.student as { name?: string } | null)?.name ?? '학생') as string
     const imageUrl    = r.image_url as string
     const reportDate  = r.report_date as string
-    let reportSent = false
 
-    for (const link of parentLinks) {
-      const lr     = link as Record<string, unknown>
-      const parent = lr.parent as { phone?: string } | null
-      if (!parent?.phone) continue
-
-      const phone = parent.phone.replace(/-/g, '')
-
-      try {
-        const res = await fetch('https://kapi.kakao.com/v1/api/talk/friends/message/send', {
-          method: 'POST',
-          headers: {
-            Authorization:  `KakaoAK ${apiKey}`,
-            'Content-Type': 'application/json',
+    return phones.map((phone) => ({
+      reportId: r.id as string,
+      phone,
+      body: JSON.stringify({
+        receiver_type: 'phone',
+        receiver_phone: phone,
+        template_object: {
+          object_type: 'feed',
+          content: {
+            title:       `[TeamDJ] ${studentName} 학습 리포트`,
+            description: `${reportDate} 수업 학습 리포트입니다.`,
+            image_url:   imageUrl,
+            link: { web_url: imageUrl, mobile_web_url: imageUrl },
           },
-          body: JSON.stringify({
-            receiver_type: 'phone',
-            receiver_phone: phone,
-            template_object: {
-              object_type: 'feed',
-              content: {
-                title:       `[TeamDJ] ${studentName} 학습 리포트`,
-                description: `${reportDate} 수업 학습 리포트입니다.`,
-                image_url:   imageUrl,
-                link: { web_url: imageUrl, mobile_web_url: imageUrl },
-              },
-              buttons: [
-                { title: '리포트 보기', link: { web_url: imageUrl, mobile_web_url: imageUrl } },
-              ],
-            },
-          }),
-        })
-        if (res.ok) reportSent = true
-      } catch { /* skip */ }
-    }
+          buttons: [
+            { title: '리포트 보기', link: { web_url: imageUrl, mobile_web_url: imageUrl } },
+          ],
+        },
+      }),
+    }))
+  })
 
-    if (reportSent) {
-      totalSent++
-      await admin.from('reports').update({ kakao_sent_at: now }).eq('id', r.id as string)
+  const fetchResults = await Promise.allSettled(
+    sendJobs.map(({ body }) =>
+      fetch('https://kapi.kakao.com/v1/api/talk/friends/message/send', {
+        method:  'POST',
+        headers: { Authorization: `KakaoAK ${apiKey}`, 'Content-Type': 'application/json' },
+        body,
+      })
+    )
+  )
+
+  // 성공한 reportId 집계 후 일괄 업데이트
+  const sentReportIds = new Set<string>()
+  const failedReportIds = new Set<string>()
+
+  fetchResults.forEach((result, i) => {
+    const { reportId } = sendJobs[i]
+    if (result.status === 'fulfilled' && result.value.ok) {
+      sentReportIds.add(reportId)
     } else {
-      totalFailed++
+      if (!sentReportIds.has(reportId)) failedReportIds.add(reportId)
     }
+  })
+
+  // 발송 성공한 리포트만 kakao_sent_at 업데이트 (N개 순차 → 1개 병렬)
+  if (sentReportIds.size > 0) {
+    await admin
+      .from('reports')
+      .update({ kakao_sent_at: now })
+      .in('id', [...sentReportIds])
   }
+
+  // 이미지 없는 리포트는 failed 카운트
+  const noImageFailed = reports.length - validReports.length
+  // 학부모 링크 없는 리포트는 failed
+  const noLinkFailed  = validReports.filter((r) => {
+    const sid = (r as Record<string, unknown>).student_id as string
+    return !linksByStudent.has(sid)
+  }).length
 
   revalidatePath('/admin/reports')
   revalidatePath(`/admin/reports/session/${classId}/${date}`)
-  return { sent: totalSent, failed: totalFailed }
+  return {
+    sent:   sentReportIds.size,
+    failed: failedReportIds.size + noImageFailed + noLinkFailed,
+  }
 }

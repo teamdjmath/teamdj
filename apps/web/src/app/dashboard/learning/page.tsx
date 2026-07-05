@@ -1,6 +1,52 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import { unstable_cache } from 'next/cache'
 import { LearningClient } from './_components/learning-client'
+
+type Lecture = { id: string; title: string; videoId: string; orderNum: number }
+type Course  = { courseName: string; lectures: Lecture[] }
+
+// 강좌/강의 목록은 분반 조합 단위로 캐시 (선생님이 강의 추가 시 revalidateTag('lectures'))
+const getCachedCourses = unstable_cache(
+  async (classIds: string[]): Promise<Course[]> => {
+    const admin = createAdminClient()
+
+    const { data: accessRows } = classIds.length > 0
+      ? await admin
+          .from('lecture_class_access')
+          .select('course_name')
+          .or(`class_id.in.(${classIds.join(',')}),class_id.is.null`)
+      : await admin
+          .from('lecture_class_access')
+          .select('course_name')
+          .is('class_id', null)
+
+    const courseNames = [...new Set((accessRows ?? []).map((r) => r.course_name as string))].sort()
+    if (!courseNames.length) return []
+
+    const { data: lectureRows } = await admin
+      .from('lectures')
+      .select('id, title, youtube_video_id, order_num, course_name')
+      .in('course_name', courseNames)
+      .order('course_name')
+      .order('order_num', { ascending: true })
+
+    const courseMap: Record<string, Lecture[]> = {}
+    for (const row of lectureRows ?? []) {
+      const cn = row.course_name as string
+      if (!courseMap[cn]) courseMap[cn] = []
+      courseMap[cn].push({
+        id:       row.id as string,
+        title:    row.title as string,
+        videoId:  (row.youtube_video_id ?? '') as string,
+        orderNum: (row.order_num ?? 0) as number,
+      })
+    }
+    return courseNames.map((cn) => ({ courseName: cn, lectures: courseMap[cn] ?? [] }))
+  },
+  ['lectures'],
+  { revalidate: 300, tags: ['lectures'] },
+)
 
 export default async function LearningPage() {
   const supabase = await createClient()
@@ -15,52 +61,10 @@ export default async function LearningPage() {
     .eq('student_id', userId)
     .eq('is_active', true)
 
-  const classIds = (memberships ?? []).map((m) => m.class_id as string)
+  const classIds = (memberships ?? []).map((m) => m.class_id as string).sort()
 
-  // Accessible courses: matches student's classes OR open to all (class_id IS NULL)
-  let courseNames: string[] = []
-  if (classIds.length > 0) {
-    const { data: accessRows } = await admin
-      .from('lecture_class_access')
-      .select('course_name')
-      .or(`class_id.in.(${classIds.join(',')}),class_id.is.null`)
-    courseNames = [...new Set((accessRows ?? []).map((r) => r.course_name as string))].sort()
-  } else {
-    const { data: accessRows } = await admin
-      .from('lecture_class_access')
-      .select('course_name')
-      .is('class_id', null)
-    courseNames = [...new Set((accessRows ?? []).map((r) => r.course_name as string))].sort()
-  }
-
-  // Lectures grouped by course
-  type Lecture = { id: string; title: string; videoId: string; orderNum: number }
-  const courseMap: Record<string, Lecture[]> = {}
-
-  if (courseNames.length > 0) {
-    const { data: lectureRows } = await admin
-      .from('lectures')
-      .select('id, title, youtube_video_id, order_num, course_name')
-      .in('course_name', courseNames)
-      .order('course_name')
-      .order('order_num', { ascending: true })
-
-    for (const row of lectureRows ?? []) {
-      const cn = row.course_name as string
-      if (!courseMap[cn]) courseMap[cn] = []
-      courseMap[cn].push({
-        id:       row.id as string,
-        title:    row.title as string,
-        videoId:  (row.youtube_video_id ?? '') as string,
-        orderNum: (row.order_num ?? 0) as number,
-      })
-    }
-  }
-
-  const courses = courseNames.map((cn) => ({
-    courseName: cn,
-    lectures:   courseMap[cn] ?? [],
-  }))
+  // 강좌 목록: 캐시에서 (분반 조합 키)
+  const courses = await getCachedCourses(classIds)
 
   // Assignments
   const today = new Date().toISOString().split('T')[0]

@@ -1,7 +1,13 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import { ConsultationsClient } from './_components/consultations-client'
 
 export default async function ConsultationsPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
   const admin = createAdminClient()
 
   const [consultationsRes, inquiriesRes] = await Promise.all([

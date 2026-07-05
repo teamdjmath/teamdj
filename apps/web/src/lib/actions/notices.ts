@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
 import { logger } from '@/lib/logger'
@@ -84,6 +84,7 @@ export async function createNotice(data: {
 
     revalidatePath('/admin/notices')
     revalidatePath('/dashboard')
+    revalidateTag('notices', {})
     return { success: true }
   })
 }
@@ -109,6 +110,7 @@ export async function updateNotice(
     if (error) throw error
 
     revalidatePath('/admin/notices')
+    revalidateTag('notices', {})
     return { success: true }
   })
 }
@@ -128,6 +130,7 @@ export async function deleteNotice(id: string): Promise<ActionResult> {
     if (error) throw error
 
     revalidatePath('/admin/notices')
+    revalidateTag('notices', {})
     return { success: true }
   })
 }

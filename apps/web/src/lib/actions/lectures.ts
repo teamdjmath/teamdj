@@ -2,7 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
 
@@ -30,6 +30,7 @@ export async function createCourse(courseName: string, classIds: string[]): Prom
     }
 
     revalidatePath('/admin/lectures')
+    revalidateTag('lectures', {})
     return { success: true }
   })
 }
@@ -53,6 +54,7 @@ export async function updateCourseClasses(courseName: string, classIds: string[]
     }
 
     revalidatePath('/admin/lectures')
+    revalidateTag('lectures', {})
     return { success: true }
   })
 }
@@ -83,6 +85,7 @@ export async function renameCourse(oldName: string, newName: string): Promise<Ac
 
     revalidatePath('/admin/lectures')
     revalidatePath('/dashboard/learning')
+    revalidateTag('lectures', {})
     return { success: true }
   })
 }
@@ -100,6 +103,7 @@ export async function deleteCourse(courseName: string): Promise<ActionResult> {
     await admin.from('lecture_class_access').delete().eq('course_name', courseName)
 
     revalidatePath('/admin/lectures')
+    revalidateTag('lectures', {})
     return { success: true }
   })
 }
@@ -132,6 +136,7 @@ export async function createLecture(data: {
     if (error) throw error
 
     revalidatePath('/admin/lectures')
+    revalidateTag('lectures', {})
     return { success: true }
   })
 }
@@ -160,6 +165,7 @@ export async function updateLecture(
     if (error) throw error
 
     revalidatePath('/admin/lectures')
+    revalidateTag('lectures', {})
     return { success: true }
   })
 }
@@ -177,6 +183,7 @@ export async function updateLectureOrder(id: string, orderNum: number): Promise<
     if (error) throw error
 
     revalidatePath('/admin/lectures')
+    revalidateTag('lectures', {})
     return { success: true }
   })
 }
@@ -194,6 +201,7 @@ export async function deleteLecture(id: string): Promise<ActionResult> {
     if (error) throw error
 
     revalidatePath('/admin/lectures')
+    revalidateTag('lectures', {})
     return { success: true }
   })
 }
@@ -219,6 +227,7 @@ export async function addCourseMaterial(courseName: string, title: string, url: 
 
     revalidatePath('/admin/lectures')
     revalidatePath(`/dashboard/learning/course/${encodeURIComponent(courseName)}`)
+    revalidateTag('lectures', {})
     return { success: true }
   })
 }
@@ -237,6 +246,7 @@ export async function deleteCourseMaterial(id: string): Promise<ActionResult> {
     if (error) throw error
 
     revalidatePath('/admin/lectures')
+    revalidateTag('lectures', {})
     return { success: true }
   })
 }
@@ -303,6 +313,7 @@ export async function syncYouTubePlaylistToCourse(
     if (error) throw error
 
     revalidatePath('/admin/lectures')
+    revalidateTag('lectures', {})
     return { success: true, data: { synced: videos.length } }
   })
 }

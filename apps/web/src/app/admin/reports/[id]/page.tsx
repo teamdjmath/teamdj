@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { notFound } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ReportDetailClient } from './_components/report-detail-client'
 import { fromJson } from '@/types/db'
@@ -11,20 +12,20 @@ export default async function ReportDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  console.log('[ReportDetailPage] ID:', id)
 
-  const supabase = createAdminClient()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
-  const { data: row, error } = await supabase
+  const admin = createAdminClient()
+
+  const { data: row } = await admin
     .from('reports')
     .select(
       'id, report_date, image_url, kakao_sent_at, content_json, created_at, student:users!student_id(name, school, grade), class:class_groups!class_id(name)',
     )
     .eq('id', id)
     .single()
-
-  console.log('[ReportDetailPage] Row:', row ? 'Found' : 'Not Found')
-  if (error) console.error('[ReportDetailPage] Error:', error)
 
   if (!row) notFound()
 
