@@ -85,9 +85,9 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
     setModal({ type: 'edit', assignment: a })
   }
 
-  function handleClassFilter(classId: string) {
+  function handleClassChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const params = new URLSearchParams()
-    if (classId) params.set('classId', classId)
+    if (e.target.value) params.set('classId', e.target.value)
     router.push(`/admin/assignments?${params.toString()}`)
   }
 
@@ -122,25 +122,28 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
     })
   }
 
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+
   // Group assignments by week_num
   const grouped = new Map<string, Assignment[]>()
   for (const a of assignments) {
-    const key = a.week_num != null ? `${a.week_num}주차` : '미분류'
+    const key = a.week_num != null ? `${a.week_num}강` : '미분류'
     if (!grouped.has(key)) grouped.set(key, [])
     grouped.get(key)!.push(a)
   }
 
-  // Sort groups: numbered weeks first (ascending), then '미분류'
+  // Sort groups: numbered 강 in selected direction, '미분류' always last
   const sortedKeys = [...grouped.keys()].sort((a, b) => {
     if (a === '미분류') return 1
     if (b === '미분류') return -1
-    return parseInt(a) - parseInt(b)
+    const diff = parseInt(a) - parseInt(b)
+    return sortDir === 'desc' ? -diff : diff
   })
 
   return (
     <div>
       {/* 헤더 */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-5">
         <h1 className="text-xl font-bold text-zinc-950">과제 관리</h1>
         <button
           onClick={openCreate}
@@ -153,33 +156,51 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
         </button>
       </div>
 
-      {/* 분반 필터 */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        <button
-          onClick={() => handleClassFilter('')}
-          className={[
-            'rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors',
-            !selectedClassId ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200',
-          ].join(' ')}
-        >
-          전체
-        </button>
-        {classOptions.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => handleClassFilter(c.id)}
-            className={[
-              'rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors',
-              selectedClassId === c.id ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200',
-            ].join(' ')}
+      {/* 분반 선택 + 정렬 */}
+      <div className="flex items-end gap-3 mb-6">
+        <div className="flex-1 max-w-xs space-y-1.5">
+          <label className="block text-xs font-medium text-zinc-600">분반</label>
+          <select
+            value={selectedClassId ?? ''}
+            onChange={handleClassChange}
+            className="w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
           >
-            {c.name}
+            <option value="">분반을 선택하세요</option>
+            {classOptions.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+        {selectedClassId && (
+          <button
+            onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
+            className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors whitespace-nowrap"
+          >
+            {sortDir === 'desc' ? (
+              <>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+                최신 강 먼저
+              </>
+            ) : (
+              <>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                </svg>
+                오래된 강 먼저
+              </>
+            )}
           </button>
-        ))}
+        )}
       </div>
 
       {/* 과제 목록 */}
-      {assignments.length === 0 ? (
+      {!selectedClassId ? (
+        <div className="rounded-2xl border border-zinc-200 bg-white py-16 text-center">
+          <p className="text-sm text-zinc-400">위에서 분반을 선택하세요.</p>
+        </div>
+      ) : assignments.length === 0 ? (
         <div className="rounded-xl border border-zinc-200 bg-white">
           <EmptyState message="등록된 과제가 없습니다." description="과제 추가 버튼으로 새 과제를 등록하세요." />
         </div>
@@ -250,7 +271,7 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
             </div>
           ))}
         </div>
-      )}
+      ) : null}
 
       {/* 등록/수정 모달 */}
       <Modal
@@ -350,7 +371,7 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
           </div>
 
           <InputField
-            label="주차"
+            label="강"
             type="number"
             value={form.weekNum}
             onChange={(e) => setForm((f) => ({ ...f, weekNum: e.target.value }))}

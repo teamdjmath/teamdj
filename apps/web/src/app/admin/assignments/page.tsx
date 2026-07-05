@@ -22,18 +22,17 @@ export default async function AssignmentsPage({
     class_groups: { name: string } | null
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let baseQuery = (adminSupabase as any)
-    .from('assignments')
-    .select('id, title, category, issue_date, due_date, week_num, class_id, created_at, class_groups!class_id(name)')
-    .order('week_num', { ascending: true })
-    .order('created_at', { ascending: false })
-
+  let rows: AssignmentRow[] | null = null
   if (selectedClassId) {
-    baseQuery = baseQuery.eq('class_id', selectedClassId)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await (adminSupabase as any)
+      .from('assignments')
+      .select('id, title, category, issue_date, due_date, week_num, class_id, created_at, class_groups!class_id(name)')
+      .eq('class_id', selectedClassId)
+      .order('week_num', { ascending: false })
+      .order('created_at', { ascending: false }) as { data: AssignmentRow[] | null }
+    rows = result.data
   }
-
-  const { data: rows } = await baseQuery as { data: AssignmentRow[] | null }
 
   const assignments = (rows ?? []).map((a) => ({
     id:         a.id,

@@ -41,40 +41,33 @@ export function ReportsClient({ classOptions, selectedClassId, selectedDate, ses
   return (
     <>
       {/* 필터 */}
-      <div className="mb-6 flex flex-wrap gap-3">
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => nav('', selectedDate ?? '')}
-            className={[
-              'rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors',
-              !selectedClassId ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200',
-            ].join(' ')}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="flex-1 max-w-xs space-y-1.5">
+          <label className="block text-xs font-medium text-zinc-600">분반</label>
+          <select
+            value={selectedClassId ?? ''}
+            onChange={(e) => nav(e.target.value, selectedDate ?? '')}
+            className="w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
           >
-            전체
-          </button>
-          {classOptions.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => nav(c.id, selectedDate ?? '')}
-              className={[
-                'rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors',
-                selectedClassId === c.id ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200',
-              ].join(' ')}
-            >
-              {c.name}
-            </button>
-          ))}
+            <option value="">전체 분반</option>
+            {classOptions.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
         </div>
-        <input
-          type="date"
-          value={selectedDate ?? ''}
-          onChange={(e) => nav(selectedClassId ?? '', e.target.value)}
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-zinc-400"
-        />
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium text-zinc-600">날짜</label>
+          <input
+            type="date"
+            value={selectedDate ?? ''}
+            onChange={(e) => nav(selectedClassId ?? '', e.target.value)}
+            className="rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
+          />
+        </div>
         {(selectedClassId || selectedDate) && (
           <button
             onClick={() => nav('', '')}
-            className="rounded-full px-3.5 py-1.5 text-xs font-medium text-zinc-500 bg-zinc-100 hover:bg-zinc-200 transition-colors"
+            className="rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-500 hover:bg-zinc-50 transition-colors whitespace-nowrap"
           >
             초기화
           </button>

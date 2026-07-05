@@ -117,28 +117,18 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
       </div>
 
       {/* 분반 필터 */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        <button
-          onClick={() => handleClassFilter('')}
-          className={[
-            'rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors',
-            !selectedClassId ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200',
-          ].join(' ')}
+      <div className="mb-6 max-w-xs space-y-1.5">
+        <label className="block text-xs font-medium text-zinc-600">분반</label>
+        <select
+          value={selectedClassId ?? ''}
+          onChange={(e) => handleClassFilter(e.target.value)}
+          className="w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
         >
-          전체
-        </button>
-        {classOptions.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => handleClassFilter(c.id)}
-            className={[
-              'rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors',
-              selectedClassId === c.id ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200',
-            ].join(' ')}
-          >
-            {c.name}
-          </button>
-        ))}
+          <option value="">전체 분반</option>
+          {classOptions.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
       </div>
 
       {notices.length === 0 ? (
