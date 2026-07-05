@@ -20,7 +20,7 @@ export async function sendMessage(data: {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
 
     const role = user.user_metadata?.role as string | undefined
-    if (!['teacher', 'ta_admin', 'ta_assistant'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_desk', 'ta_assistant'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     if (!data.content.trim()) return { success: false, error: '내용을 입력하세요.' }
     if (!data.classId && !data.studentId) return { success: false, error: '발송 대상을 선택하세요.' }

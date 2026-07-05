@@ -16,7 +16,7 @@ export default async function ClassesPage() {
     supabase
       .from('users')
       .select('id, name, role')
-      .in('role', ['ta_admin', 'ta_assistant'])
+      .in('role', ['ta_desk', 'ta_assistant'])
       .eq('is_active', true)
       .order('name'),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -13,7 +13,7 @@ export async function assignQuestion(questionId: string): Promise<{ error?: stri
   if (!user) return { error: '인증이 필요합니다.' }
 
   const role = user.user_metadata?.role as string | undefined
-  if (!['teacher', 'ta_admin', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
+  if (!['teacher', 'ta_desk', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
 
   const { error } = await supabase
     .from('qna_questions')
@@ -38,7 +38,7 @@ export async function submitAnswer(data: {
   if (!user) return { error: '인증이 필요합니다.' }
 
   const role = user.user_metadata?.role as string | undefined
-  if (!['teacher', 'ta_admin', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
+  if (!['teacher', 'ta_desk', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: answerError } = await (supabase as any).from('qna_answers').insert({
@@ -99,7 +99,7 @@ export async function updateAnswer(data: {
   if (!user) return { error: '인증이 필요합니다.' }
 
   const role = user.user_metadata?.role as string | undefined
-  if (!['teacher', 'ta_admin', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
+  if (!['teacher', 'ta_desk', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let updateQuery = (supabase as any)
@@ -129,7 +129,7 @@ export async function cancelAnswer(data: {
   if (!user) return { error: '인증이 필요합니다.' }
 
   const role = user.user_metadata?.role as string | undefined
-  if (!['teacher', 'ta_admin', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
+  if (!['teacher', 'ta_desk', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
 
   const baseDeleteQuery = supabase.from('qna_answers').delete().eq('id', data.answerId)
   const { error: deleteError } = await (
@@ -196,7 +196,7 @@ export async function generateAiDraft(
   if (!user) return { error: '인증이 필요합니다.' }
 
   const role = user.user_metadata?.role as string | undefined
-  if (!['teacher', 'ta_admin', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
+  if (!['teacher', 'ta_desk', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
 
   try {
     const ai = new GoogleGenAI({ apiKey })
@@ -366,7 +366,7 @@ export async function createQuestion(data: {
     const { data: staff } = await admin
       .from('users')
       .select('id')
-      .in('role', ['teacher', 'ta_admin', 'ta_assistant'])
+      .in('role', ['teacher', 'ta_desk', 'ta_assistant'])
       .eq('is_active', true)
 
     if (staff && staff.length > 0 && inserted?.id) {

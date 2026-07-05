@@ -51,7 +51,7 @@ export default async function AdminDashboardPage() {
       .select('id, name, subject, grade, start_time, end_time, day_of_week')
       .eq('is_active', true).not('day_of_week', 'is', null).order('name')
     classes = data ?? []
-  } else if (role === 'ta_admin' || role === 'ta_assistant') {
+  } else if (role === 'ta_desk' || role === 'ta_assistant') {
     const { data: allAccess } = await adminDb
       .from('ta_class_access').select('is_all_classes')
       .eq('ta_id', user.id).eq('is_all_classes', true).limit(1)
@@ -91,7 +91,7 @@ export default async function AdminDashboardPage() {
     supabase
       .from('users')
       .select('id, name, role')
-      .in('role', ['teacher', 'ta_admin', 'ta_assistant'])
+      .in('role', ['teacher', 'ta_desk', 'ta_assistant'])
       .eq('is_active', true)
       .order('role').order('name'),
     adminDb

@@ -10,8 +10,8 @@ import { ToastContainer } from '@/components/ui/toast'
 import { getUnreadConsultationCount } from '@/lib/actions/consultations'
 
 // 역할 계층 정의
-// 'all'      → teacher + ta_admin + ta_assistant
-// 'senior'   → teacher + ta_admin
+// 'all'      → teacher + ta_desk + ta_assistant
+// 'senior'   → teacher + ta_desk
 // 'teacher'  → teacher only
 type NavVisibility = 'all' | 'senior' | 'teacher'
 
@@ -175,13 +175,13 @@ const NAV_ITEMS = [
 
 export type NavItem = (typeof NAV_ITEMS)[number]
 
-const STAFF_ROLES = ['teacher', 'ta_admin', 'ta_assistant'] as const
+const STAFF_ROLES = ['teacher', 'ta_desk', 'ta_assistant'] as const
 type StaffRole = (typeof STAFF_ROLES)[number]
 
 function filterNavByRole(role: StaffRole) {
   return NAV_ITEMS.filter((item) => {
     if (item.visibility === 'all') return true
-    if (item.visibility === 'senior') return role === 'teacher' || role === 'ta_admin'
+    if (item.visibility === 'senior') return role === 'teacher' || role === 'ta_desk'
     if (item.visibility === 'teacher') return role === 'teacher'
     return false
   })

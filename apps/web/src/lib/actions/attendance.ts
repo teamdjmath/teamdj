@@ -26,7 +26,7 @@ export async function saveAttendance(
     if (!user) return { success: false, error: '인증이 필요합니다.' }
 
     const role = user.user_metadata?.role as string | undefined
-    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
     if (!entries.length) return { success: false, error: '저장할 출결 데이터가 없습니다.' }
 
     const rows = entries.map((e) => ({

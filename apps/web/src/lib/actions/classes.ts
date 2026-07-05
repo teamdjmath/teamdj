@@ -32,7 +32,7 @@ export async function createClass(formData: FormData): Promise<ActionResult> {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
 
     const role = user.user_metadata?.role as string | undefined
-    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const name    = (formData.get('name')    as string).trim()
     const subject = (formData.get('subject') as string).trim()

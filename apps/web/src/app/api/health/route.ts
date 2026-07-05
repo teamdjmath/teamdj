@@ -38,7 +38,7 @@ export async function GET(): Promise<NextResponse<HealthData | { error: string }
   const client = await createClient()
   const { data: { user } } = await client.auth.getUser()
   const role = user?.user_metadata?.role as string | undefined
-  if (!user || !['teacher', 'ta_admin'].includes(role ?? '')) {
+  if (!user || !['teacher', 'ta_desk'].includes(role ?? '')) {
     return NextResponse.json({ error: '권한 없음' }, { status: 403 })
   }
 

@@ -10,7 +10,7 @@ export default async function MonitoringPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const role = user?.user_metadata?.role as string | undefined
-  if (!user || !['teacher', 'ta_admin'].includes(role ?? '')) redirect('/admin/dashboard')
+  if (!user || !['teacher', 'ta_desk'].includes(role ?? '')) redirect('/admin/dashboard')
 
   const admin = createAdminClient()
 

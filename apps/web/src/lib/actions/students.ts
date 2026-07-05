@@ -39,7 +39,7 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
 
     const role = caller.user_metadata?.role as string | undefined
-    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const name        = (formData.get('name')     as string).trim()
     const phone       = (formData.get('phone')    as string).trim()
@@ -322,7 +322,7 @@ export async function deleteStudent(studentId: string): Promise<ActionResult> {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
 
     const role = caller.user_metadata?.role as string | undefined
-    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const adminSupabase = createAdminClient()
 
@@ -351,7 +351,7 @@ export async function setSuspension(
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
 
     const role = caller.user_metadata?.role as string | undefined
-    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const adminSupabase = createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -374,7 +374,7 @@ export async function clearSuspension(studentId: string): Promise<ActionResult> 
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
 
     const role = caller.user_metadata?.role as string | undefined
-    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const adminSupabase = createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -397,7 +397,7 @@ export async function resetStudentPassword(studentId: string): Promise<ActionRes
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
 
     const role = caller.user_metadata?.role as string | undefined
-    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const adminSupabase = createAdminClient()
     const password = getInitialPassword()

@@ -35,7 +35,7 @@ type ClassRow = {
 }
 
 function roleLabel(role: string) {
-  if (role === 'ta_admin') return '사무'
+  if (role === 'ta_desk') return '사무'
   if (role === 'ta_assistant') return '첨삭'
   return role
 }

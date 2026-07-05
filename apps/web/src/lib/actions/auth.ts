@@ -8,12 +8,12 @@ export type AuthState = {
   error: string | null
 }
 
-const STAFF_ROLES = ['teacher', 'ta_admin', 'ta_assistant']
+const STAFF_ROLES = ['teacher', 'ta_desk', 'ta_assistant']
 
 // ────────────────────────────────────────────────
 // 로그인
 // role: 'student' | 'parent' → 전화번호를 이메일 형식으로 변환
-// role: 'teacher' | 'ta_admin' | 'ta_assistant' → 이메일 그대로 사용
+// role: 'teacher' | 'ta_desk' | 'ta_assistant' → 이메일 그대로 사용
 // ────────────────────────────────────────────────
 export async function signIn(
   _prev: AuthState,
@@ -51,9 +51,9 @@ export async function signIn(
 // 회원가입 (선생님 / 조교 전용 — 초대 코드 검증)
 // 초대 코드로 역할 자동 결정:
 //   TEACHER_INVITE_CODE      → teacher
-//   TA_ADMIN_INVITE_CODE     → ta_admin  (사무 조교)
+//   TA_ADMIN_INVITE_CODE     → ta_desk  (사무 조교)
 //   TA_ASSISTANT_INVITE_CODE → ta_assistant (첨삭 조교)
-//   TA_INVITE_CODE           → ta_admin  (하위 호환)
+//   TA_INVITE_CODE           → ta_desk  (하위 호환)
 // ────────────────────────────────────────────────
 export async function signUp(
   _prev: AuthState,
@@ -69,11 +69,11 @@ export async function signUp(
   const taAssistantCode    = process.env.TA_ASSISTANT_INVITE_CODE
   const taCodeLegacy       = process.env.TA_INVITE_CODE
 
-  let role: 'teacher' | 'ta_admin' | 'ta_assistant' | null = null
+  let role: 'teacher' | 'ta_desk' | 'ta_assistant' | null = null
   if (inviteCode === teacherCode)          role = 'teacher'
-  else if (inviteCode === taAdminCode)     role = 'ta_admin'
+  else if (inviteCode === taAdminCode)     role = 'ta_desk'
   else if (inviteCode === taAssistantCode) role = 'ta_assistant'
-  else if (inviteCode === taCodeLegacy)    role = 'ta_admin'
+  else if (inviteCode === taCodeLegacy)    role = 'ta_desk'
 
   if (!role) {
     return { error: '유효하지 않은 초대 코드입니다.' }

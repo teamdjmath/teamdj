@@ -56,7 +56,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 function roleLabel(role: string) {
   if (role === 'teacher') return '선생님'
-  if (role === 'ta_admin') return '사무'
+  if (role === 'ta_desk') return '사무'
   if (role === 'ta_assistant') return '첨삭'
   return role
 }

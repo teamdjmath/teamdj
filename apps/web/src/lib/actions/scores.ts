@@ -47,7 +47,7 @@ export async function createTest(data: TestFormData): Promise<ActionResult> {
   return withAction('createTest', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
     const role = user.user_metadata?.role as string | undefined
-    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const adminSupabase = createAdminClient()
     const { error } = await adminSupabase.from('tests').insert({
@@ -77,7 +77,7 @@ export async function deleteTest(id: string): Promise<ActionResult> {
   return withAction('deleteTest', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
     const role = user.user_metadata?.role as string | undefined
-    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const adminSupabase = createAdminClient()
     const { error } = await adminSupabase.from('tests').delete().eq('id', id)
@@ -95,7 +95,7 @@ export async function saveTestScores(testId: string, entries: ScoreEntry[]): Pro
   return withAction('saveTestScores', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
     const role = user.user_metadata?.role as string | undefined
-    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const adminSupabase = createAdminClient()
     const { data: test } = await adminSupabase
@@ -136,7 +136,7 @@ export async function bulkSaveTestScores(testId: string, rows: BulkScoreRow[]): 
   }
 
   const role = user.user_metadata?.role as string | undefined
-  if (!['teacher', 'ta_admin'].includes(role ?? '')) {
+  if (!['teacher', 'ta_desk'].includes(role ?? '')) {
     return { succeeded: 0, failed: [{ name: '전체', reason: '권한이 없습니다.' }] }
   }
 

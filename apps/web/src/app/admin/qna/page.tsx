@@ -32,7 +32,7 @@ export default async function QnaPage({
     supabase
       .from('users')
       .select('id, name, role')
-      .in('role', ['teacher', 'ta_admin', 'ta_assistant'])
+      .in('role', ['teacher', 'ta_desk', 'ta_assistant'])
       .eq('is_active', true)
       .order('name'),
   ])

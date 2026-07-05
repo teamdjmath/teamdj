@@ -567,13 +567,18 @@ export function DashboardScheduleClient({
                   <li key={member.userId} className="flex items-center gap-3 px-5 py-3.5">
                     <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${cfg.dot}`} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-zinc-900 flex items-center gap-1.5">
+                      <p className="text-sm font-medium text-zinc-900 flex items-center gap-1">
                         {member.name}
-                        {isMe && <span className="text-[10px] font-normal text-zinc-400">(나)</span>}
+                        <span className="text-xs font-normal text-zinc-500">
+                          {member.role === 'teacher' ? ' 선생님' : ' 조교'}
+                        </span>
+                        {isMe && <span className="text-[10px] font-normal text-zinc-400 ml-0.5">(나)</span>}
                       </p>
-                      <p className="text-xs text-zinc-400">
-                        {member.role === 'teacher' ? '선생님' : '조교'}
-                      </p>
+                      {(member.role === 'ta_desk' || member.role === 'ta_assistant') && (
+                        <p className="text-xs text-zinc-400">
+                          {member.role === 'ta_desk' ? '(사무)' : '(첨삭)'}
+                        </p>
+                      )}
                     </div>
                     <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${cfg.badge}`}>
                       {cfg.label}

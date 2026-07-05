@@ -129,11 +129,11 @@ describe('saveAttendance', () => {
     }
   })
 
-  it('TA 역할도 출결 저장 가능', async () => {
+  it('ta_desk 역할도 출결 저장 가능', async () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: 'ta-1', user_metadata: { role: 'ta' } } },
+          data: { user: { id: 'ta-1', user_metadata: { role: 'ta_desk' } } },
           error: null,
         }),
       },

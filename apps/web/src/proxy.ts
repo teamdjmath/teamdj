@@ -11,7 +11,7 @@ const ADMIN_PATH_PREFIX = '/admin'
 const CHANGE_PASSWORD_PATH = '/change-password'
 
 // 스태프 역할 정의
-const STAFF_ROLES = ['teacher', 'ta_admin', 'ta_assistant']
+const STAFF_ROLES = ['teacher', 'ta_desk', 'ta_assistant']
 
 // ta_assistant 허용 경로 (/admin 하위) — /admin/qna/stats 는 senior 전용이므로 제외
 const TA_ASSISTANT_ALLOWED = [

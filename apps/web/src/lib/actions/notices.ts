@@ -21,7 +21,7 @@ export async function createNotice(data: {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
 
     const role = user.user_metadata?.role as string | undefined
-    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const adminSupabase = createAdminClient()
     const { error } = await adminSupabase.from('notices').insert({
@@ -99,7 +99,7 @@ export async function updateNotice(
     if (!user) return { success: false, error: '인증이 필요합니다.' }
 
     const role = user.user_metadata?.role as string | undefined
-    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const adminSupabase = createAdminClient()
     const { error } = await adminSupabase
@@ -121,7 +121,7 @@ export async function deleteNotice(id: string): Promise<ActionResult> {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
 
     const role = user.user_metadata?.role as string | undefined
-    if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+    if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const adminSupabase = createAdminClient()
     const { error } = await adminSupabase.from('notices').delete().eq('id', id)

@@ -11,7 +11,7 @@ export default async function ChangePasswordPage() {
   // 이미 변경 완료한 경우 대시보드로
   if (!user.user_metadata?.must_change_password) {
     const role = user.user_metadata?.role as string | undefined
-    redirect(['teacher', 'ta_admin', 'ta_assistant'].includes(role ?? '') ? '/admin/dashboard' : '/dashboard')
+    redirect(['teacher', 'ta_desk', 'ta_assistant'].includes(role ?? '') ? '/admin/dashboard' : '/dashboard')
   }
 
   return (

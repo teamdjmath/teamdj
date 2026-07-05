@@ -17,10 +17,14 @@ import { createClass } from '@/lib/actions/classes'
 
 const mockTeacher = { id: 'teacher-1', user_metadata: { role: 'teacher' } }
 
-function makeAdminMock(insertResult: { error: unknown }) {
+function makeAdminMock(insertResult: { data?: { id: string } | null; error: unknown }) {
   return {
     from: vi.fn().mockReturnValue({
-      insert: vi.fn().mockResolvedValue(insertResult),
+      insert: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue(insertResult),
+        }),
+      }),
     }),
   }
 }
@@ -54,7 +58,9 @@ describe('createClass', () => {
   })
 
   it('성공 케이스 → { success: true }', async () => {
-    vi.mocked(createAdminClient).mockReturnValue(makeAdminMock({ error: null }) as any)
+    vi.mocked(createAdminClient).mockReturnValue(
+      makeAdminMock({ data: { id: 'class-1' }, error: null }) as any,
+    )
 
     const result = await createClass(formData)
 
@@ -64,6 +70,7 @@ describe('createClass', () => {
   it('이름 중복 (23505) → 중복된 데이터입니다 반환', async () => {
     vi.mocked(createAdminClient).mockReturnValue(
       makeAdminMock({
+        data: null,
         error: { code: '23505', message: 'duplicate key value violates unique constraint' },
       }) as any,
     )
@@ -79,6 +86,7 @@ describe('createClass', () => {
   it('RLS 권한 없음 (42501) → 접근 권한이 없습니다 (RLS) 반환', async () => {
     vi.mocked(createAdminClient).mockReturnValue(
       makeAdminMock({
+        data: null,
         error: { code: '42501', message: 'insufficient privilege' },
       }) as any,
     )
@@ -119,11 +127,13 @@ describe('createClass', () => {
     }
   })
 
-  it('TA 역할도 분반 생성 가능', async () => {
+  it('ta_desk 역할도 분반 생성 가능', async () => {
     vi.mocked(createClient).mockResolvedValue(
-      makeAuthMock({ id: 'ta-1', user_metadata: { role: 'ta' } }) as any,
+      makeAuthMock({ id: 'ta-1', user_metadata: { role: 'ta_desk' } }) as any,
     )
-    vi.mocked(createAdminClient).mockReturnValue(makeAdminMock({ error: null }) as any)
+    vi.mocked(createAdminClient).mockReturnValue(
+      makeAdminMock({ data: { id: 'class-1' }, error: null }) as any,
+    )
 
     const result = await createClass(formData)
 

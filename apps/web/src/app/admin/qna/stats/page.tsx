@@ -40,11 +40,11 @@ export default async function QnaStatsPage({
 
   const admin = createAdminClient()
 
-  // 스태프 목록 (teacher + ta_admin + ta_assistant)
+  // 스태프 목록 (teacher + ta_desk + ta_assistant)
   const { data: staffList } = await admin
     .from('users')
     .select('id, name, role')
-    .in('role', ['teacher', 'ta_admin', 'ta_assistant'])
+    .in('role', ['teacher', 'ta_desk', 'ta_assistant'])
     .eq('is_active', true)
     .order('role')
     .order('name')
@@ -133,7 +133,7 @@ export default async function QnaStatsPage({
 
   function roleLabel(role: string) {
     if (role === 'teacher') return '선생님'
-    if (role === 'ta_admin') return '사무 조교'
+    if (role === 'ta_desk') return '사무 조교'
     if (role === 'ta_assistant') return '첨삭 조교'
     return role
   }
