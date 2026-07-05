@@ -12,9 +12,9 @@ export function InactivityGuard() {
   const [warning, setWarning] = useState(false)
   const [seconds, setSeconds] = useState(WARN_BEFORE / 1000)
 
-  const logoutRef = useRef<ReturnType<typeof setTimeout>>()
-  const warnRef   = useRef<ReturnType<typeof setTimeout>>()
-  const tickRef   = useRef<ReturnType<typeof setInterval>>()
+  const logoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const warnRef   = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const tickRef   = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
 
   const reset = useCallback(() => {
     clearTimeout(logoutRef.current)
