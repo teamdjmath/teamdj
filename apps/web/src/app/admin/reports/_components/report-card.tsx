@@ -74,7 +74,7 @@ type DisplayAssignment = {
   lectureNum: number
   issueDate: string
   submitDate: string
-  completion: number
+  completion: number | null   // null = 미지참
 }
 
 function AssignmentTable({ assignments }: { assignments: DisplayAssignment[] }) {
@@ -113,7 +113,11 @@ function AssignmentTable({ assignments }: { assignments: DisplayAssignment[] }) 
         <td style={td}>{item?.submitDate ?? ''}</td>
         <td style={{ ...td, borderRight: 'none', padding: '3px 4px' }}>
           <div style={{ display: 'flex', justifyContent: 'center' }}>
-            {item ? <Circles count={item.completion} /> : null}
+            {item
+              ? item.completion === null
+                ? <span style={{ fontSize: 10, fontWeight: 700, color: '#c0392b' }}>미지참</span>
+                : <Circles count={item.completion} />
+              : null}
           </div>
         </td>
       </tr>
@@ -195,8 +199,8 @@ export function ReportCard({ data, cardRef }: Props) {
         slotNum,
         lectureNum,
         issueDate:  a.issueDate ? formatAdminDate(a.issueDate) : '',
-        submitDate: a.submitDate ? formatAdminDate(a.submitDate) : '',
-        completion: Math.min(5, Math.round(a.completionPct / 20)),
+        submitDate: a.completionPct === null ? '' : a.submitDate ? formatAdminDate(a.submitDate) : '',
+        completion: a.completionPct === null ? null : Math.min(5, Math.round(a.completionPct / 20)),
       }
     })
 

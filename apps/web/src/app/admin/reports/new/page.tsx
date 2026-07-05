@@ -46,7 +46,7 @@ export default async function NewReportPage({
       difficulty?: string
       classAverage?: number
     }>
-    assignments: Array<{ title: string; completionPct: number; issueDate?: string; submitDate?: string; weekNum?: number }>
+    assignments: Array<{ title: string; completionPct: number | null; issueDate?: string; submitDate?: string; weekNum?: number }>
     avgAssignmentPct: number
   }
 
@@ -176,7 +176,7 @@ export default async function NewReportPage({
         if (!studentAssignments[sid]) studentAssignments[sid] = []
         studentAssignments[sid].push({
           title:         asgn?.title ?? '',
-          completionPct: row.completion_pct ?? 0,  // null(미지참) → 0circles
+          completionPct: row.completion_pct,  // null = 미지참 (카드에서 '미지참'으로 표시)
           issueDate:     asgn?.issue_date ?? asgn?.created_at?.slice(0, 10) ?? undefined,
           submitDate:    row.submit_date ?? asgn?.due_date ?? undefined,
           weekNum:       asgn?.week_num ?? undefined,
@@ -187,7 +187,8 @@ export default async function NewReportPage({
         // weekNum 기준 오름차순 정렬 — 강별 순서가 정확히 매핑되도록
         items.sort((a, b) => (a.weekNum ?? 999) - (b.weekNum ?? 999))
         if (items.length > 0) {
-          assignmentPctMap[sid] = Math.round(items.reduce((a, b) => a + b.completionPct, 0) / items.length)
+          // 평균에서 미지참(null)은 0으로 계산
+          assignmentPctMap[sid] = Math.round(items.reduce((a, b) => a + (b.completionPct ?? 0), 0) / items.length)
         }
       }
     }

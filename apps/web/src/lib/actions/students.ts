@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
 import { logger } from '@/lib/logger'
+import { logAudit } from '@/lib/audit'
 
 export type StudentBulkRow = {
   name: string
@@ -97,6 +98,11 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
         await adminSupabase.from('parent_links').insert({ parent_id: parent.id, student_id: userId })
       }
     }
+
+    await logAudit(caller, {
+      action: 'student.create', targetType: 'student',
+      targetId: userId, targetLabel: name,
+    })
 
     revalidatePath('/admin/students')
     return { success: true }
@@ -326,6 +332,10 @@ export async function deleteStudent(studentId: string): Promise<ActionResult> {
 
     const adminSupabase = createAdminClient()
 
+    // 삭제 전에 이름 확보 (감사 로그용)
+    const { data: target } = await adminSupabase
+      .from('users').select('name').eq('id', studentId).maybeSingle()
+
     // users 테이블에서 삭제 (class_members, parent_links 등은 CASCADE)
     const { error: dbErr } = await adminSupabase.from('users').delete().eq('id', studentId)
     if (dbErr) throw dbErr
@@ -333,6 +343,11 @@ export async function deleteStudent(studentId: string): Promise<ActionResult> {
     // Auth에서도 삭제
     const { error: authErr } = await adminSupabase.auth.admin.deleteUser(studentId)
     if (authErr) logger.warn('deleteStudent:auth-delete-failed', { action: 'deleteStudent', userId: caller.id, error: authErr })
+
+    await logAudit(caller, {
+      action: 'student.delete', targetType: 'student',
+      targetId: studentId, targetLabel: (target as { name?: string } | null)?.name ?? '',
+    })
 
     revalidatePath('/admin/students')
     return { success: true }
@@ -414,6 +429,13 @@ export async function resetStudentPassword(studentId: string): Promise<ActionRes
       .update({ must_change_password: true } as any)
       .eq('id', studentId)
     if (dbErr) throw dbErr
+
+    const { data: target } = await adminSupabase
+      .from('users').select('name').eq('id', studentId).maybeSingle()
+    await logAudit(caller, {
+      action: 'student.password_reset', targetType: 'student',
+      targetId: studentId, targetLabel: (target as { name?: string } | null)?.name ?? '',
+    })
 
     revalidatePath(`/admin/students/${studentId}`)
     return { success: true }

@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 
 export function ClosingSection() {
   return (
-    <section className="w-full py-32 bg-white text-zinc-950 overflow-hidden border-t border-zinc-100">
+    <section className="w-full py-20 md:py-32 bg-white text-zinc-950 overflow-hidden border-t border-zinc-100">
       <div className="container max-w-5xl mx-auto px-4">
         <div className="flex flex-col items-center text-center relative">
           {/* 큰 따옴표 디자인 요소 */}
@@ -42,7 +42,7 @@ export function ClosingSection() {
           >
             <Link
               href="/consultation"
-              className="inline-flex items-center gap-3 h-16 px-12 rounded-full bg-zinc-950 text-white hover:bg-zinc-800 text-xl font-bold transition-all shadow-2xl"
+              className="inline-flex items-center gap-3 h-14 md:h-16 px-8 md:px-12 rounded-full bg-zinc-950 text-white hover:bg-zinc-800 text-lg md:text-xl font-bold transition-all shadow-2xl"
             >
               상담 신청하기
               <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">

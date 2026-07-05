@@ -6,7 +6,7 @@ export function AcmeHero() {
   return (
     <div className="container max-w-5xl mx-auto">
       <main className="relative container px-2 mx-auto">
-        <section className="w-full pt-12 pb-24 md:pt-16 md:pb-32 lg:pt-20 lg:pb-36">
+        <section className="w-full pt-10 pb-14 md:pt-16 md:pb-32 lg:pt-20 lg:pb-36">
           <motion.div
             className="flex flex-col items-center space-y-6 text-center"
             initial={{ opacity: 0, y: 20 }}

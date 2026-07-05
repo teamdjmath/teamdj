@@ -7,6 +7,7 @@ import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
 import { createNotification } from '@/lib/actions/notifications'
 import { logger } from '@/lib/logger'
+import { logAudit } from '@/lib/audit'
 
 export async function sendMessage(data: {
   classId: string | null
@@ -70,6 +71,13 @@ export async function sendMessage(data: {
     } catch (err) {
       logger.warn('sendMessage:notification-failed', { action: 'sendMessage', userId: user.id, error: err })
     }
+
+    await logAudit(user, {
+      action: 'message.send', targetType: 'message',
+      targetId: data.studentId ?? data.classId ?? '',
+      targetLabel: data.studentId ? '학생 개별 쪽지' : '분반 전체 쪽지',
+      detail: { classId: data.classId, studentId: data.studentId },
+    })
 
     revalidatePath('/admin/messages')
     return { success: true }

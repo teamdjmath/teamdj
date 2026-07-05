@@ -32,10 +32,10 @@ const CURRICULUM_DATA = [
 
 export function CurriculumSection() {
   return (
-    <section className="py-24 bg-white overflow-hidden" id="curriculum">
+    <section className="py-14 md:py-24 bg-white overflow-hidden" id="curriculum">
       <div className="container max-w-5xl mx-auto px-4">
-        <motion.div 
-          className="text-center mb-20"
+        <motion.div
+          className="text-center mb-12 md:mb-20"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -50,7 +50,7 @@ export function CurriculumSection() {
         </motion.div>
 
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse border-spacing-0">
+          <table className="w-full min-w-[560px] border-collapse border-spacing-0">
             <thead>
               <tr className="border-t-2 border-zinc-950">
                 <th className="py-6 px-4 text-left text-sm font-black uppercase tracking-widest text-zinc-950 w-1/4">구분</th>

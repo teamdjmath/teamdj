@@ -4,9 +4,9 @@ import { motion } from "motion/react";
 
 export function TeacherIntro() {
   return (
-    <section className="w-full py-24 bg-white overflow-hidden">
+    <section className="w-full py-14 md:py-24 bg-white overflow-hidden">
       <div className="container max-w-5xl mx-auto px-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           <motion.div
             initial={{ opacity: 0, x: -50 }}
             whileInView={{ opacity: 1, x: 0 }}

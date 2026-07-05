@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { logger } from '@/lib/logger'
+import { logAudit } from '@/lib/audit'
 import { asJson } from '@/types/db'
 export type { ReportContent } from '@/types/db'
 import type { ReportContent } from '@/types/db' // used in function signatures below
@@ -209,6 +210,12 @@ export async function deleteSessionReports(
     .eq('report_date', sessionDate)
 
   if (error) return { error: `삭제 실패: ${error.message}` }
+
+  await logAudit(auth.user, {
+    action: 'report.delete_session', targetType: 'report',
+    targetId: `${classId}/${sessionDate}`, targetLabel: `${sessionDate} 세션 리포트`,
+    detail: { count: reports?.length ?? 0 },
+  })
 
   revalidatePath('/admin/reports')
   return {}
@@ -420,6 +427,12 @@ export async function sendBatchKakaoReports(
     const sid = (r as Record<string, unknown>).student_id as string
     return !linksByStudent.has(sid)
   }).length
+
+  await logAudit(auth.user, {
+    action: 'report.kakao_batch_send', targetType: 'report',
+    targetId: `${classId}/${date}`, targetLabel: `${date} 세션 카카오 일괄 발송`,
+    detail: { sent: sentReportIds.size, failed: failedReportIds.size + noImageFailed + noLinkFailed },
+  })
 
   revalidatePath('/admin/reports')
   revalidatePath(`/admin/reports/session/${classId}/${date}`)

@@ -7,6 +7,7 @@ import { useState, useTransition } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { InputField } from '@/components/ui/form-field'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
+import { materialDownloadUrl } from '@/lib/download-url'
 import {
   createCourse,
   renameCourse,
@@ -519,7 +520,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                               {lec.materialUrl && (
                                 <div className="mt-1 flex items-center gap-2">
                                   <a
-                                    href={lec.materialUrl}
+                                    href={materialDownloadUrl(lec.materialUrl, `${lec.title} 자료`)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-1 rounded bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 hover:bg-zinc-200"
@@ -704,7 +705,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                     <div className="space-y-2">
                       {mats.map((m) => (
                         <div key={m.id} className="flex items-center gap-2 rounded-xl bg-zinc-50 px-3 py-2.5">
-                          <a href={m.url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 text-sm font-medium text-zinc-800 hover:text-zinc-950 truncate hover:underline">
+                          <a href={materialDownloadUrl(m.url, m.title)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 text-sm font-medium text-zinc-800 hover:text-zinc-950 truncate hover:underline">
                             {m.title}
                           </a>
                           <button type="button" onClick={() => handleDeleteMaterial(m.id, m.title)} disabled={pending} className="shrink-0 text-xs text-red-400 hover:text-red-600 disabled:opacity-50">삭제</button>

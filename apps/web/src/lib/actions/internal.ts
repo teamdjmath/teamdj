@@ -1,6 +1,7 @@
 
 
 import { logger, parseSupabaseError } from '@/lib/logger'
+import { reportError } from '@/lib/error-report'
 import type { ActionResult } from '@/lib/types/actions'
 
 export async function withAction<T = void>(
@@ -37,6 +38,14 @@ export async function withAction<T = void>(
       error:       e,
       supabaseCode: parsed.code,
       requestId,
+    })
+
+    // 개발자 유입: DB 저장 + Slack 알림 (실패해도 무시)
+    void reportError({
+      source:  'server',
+      message: `${actionName}: ${parsed.message}`,
+      userId,
+      context: { supabaseCode: parsed.code, requestId, duration },
     })
 
     return { success: false, error: parsed.message }

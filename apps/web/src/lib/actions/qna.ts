@@ -201,29 +201,34 @@ export async function generateAiDraft(
   try {
     const ai = new GoogleGenAI({ apiKey })
 
-    const promptText = `다음 수학 질문에 대해 조교 답변 초안을 작성해줘. 반드시 아래 규칙과 형식을 따를 것.
+    const systemInstruction = `너는 수학 학원의 조교다. 학생의 질문에 대해 조교가 검토 후 보낼 "답변 초안"을 작성한다.
 
-**규칙 (엄수):**
-- 반드시 한국어로만 작성 (수식 기호 제외)
-- 전체 답변 10줄 이내
-- 케이스가 여러 개이면 케이스당 5줄 이내
-- 수식($...$, $$...$$)과 꼭 필요한 설명만 포함 — 장황한 문장 금지
-- 첨부 이미지가 있으면 이미지로 대체 가능한 텍스트 설명은 생략
+**목표: 정답을 알려주는 것이 아니라, 학생이 스스로 다음 단계를 밟도록 유도하는 것.**
 
-**형식 (태그 포함하여 그대로 출력):**
-###PRAISE###
-(칭찬 또는 공감, 1문장)
-###KEYPOINT###
-(핵심 개념, 2줄 이내)
-###SOLUTION###
-(풀이, 수식 위주로 최대 7줄)
-###END###
+규칙 (엄수):
+1. 최종 답·최종 계산 결과를 직접 알려주지 말 것. 방향과 힌트만 제시.
+2. 이미지가 있으면 이미지 속 문제를 먼저 정확히 읽고, 질문 텍스트와 함께 학생이 "어디서 막혔는지"를 파악한 뒤 답할 것.
+3. 전체 8줄 이내. 같은 내용을 표현만 바꿔 반복하지 말 것 — 각 섹션은 서로 다른 정보만 담는다.
+4. 한국어로만 작성 (수식 제외).
 
-질문: ${questionContent}`
+수식 규칙 (렌더러: KaTeX):
+- 인라인 $x^2$, 블록 $$\\frac{a}{b}$$ 만 사용. \\( \\) 나 \\[ \\] 금지.
+- 수식 안에 한글을 넣지 말 것. 설명은 수식 밖에 쓴다.
+- 여러 줄 수식은 $$...$$ 안에서 aligned 환경만 사용.
+- 출력 전에 수식이 KaTeX 문법상 유효한지 스스로 검증할 것.
 
-    const contentsParts: Array<string | { inlineData: { data: string; mimeType: string } }> = [promptText]
+출력 형식 (태그 포함 그대로, 다른 내용 추가 금지):
+###CHECK###
+(문제와 질문 의도 확인 1문장 — 이미지의 문제를 어떻게 읽었고 학생이 무엇을 묻는지. 조교가 오독 여부를 검증하는 용도)
+###CONCEPT###
+(이 문제를 뚫는 핵심 개념·성질 딱 하나, 1~2줄)
+###NEXTSTEP###
+(학생이 스스로 풀도록 유도하는 다음 단계 1~3개. 번호 목록. 각 항목은 "~해 보세요" 또는 되묻는 질문 형태. 마지막 단계의 답까지 쓰지 말 것)
+###END###`
 
-    // 학생 첨부 이미지 포함
+    const contentsParts: Array<string | { inlineData: { data: string; mimeType: string } }> = []
+
+    // 이미지를 먼저 배치 — 텍스트보다 앞에 있어야 인식 정확도가 높음
     if (imageUrls.length > 0) {
       for (const url of imageUrls) {
         try {
@@ -245,9 +250,22 @@ export async function generateAiDraft(
       }
     }
 
+    contentsParts.push(
+      imageUrls.length > 0
+        ? `위 이미지가 학생이 첨부한 문제/풀이 사진이다.\n\n학생 질문: ${questionContent}`
+        : `학생 질문: ${questionContent}`,
+    )
+
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-lite',
+      // flash-lite는 수식·손글씨 이미지 인식이 약해 flash로 상향
+      model: 'gemini-2.5-flash',
       contents: contentsParts,
+      config: {
+        systemInstruction,
+        temperature: 0.3,
+        maxOutputTokens: 2048,
+        thinkingConfig: { thinkingBudget: 512 },
+      },
     })
     
     let rawText = ''
@@ -285,16 +303,19 @@ export async function generateAiDraft(
       return text.match(re)?.[1]?.trim() ?? ''
     }
 
-    const praise = extractSection(rawText, 'PRAISE')
-    const keyPoint = extractSection(rawText, 'KEYPOINT')
-    const solution = extractSection(rawText, 'SOLUTION')
+    const check    = extractSection(rawText, 'CHECK')
+    const concept  = extractSection(rawText, 'CONCEPT')
+    const nextStep = extractSection(rawText, 'NEXTSTEP')
 
-    if (!praise && !keyPoint && !solution) {
+    if (!check && !concept && !nextStep) {
+      // 태그 없이 답변한 경우 — 태그 흔적만 제거하고 원문 사용
       logger.warn('generateAiDraft:parse-failed', { action: 'generateAiDraft', userId: user.id, input: rawText.slice(0, 300) })
-      return { error: 'AI 응답 형식을 파싱할 수 없습니다. 다시 시도해 주세요.' }
+      const fallback = rawText.replace(/###[A-Z]+###/g, '').trim()
+      if (!fallback) return { error: 'AI 응답 형식을 파싱할 수 없습니다. 다시 시도해 주세요.' }
+      return { draft: fallback, mediaUrls }
     }
 
-    const draft = [praise, keyPoint, solution].filter(Boolean).join('\n\n')
+    const draft = [check, concept, nextStep].filter(Boolean).join('\n\n')
     return { draft, mediaUrls }
   } catch (err: unknown) {
     logger.error('generateAiDraft:error', { action: 'generateAiDraft', userId: user.id, error: err })

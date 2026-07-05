@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { materialDownloadUrl } from '@/lib/download-url'
 
 type Lecture = {
   id: string
@@ -53,9 +54,7 @@ export function CourseViewer({ courseName, lectures, materials }: Props) {
         ) : (
           <div className="flex flex-col gap-1.5">
             {materials.map((m) => {
-              const storedName = m.url.split('?')[0].split('/').pop() ?? ''
-              const ext = storedName.includes('.') ? '.' + storedName.split('.').pop() : ''
-              const downloadUrl = m.url + (m.url.includes('?') ? '&' : '?') + 'download=' + encodeURIComponent(m.title + ext)
+              const downloadUrl = materialDownloadUrl(m.url, m.title)
               return (
                 <a
                   key={m.id}
