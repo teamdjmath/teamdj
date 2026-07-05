@@ -271,7 +271,7 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
             </div>
           ))}
         </div>
-      ) : null}
+      )}
 
       {/* 등록/수정 모달 */}
       <Modal
