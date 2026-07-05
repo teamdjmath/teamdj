@@ -43,26 +43,27 @@ export default async function AdminDashboardPage() {
   const todayDow    = today.getDay()
   const { start: monthStart, end: monthEnd } = getMonthRange()
 
-  // ── 역할별 담당 분반 fetch ──
-  let classes: ClassRow[] = []
-  if (role === 'teacher') {
-    const { data } = await admin
-      .from('class_groups')
-      .select('id, name, subject, grade, start_time, end_time, day_of_week')
-      .eq('is_active', true).not('day_of_week', 'is', null).order('name')
-    classes = data ?? []
-  } else if (role === 'ta_desk' || role === 'ta_assistant') {
-    const { data: allAccess } = await adminDb
-      .from('ta_class_access').select('is_all_classes')
-      .eq('ta_id', user.id).eq('is_all_classes', true).limit(1)
-
-    if (allAccess && allAccess.length > 0) {
+  // ── 역할별 담당 분반 fetch (아래 병렬 배치와 동시에 실행) ──
+  const classesPromise = (async (): Promise<ClassRow[]> => {
+    if (role === 'teacher') {
       const { data } = await admin
         .from('class_groups')
         .select('id, name, subject, grade, start_time, end_time, day_of_week')
         .eq('is_active', true).not('day_of_week', 'is', null).order('name')
-      classes = data ?? []
-    } else {
+      return data ?? []
+    }
+    if (role === 'ta_desk' || role === 'ta_assistant') {
+      const { data: allAccess } = await adminDb
+        .from('ta_class_access').select('is_all_classes')
+        .eq('ta_id', user.id).eq('is_all_classes', true).limit(1)
+
+      if (allAccess && allAccess.length > 0) {
+        const { data } = await admin
+          .from('class_groups')
+          .select('id, name, subject, grade, start_time, end_time, day_of_week')
+          .eq('is_active', true).not('day_of_week', 'is', null).order('name')
+        return data ?? []
+      }
       const { data: access } = await adminDb
         .from('ta_class_access').select('class_id')
         .eq('ta_id', user.id).not('class_id', 'is', null)
@@ -72,10 +73,11 @@ export default async function AdminDashboardPage() {
           .from('class_groups')
           .select('id, name, subject, grade, start_time, end_time, day_of_week')
           .in('id', ids).eq('is_active', true).not('day_of_week', 'is', null).order('name')
-        classes = data ?? []
+        return data ?? []
       }
     }
-  }
+    return []
+  })()
 
   // ── 병렬 fetch ──
   const [noticesRes, openQnaRes, staffUsersRes, extraSchedulesRes, taAccessRes] = await Promise.all([
@@ -105,6 +107,8 @@ export default async function AdminDashboardPage() {
       .from('ta_class_access')
       .select('ta_id, class_id, is_all_classes'),
   ])
+
+  const classes = await classesPromise
 
   // ── 공지사항 가공 ──
   type NoticeRow = { id: string; title: string; created_at: string; is_pinned: boolean; class_id: string | null; className: string | null }

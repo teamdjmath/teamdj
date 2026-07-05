@@ -17,17 +17,7 @@ export default async function QnAListPage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
 
-  // 내 질문
-  const { data: myRows } = await supabase
-    .from('qna_questions')
-    .select('id, title, status, created_at')
-    .eq('student_id', user.id)
-    .order('created_at', { ascending: false })
-
-  // 교재 목록 (textbooks table available after migration)
-  const { data: textbookRows } = await db.from('textbooks').select('id, name').order('name')
-
-  // 분반 전체 질문 (RLS가 분반 범위 제어, new columns available after migration)
+  // 분반 전체 질문 (RLS가 분반 범위 제어)
   let classQuery = db
     .from('qna_questions')
     .select('id, title, status, created_at, problem_number, student:users!student_id(name), textbook:textbooks!textbook_id(name)')
@@ -41,7 +31,16 @@ export default async function QnAListPage({
     classQuery = classQuery.ilike('problem_number', `%${selectedProblemNumber}%`)
   }
 
-  const { data: classRows } = await classQuery
+  // 내 질문 / 교재 목록 / 분반 질문 — 서로 독립이라 병렬 실행
+  const [{ data: myRows }, { data: textbookRows }, { data: classRows }] = await Promise.all([
+    supabase
+      .from('qna_questions')
+      .select('id, title, status, created_at')
+      .eq('student_id', user.id)
+      .order('created_at', { ascending: false }),
+    db.from('textbooks').select('id, name').order('name'),
+    classQuery,
+  ])
 
   const myQuestions = (myRows ?? []).map((q) => ({
     id: q.id as string,

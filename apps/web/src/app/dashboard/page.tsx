@@ -45,22 +45,57 @@ export default async function DashboardPage() {
   }
   const classIds = Object.keys(classNameMap)
 
-  // 과제 (마감일 >= 오늘, 모든 분반 합산, 날짜순, 최대 10개)
-  const assignmentsQuery = classIds.length
-    ? supabase
-        .from('assignments')
-        .select('id, title, due_date, category, class_id')
-        .in('class_id', classIds)
-        .gte('due_date', TODAY)
-        .order('due_date', { ascending: true })
-        .limit(10)
-    : null
+  // 서로 독립인 4개 쿼리를 병렬 실행 (과제/공지/오늘수업/질문)
+  const todayDow = getTodayDow()
 
-  const { data: assignments } = assignmentsQuery
-    ? await assignmentsQuery
-    : { data: [] }
+  const [{ data: assignments }, { data: notices }, { data: todayClasses }, { data: questions }] =
+    await Promise.all([
+      // 과제 (마감일 >= 오늘, 모든 분반 합산, 날짜순, 최대 10개)
+      classIds.length
+        ? supabase
+            .from('assignments')
+            .select('id, title, due_date, category, class_id')
+            .in('class_id', classIds)
+            .gte('due_date', TODAY)
+            .order('due_date', { ascending: true })
+            .limit(10)
+        : Promise.resolve({ data: [] }),
+      // 공지사항 (모든 분반 + 전체 공지, 날짜순, 최대 5개)
+      classIds.length
+        ? supabase
+            .from('notices')
+            .select('id, title, created_at, is_pinned, class_id')
+            .or(`class_id.is.null,class_id.in.(${classIds.join(',')})`)
+            .order('is_pinned', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(5)
+        : supabase
+            .from('notices')
+            .select('id, title, created_at, is_pinned, class_id')
+            .is('class_id', null)
+            .order('is_pinned', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(5),
+      // 오늘 수업 (day_of_week 배열에 오늘 요일 포함된 분반)
+      classIds.length
+        ? supabase
+            .from('class_groups')
+            .select('id, name, subject, grade, start_time, end_time')
+            .in('id', classIds)
+            .contains('day_of_week', [todayDow])
+            .not('start_time', 'is', null)
+            .order('start_time', { ascending: true })
+        : Promise.resolve({ data: [] }),
+      // 최근 질문 (분반 무관, 본인 전체)
+      supabase
+        .from('qna_questions')
+        .select('id, title, status, created_at')
+        .eq('student_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(3),
+    ])
 
-  // 과제 진행률
+  // 과제 진행률 (assignmentIds 의존이라 뒤이어 실행)
   const assignmentIds = (assignments ?? []).map((a) => a.id as string)
   const { data: progressRows } = assignmentIds.length
     ? await supabase
@@ -74,49 +109,6 @@ export default async function DashboardPage() {
   for (const p of progressRows ?? []) {
     progressMap[p.assignment_id as string] = (p.completion_pct ?? 0) as number
   }
-
-  // 공지사항 (모든 분반 + 전체 공지, 중복 제거, 날짜순, 최대 5개)
-  const noticesQuery = classIds.length
-    ? supabase
-        .from('notices')
-        .select('id, title, created_at, is_pinned, class_id')
-        .or(`class_id.is.null,class_id.in.(${classIds.join(',')})`)
-        .order('is_pinned', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(5)
-    : supabase
-        .from('notices')
-        .select('id, title, created_at, is_pinned, class_id')
-        .is('class_id', null)
-        .order('is_pinned', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(5)
-
-  const { data: notices } = await noticesQuery
-
-  // 오늘 수업 (day_of_week 배열에 오늘 요일 포함된 분반)
-  const todayDow = getTodayDow()
-  const todayClassesQuery = classIds.length
-    ? supabase
-        .from('class_groups')
-        .select('id, name, subject, grade, start_time, end_time')
-        .in('id', classIds)
-        .contains('day_of_week', [todayDow])
-        .not('start_time', 'is', null)
-        .order('start_time', { ascending: true })
-    : null
-
-  const { data: todayClasses } = todayClassesQuery
-    ? await todayClassesQuery
-    : { data: [] }
-
-  // 최근 질문 (분반 무관, 본인 전체)
-  const { data: questions } = await supabase
-    .from('qna_questions')
-    .select('id, title, status, created_at')
-    .eq('student_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(3)
 
   return (
     <div className="space-y-4">

@@ -63,22 +63,27 @@ export default async function LearningPage() {
 
   const classIds = (memberships ?? []).map((m) => m.class_id as string).sort()
 
-  // 강좌 목록: 캐시에서 (분반 조합 키)
-  const courses = await getCachedCourses(classIds)
-
-  // Assignments
   const today = new Date().toISOString().split('T')[0]
 
   type AssignmentRow = { id: unknown; title: unknown; due_date: unknown; category: unknown; week_num: unknown }
 
-  const assignmentsResult = classIds.length > 0
-    ? await admin
-        .from('assignments')
-        .select('id, title, due_date, category, week_num')
-        .in('class_id', classIds)
-        .order('week_num', { ascending: false })
-        .order('due_date', { ascending: true })
-    : { data: [] as AssignmentRow[] }
+  // 강좌(캐시) / 과제 / 투두 — 서로 독립이라 병렬 실행
+  const [courses, assignmentsResult, { data: todos }] = await Promise.all([
+    getCachedCourses(classIds),
+    classIds.length > 0
+      ? admin
+          .from('assignments')
+          .select('id, title, due_date, category, week_num')
+          .in('class_id', classIds)
+          .order('week_num', { ascending: false })
+          .order('due_date', { ascending: true })
+      : Promise.resolve({ data: [] as AssignmentRow[] }),
+    admin
+      .from('student_todos')
+      .select('*')
+      .eq('student_id', userId)
+      .order('created_at', { ascending: false }),
+  ])
 
   const assignments = (assignmentsResult.data ?? []) as AssignmentRow[]
   const assignmentIds = assignments.map((a) => a.id as string)
@@ -103,13 +108,6 @@ export default async function LearningPage() {
     weekGroups[wk].push(a)
   }
   const sortedWeeks = Object.keys(weekGroups).map(Number).sort((a, b) => b - a)
-
-  // Personal To-Dos
-  const { data: todos } = await admin
-    .from('student_todos')
-    .select('*')
-    .eq('student_id', userId)
-    .order('created_at', { ascending: false })
 
   return (
     <LearningClient

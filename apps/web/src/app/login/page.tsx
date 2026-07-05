@@ -162,15 +162,23 @@ export default function LoginPage() {
             </form>
           </motion.div>
 
-          {/* 하단 서브카피 */}
-          <motion.p
-            className="mt-8 text-center text-xs text-zinc-400"
+          {/* 홈으로 돌아가기 */}
+          <motion.div
+            className="mt-8 text-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4, duration: 0.5 }}
           >
-            학원 전용 학습 관리 플랫폼
-          </motion.p>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-900 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
+              </svg>
+              홈으로 돌아가기
+            </Link>
+          </motion.div>
         </motion.div>
       </div>
     </div>
