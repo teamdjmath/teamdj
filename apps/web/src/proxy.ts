@@ -1,6 +1,43 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from './lib/supabase/middleware'
 
+// ── Rate Limiting (Upstash Redis REST API) ──────────────────────
+const RATE_LIMIT_MAX = 60
+const SLACK_WARN_AT  = 50
+const KEY_PREFIX     = 'teamdj:rl:'
+const WINDOW_SEC     = 60
+
+// Rate limit 적용 경로 접두어
+const RATE_LIMITED_PREFIXES = ['/api/', '/admin/', '/dashboard/']
+
+async function redisIncr(key: string): Promise<number> {
+  const url   = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  if (!url || !token) return 0
+  try {
+    const res = await fetch(`${url}/pipeline`, {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify([['INCR', key], ['EXPIRE', key, WINDOW_SEC]]),
+    })
+    const json = await res.json() as [{ result: number }, unknown]
+    return json[0]?.result ?? 0
+  } catch { return 0 }
+}
+
+async function slackNotify(text: string): Promise<void> {
+  const url = process.env.SLACK_WEBHOOK_URL
+  if (!url) return
+  try {
+    await fetch(url, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ text }),
+    })
+  } catch {}
+}
+// ────────────────────────────────────────────────────────────────
+
 // 로그인 없이 접근 가능한 공개 경로
 const PUBLIC_PATHS = ['/', '/intro', '/login', '/register', '/consultation']
 
@@ -33,12 +70,36 @@ function isTaAssistantAllowed(pathname: string): boolean {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // 1. Supabase 세션 갱신
+  // 1. Rate Limiting (API / admin / dashboard 경로만)
+  if (RATE_LIMITED_PREFIXES.some((p) => pathname.startsWith(p))) {
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
+      request.headers.get('x-real-ip') ??
+      'unknown'
+    const count = await redisIncr(`${KEY_PREFIX}${ip}`)
+
+    if (count === SLACK_WARN_AT) {
+      void slackNotify(
+        `⚠️ *TeamDJ 요청 급증 감지*\nIP: \`${ip}\`\n경로: \`${pathname}\`\n분당 ${count}회 → ${RATE_LIMIT_MAX}회 초과 시 차단`,
+      )
+    }
+    if (count > RATE_LIMIT_MAX) {
+      await slackNotify(
+        `🚨 *TeamDJ Rate Limit 차단*\nIP: \`${ip}\`\n경로: \`${pathname}\`\n분당 ${count}회 요청 — 429 응답 반환`,
+      )
+      return NextResponse.json(
+        { error: 'Too Many Requests — 잠시 후 다시 시도해주세요.' },
+        { status: 429, headers: { 'Retry-After': String(WINDOW_SEC) } },
+      )
+    }
+  }
+
+  // 2. Supabase 세션 갱신
   const { supabaseResponse, user } = await updateSession(request)
 
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p))
 
-  // 2. 비로그인 유저가 보호된 경로 접근 시 → /login
+  // 3. 비로그인 유저가 보호된 경로 접근 시 → /login
   if (!user && !isPublic) {
     const loginUrl = request.nextUrl.clone()
     loginUrl.pathname = '/login'
@@ -46,7 +107,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // 3. 로그인된 유저가 /login 또는 /register 접근 시 → 역할별 대시보드
+  // 4. 로그인된 유저가 /login 또는 /register 접근 시 → 역할별 대시보드
   if (user && isPublic && (pathname === '/login' || pathname === '/register')) {
     const role = user.user_metadata?.role as string | undefined
     const redirectUrl = request.nextUrl.clone()
@@ -56,7 +117,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // 4. 비밀번호 변경 강제: must_change_password 플래그가 true면 /change-password로 리다이렉트
+  // 5. 비밀번호 변경 강제: must_change_password 플래그가 true면 /change-password로 리다이렉트
   if (user && user.user_metadata?.must_change_password === true) {
     if (pathname !== CHANGE_PASSWORD_PATH) {
       const cpUrl = request.nextUrl.clone()
@@ -66,7 +127,7 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse
   }
 
-  // 5. /admin/* 경로는 스태프만 접근 가능
+  // 6. /admin/* 경로는 스태프만 접근 가능
   if (user && pathname.startsWith(ADMIN_PATH_PREFIX)) {
     const role = user.user_metadata?.role as string | undefined
 
