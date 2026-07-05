@@ -1153,6 +1153,7 @@ export type Database = {
       }
       users: {
         Row: {
+          agreed_terms_at: string | null
           created_at: string
           grade: string | null
           id: string
@@ -1167,6 +1168,7 @@ export type Database = {
           suspended_until: string | null
         }
         Insert: {
+          agreed_terms_at?: string | null
           created_at?: string
           grade?: string | null
           id?: string
@@ -1181,6 +1183,7 @@ export type Database = {
           suspended_until?: string | null
         }
         Update: {
+          agreed_terms_at?: string | null
           created_at?: string
           grade?: string | null
           id?: string

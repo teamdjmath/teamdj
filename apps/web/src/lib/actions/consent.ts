@@ -19,7 +19,8 @@ export async function agreeTerms() {
     admin.auth.admin.updateUserById(user.id, {
       user_metadata: { ...user.user_metadata, agreed_terms_at: now },
     }),
-    admin.from('users').update({ agreed_terms_at: now }).eq('id', user.id),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (admin.from('users') as any).update({ agreed_terms_at: now }).eq('id', user.id),
   ])
 
   const role = user.user_metadata?.role as string | undefined

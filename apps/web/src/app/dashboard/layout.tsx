@@ -5,6 +5,7 @@ import { BottomNav } from './_components/bottom-nav'
 import { NotificationsProvider } from '@/contexts/notifications-context'
 import { NotificationBell } from '@/components/ui/notification-bell'
 import { ToastContainer } from '@/components/ui/toast'
+import { InactivityGuard } from '@/components/ui/inactivity-guard'
 
 export default async function DashboardLayout({
   children,
@@ -72,6 +73,7 @@ export default async function DashboardLayout({
         {/* 하단 네비게이션 (클라이언트 — usePathname으로 활성 상태 처리) */}
         <BottomNav />
         <ToastContainer />
+        <InactivityGuard />
       </div>
     </NotificationsProvider>
   )

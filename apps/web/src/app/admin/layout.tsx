@@ -7,6 +7,7 @@ import { SidebarNav } from './_components/sidebar-nav'
 import { NotificationsProvider } from '@/contexts/notifications-context'
 import { NotificationBell } from '@/components/ui/notification-bell'
 import { ToastContainer } from '@/components/ui/toast'
+import { InactivityGuard } from '@/components/ui/inactivity-guard'
 import { getUnreadConsultationCount } from '@/lib/actions/consultations'
 
 // 역할 계층 정의
@@ -249,6 +250,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         </div>
 
         <ToastContainer />
+        <InactivityGuard />
       </div>
     </NotificationsProvider>
   )
