@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,15 +34,26 @@ export type HealthData = {
   checkedAt: string
 }
 
-export async function GET(): Promise<NextResponse<HealthData | { error: string }>> {
-  const client = await createClient()
-  const { data: { user } } = await client.auth.getUser()
+export async function GET(request: NextRequest): Promise<NextResponse<HealthData | { error: string }>> {
+  const admin = createAdminClient()
+
+  // 쿠키 세션 우선, Bearer 토큰 fallback (k6 등 API 클라이언트용)
+  let user: { user_metadata?: { role?: string } } | null = null
+  const bearerToken = request.headers.get('Authorization')?.replace('Bearer ', '')
+  if (bearerToken) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (admin as any).auth.getUser(bearerToken)
+    user = data?.user ?? null
+  } else {
+    const client = await createClient()
+    const { data } = await client.auth.getUser()
+    user = data?.user ?? null
+  }
+
   const role = user?.user_metadata?.role as string | undefined
   if (!user || !['teacher', 'ta_desk'].includes(role ?? '')) {
     return NextResponse.json({ error: '권한 없음' }, { status: 403 })
   }
-
-  const admin = createAdminClient()
 
   // 1. 순수 DB 연결 왕복 시간 (SELECT 1 — 테이블 스캔 없음)
   const pingStart = Date.now()
