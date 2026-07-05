@@ -133,7 +133,7 @@ const NAV_ITEMS = [
   },
   {
     href: '/admin/consultations',
-    label: '상담',
+    label: '상담 & 문의',
     visibility: 'teacher' as NavVisibility,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">

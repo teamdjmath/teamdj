@@ -162,7 +162,7 @@ export default async function NewReportPage({
     const assignmentPctMap: Record<string, number> = {}
     if (studentIds.length > 0 && assignments && assignments.length > 0) {
       const aIds = assignments.map((a) => a.id)
-      type ProgressRow = { student_id: string; assignment_id: string; completion_pct: number; submit_date: string | null }
+      type ProgressRow = { student_id: string; assignment_id: string; completion_pct: number | null; submit_date: string | null }
       const { data: progress } = (await admin
         .from('assignment_progress')
         .select('student_id, assignment_id, completion_pct, submit_date')
@@ -176,9 +176,9 @@ export default async function NewReportPage({
         if (!studentAssignments[sid]) studentAssignments[sid] = []
         studentAssignments[sid].push({
           title:         asgn?.title ?? '',
-          completionPct: row.completion_pct,
+          completionPct: row.completion_pct ?? 0,  // null(미지참) → 0circles
           issueDate:     asgn?.issue_date ?? undefined,
-          submitDate:    (row.submit_date ?? asgn?.due_date) ?? undefined,
+          submitDate:    row.submit_date ?? undefined,  // 제출일 미입력 시 비워둠 (due_date로 대체 X)
         })
       }
       for (const sid of studentIds) {

@@ -568,7 +568,7 @@ export function FeatureShowcase() {
               </h2>
               <p className="text-zinc-500 text-base leading-[2] break-keep">
                 강의 영상과 과제가 한 화면에서 관리됩니다.
-                매월승리 · Runner · ATO 모의 같은 카테고리 뱃지로 구분되어
+                Runner · ATO 모의 같은 카테고리 뱃지로 구분되어
                 어떤 유형 과제가 얼마나 남아 있는지 바로 보입니다.
               </p>
               <ul className="space-y-4">

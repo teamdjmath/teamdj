@@ -10,11 +10,21 @@ interface Props {
   assignmentId: string
   dueDate: string | null
   students: Student[]
-  existingProgress: Record<string, number>
+  existingProgress: Record<string, number | null>
   existingSubmitDates?: Record<string, string>
 }
 
 const TODAY = new Date().toISOString().split('T')[0]
+
+const PROGRESS_OPTIONS: { label: string; value: number | null }[] = [
+  { label: '미지참', value: null },
+  { label: '0%',    value: 0 },
+  { label: '20%',   value: 20 },
+  { label: '40%',   value: 40 },
+  { label: '60%',   value: 60 },
+  { label: '80%',   value: 80 },
+  { label: '100%',  value: 100 },
+]
 
 export function ProgressClient({ assignmentId, dueDate, students, existingProgress, existingSubmitDates = {} }: Props) {
   const router = useRouter()
@@ -22,9 +32,11 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
   const [resultMsg, setResultMsg] = useState('')
   const [isError, setIsError] = useState(false)
 
-  const [pctMap, setPctMap] = useState<Record<string, number>>(() => {
-    const init: Record<string, number> = {}
-    for (const s of students) init[s.id] = existingProgress[s.id] ?? 0
+  const [pctMap, setPctMap] = useState<Record<string, number | null>>(() => {
+    const init: Record<string, number | null> = {}
+    for (const s of students) {
+      init[s.id] = s.id in existingProgress ? existingProgress[s.id] : null
+    }
     return init
   })
 
@@ -38,44 +50,36 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
 
   const isOverdueDate = dueDate ? dueDate < TODAY : false
 
-  function setPct(studentId: string, value: number) {
-    const clamped = Math.min(100, Math.max(0, value))
-    setPctMap((m) => ({ ...m, [studentId]: clamped }))
+  function setPct(studentId: string, value: number | null) {
+    setPctMap((m) => ({ ...m, [studentId]: value }))
+    setResultMsg('')
   }
 
   function setSubmitDate(studentId: string, value: string) {
     setSubmitDateMap((m) => ({ ...m, [studentId]: value }))
   }
 
-  function setAll100() {
-    setPctMap((m) => {
-      const updated = { ...m }
-      for (const s of students) updated[s.id] = 100
-      return updated
-    })
-    // 전원 100% 시 제출일 기본값: 오늘
-    setSubmitDateMap((m) => {
-      const updated = { ...m }
-      for (const s of students) {
-        if (!updated[s.id]) updated[s.id] = TODAY
-      }
-      return updated
-    })
-  }
-
-  function setAll0() {
-    setPctMap((m) => {
-      const updated = { ...m }
-      for (const s of students) updated[s.id] = 0
-      return updated
-    })
+  function setAll(value: number | null) {
+    const updated: Record<string, number | null> = {}
+    for (const s of students) updated[s.id] = value
+    setPctMap(updated)
+    if (value === 100) {
+      setSubmitDateMap((m) => {
+        const next = { ...m }
+        for (const s of students) {
+          if (!next[s.id]) next[s.id] = TODAY
+        }
+        return next
+      })
+    }
+    setResultMsg('')
   }
 
   function handleSave() {
     setResultMsg('')
     const entries = students.map((s) => ({
       studentId:     s.id,
-      completionPct: pctMap[s.id] ?? 0,
+      completionPct: pctMap[s.id] ?? null,
       submitDate:    submitDateMap[s.id] || undefined,
     }))
     startTransition(async () => {
@@ -91,8 +95,9 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
     })
   }
 
-  const incomplete = students.filter((s) => (pctMap[s.id] ?? 0) < 100).length
-  const complete = students.length - incomplete
+  const notSubmitted = students.filter((s) => pctMap[s.id] === null).length
+  const complete     = students.filter((s) => pctMap[s.id] === 100).length
+  const incomplete   = students.length - notSubmitted - complete
 
   if (students.length === 0) {
     return (
@@ -105,12 +110,14 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
   return (
     <div>
       {/* 통계 바 */}
-      <div className="mb-4 flex items-center gap-4 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm">
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm">
         <span className="text-zinc-500">전체 <span className="font-semibold text-zinc-900">{students.length}</span>명</span>
         <span className="text-zinc-300">|</span>
         <span className="text-zinc-500">완료 <span className="font-semibold text-zinc-900">{complete}</span>명</span>
         <span className="text-zinc-300">|</span>
         <span className="text-zinc-500">미완료 <span className="font-semibold text-red-500">{incomplete}</span>명</span>
+        <span className="text-zinc-300">|</span>
+        <span className="text-zinc-500">미지참 <span className="font-semibold text-amber-500">{notSubmitted}</span>명</span>
         {isOverdueDate && (
           <>
             <span className="text-zinc-300">|</span>
@@ -125,30 +132,43 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-100 text-left text-xs text-zinc-400">
-                <th className="px-4 py-3 font-medium">학생</th>
-                <th className="px-4 py-3 font-medium">완료율 (%)</th>
-                <th className="px-4 py-3 font-medium">제출일</th>
-                <th className="px-4 py-3 font-medium text-center hidden sm:table-cell">상태</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap">학생</th>
+                <th className="px-4 py-3 font-medium">과제 진행도</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap">제출일</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50">
               {students.map((s) => {
-                const pct = pctMap[s.id] ?? 0
-                const isIncomplete = pct < 100
+                const pct = pctMap[s.id]
+                const rowBg =
+                  pct === null   ? 'bg-amber-50/60' :
+                  pct === 100    ? '' :
+                  'bg-red-50/50'
                 return (
-                  <tr key={s.id} className={isIncomplete ? 'bg-red-50' : ''}>
+                  <tr key={s.id} className={rowBg}>
                     <td className="px-4 py-3 font-medium text-zinc-900 whitespace-nowrap">{s.name}</td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={pct}
-                          onChange={(e) => setPct(s.id, parseInt(e.target.value) || 0)}
-                          className="w-20 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-base font-bold text-zinc-950 text-center focus:border-zinc-950 focus:outline-none focus:ring-0 transition-all"
-                        />
-                        <span className="text-zinc-500 font-medium">/ 100</span>
+                      <div className="flex flex-wrap gap-1">
+                        {PROGRESS_OPTIONS.map((opt) => {
+                          const isActive = pct === opt.value
+                          let activeClass = 'bg-zinc-900 text-white'
+                          if (opt.value === null)  activeClass = 'bg-amber-100 text-amber-800'
+                          if (opt.value === 100)   activeClass = 'bg-zinc-900 text-white'
+                          return (
+                            <button
+                              key={String(opt.value)}
+                              type="button"
+                              onClick={() => setPct(s.id, opt.value)}
+                              className={`rounded-full px-2.5 py-1 text-xs font-medium transition-all ${
+                                isActive
+                                  ? activeClass
+                                  : 'border border-zinc-200 text-zinc-400 hover:border-zinc-400 hover:text-zinc-700'
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          )
+                        })}
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -158,13 +178,6 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
                         onChange={(e) => setSubmitDate(s.id, e.target.value)}
                         className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:border-zinc-950 focus:outline-none focus:ring-0 transition-all"
                       />
-                    </td>
-                    <td className="px-4 py-3 text-center hidden sm:table-cell">
-                      {isIncomplete ? (
-                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600">미완료</span>
-                      ) : (
-                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600">완료</span>
-                      )}
                     </td>
                   </tr>
                 )
@@ -176,18 +189,25 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
 
       {/* 하단 액션 바 */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <span className="self-center text-xs text-zinc-400 mr-1">일괄:</span>
           <button
-            onClick={setAll100}
-            className="rounded-lg bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-200 transition-colors"
+            onClick={() => setAll(null)}
+            className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 hover:bg-amber-100 transition-colors"
           >
-            전원 100%
+            전원 미지참
           </button>
           <button
-            onClick={setAll0}
+            onClick={() => setAll(0)}
             className="rounded-lg bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-200 transition-colors"
           >
             전원 0%
+          </button>
+          <button
+            onClick={() => setAll(100)}
+            className="rounded-lg bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-200 transition-colors"
+          >
+            전원 100%
           </button>
         </div>
 

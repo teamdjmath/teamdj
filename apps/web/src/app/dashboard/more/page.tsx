@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { Card, CardHeader } from '@/components/ui/card'
 import { LogoutButton } from '@/components/ui/logout-button'
+import { submitInquiry } from '@/lib/actions/consultations'
 
 const LS_NOTIFICATIONS = 'teamdj_notifications'
 const LS_MARKETING = 'teamdj_marketing'
@@ -57,6 +58,8 @@ export default function MorePage() {
   const [inquiryOpen, setInquiryOpen] = useState(false)
   const [inquiryText, setInquiryText] = useState('')
   const [inquiryDone, setInquiryDone] = useState(false)
+  const [inquiryError, setInquiryError] = useState('')
+  const [isSubmitting, startSubmit] = useTransition()
 
   // 약관
   const [termsOpen, setTermsOpen] = useState(false)
@@ -89,12 +92,20 @@ export default function MorePage() {
   function handleInquirySubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!inquiryText.trim()) return
-    setInquiryDone(true)
-    setInquiryText('')
-    setTimeout(() => {
-      setInquiryDone(false)
-      setInquiryOpen(false)
-    }, 2000)
+    setInquiryError('')
+    startSubmit(async () => {
+      const result = await submitInquiry(inquiryText)
+      if (result.error) {
+        setInquiryError(result.error)
+        return
+      }
+      setInquiryDone(true)
+      setInquiryText('')
+      setTimeout(() => {
+        setInquiryDone(false)
+        setInquiryOpen(false)
+      }, 2500)
+    })
   }
 
   if (!settings.mounted) {
@@ -249,14 +260,18 @@ export default function MorePage() {
                   onChange={(e) => setInquiryText(e.target.value)}
                   placeholder="문의 내용을 입력해주세요."
                   rows={5}
-                  className="w-full resize-none rounded-2xl border-none bg-zinc-50 px-5 py-4 text-[15px] text-zinc-900 placeholder:text-zinc-400 focus:ring-2 focus:ring-zinc-900 transition-all outline-none"
+                  disabled={isSubmitting}
+                  className="w-full resize-none rounded-2xl border-none bg-zinc-50 px-5 py-4 text-[15px] text-zinc-900 placeholder:text-zinc-400 focus:ring-2 focus:ring-zinc-900 transition-all outline-none disabled:opacity-50"
                 />
+                {inquiryError && (
+                  <p className="text-sm text-red-500 text-center">{inquiryError}</p>
+                )}
                 <button
                   type="submit"
-                  disabled={!inquiryText.trim()}
+                  disabled={!inquiryText.trim() || isSubmitting}
                   className="w-full rounded-2xl bg-zinc-950 py-4 text-[15px] font-bold text-white transition-all hover:bg-zinc-900 disabled:bg-zinc-100 disabled:text-zinc-400"
                 >
-                  문의 보내기
+                  {isSubmitting ? '전송 중…' : '문의 보내기'}
                 </button>
               </form>
             )}

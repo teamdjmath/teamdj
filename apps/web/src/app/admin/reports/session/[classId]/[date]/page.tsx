@@ -21,7 +21,7 @@ export default async function ReportSessionPage({
 
   const { data: rows } = await admin
     .from('reports')
-    .select('id, image_url, kakao_sent_at, student_id, student:users!student_id(name)')
+    .select('id, image_url, kakao_sent_at, student_id, student:users!student_id(name, school)')
     .eq('class_id', classId)
     .eq('report_date', date)
     .order('student_id')
@@ -29,11 +29,13 @@ export default async function ReportSessionPage({
   const reports = (rows ?? [])
     .map((r) => {
       const row = r as Record<string, unknown>
+      const student = (row.student as { name?: string; school?: string } | null)
       return {
         id:           row.id as string,
         imageUrl:     (row.image_url ?? null) as string | null,
         kakaoSentAt:  (row.kakao_sent_at ?? null) as string | null,
-        studentName:  ((row.student as { name?: string } | null)?.name ?? '') as string,
+        studentName:  student?.name ?? '',
+        school:       student?.school ?? '',
       }
     })
     .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
@@ -67,6 +69,7 @@ export default async function ReportSessionPage({
       <SessionClient
         classId={classId}
         date={date}
+        className={className}
         sessionLabel={sessionLabel}
         reports={reports}
       />

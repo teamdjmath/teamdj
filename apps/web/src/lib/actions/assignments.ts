@@ -8,7 +8,7 @@ import type { ActionResult } from '@/lib/types/actions'
 
 export type ProgressEntry = {
   studentId: string
-  completionPct: number
+  completionPct: number | null
   submitDate?: string
 }
 
@@ -16,6 +16,7 @@ export async function createAssignment(data: {
   classId: string
   title: string
   category: string
+  issueDate: string
   dueDate: string
   weekNum: number | null
 }): Promise<ActionResult> {
@@ -29,12 +30,14 @@ export async function createAssignment(data: {
     if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const adminSupabase = createAdminClient()
-    const { error } = await adminSupabase.from('assignments').insert({
-      class_id: data.classId,
-      title:    data.title,
-      category: data.category || null,
-      due_date: data.dueDate  || null,
-      week_num: data.weekNum  ?? null,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (adminSupabase as any).from('assignments').insert({
+      class_id:   data.classId,
+      title:      data.title,
+      category:   data.category  || null,
+      issue_date: data.issueDate || null,
+      due_date:   data.dueDate   || null,
+      week_num:   data.weekNum   ?? null,
     })
     if (error) throw error
 
@@ -45,7 +48,7 @@ export async function createAssignment(data: {
 
 export async function updateAssignment(
   id: string,
-  data: { title: string; category: string; dueDate: string; weekNum: number | null },
+  data: { title: string; category: string; issueDate: string; dueDate: string; weekNum: number | null },
 ): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -57,9 +60,16 @@ export async function updateAssignment(
     if (!['teacher', 'ta_admin'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const adminSupabase = createAdminClient()
-    const { error } = await adminSupabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (adminSupabase as any)
       .from('assignments')
-      .update({ title: data.title, category: data.category || null, due_date: data.dueDate || null, week_num: data.weekNum ?? null })
+      .update({
+        title:      data.title,
+        category:   data.category  || null,
+        issue_date: data.issueDate || null,
+        due_date:   data.dueDate   || null,
+        week_num:   data.weekNum   ?? null,
+      })
       .eq('id', id)
     if (error) throw error
 
@@ -107,7 +117,7 @@ export async function saveProgress(
       assignment_id:  assignmentId,
       student_id:     e.studentId,
       completion_pct: e.completionPct,
-      is_overdue:     dueDate ? dueDate < today && e.completionPct < 100 : false,
+      is_overdue:     dueDate ? dueDate < today && (e.completionPct === null || e.completionPct < 100) : false,
       ...(e.submitDate ? { submit_date: e.submitDate } : {}),
     }))
 

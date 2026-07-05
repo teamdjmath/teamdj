@@ -32,16 +32,16 @@ export default async function AssignmentProgressPage({
     name: (m.users as { name: string } | null)?.name ?? '',
   })).sort((a, b) => a.name.localeCompare(b.name, 'ko'))
 
-  type ProgressRow = { student_id: string; completion_pct: number; submit_date: string | null }
+  type ProgressRow = { student_id: string; completion_pct: number | null; submit_date: string | null }
   const { data: progressRows } = (await supabase
     .from('assignment_progress')
     .select('student_id, completion_pct, submit_date')
     .eq('assignment_id', id)) as unknown as { data: ProgressRow[] | null }
 
-  const existingProgress: Record<string, number> = {}
+  const existingProgress: Record<string, number | null> = {}
   const existingSubmitDates: Record<string, string> = {}
   for (const p of progressRows ?? []) {
-    existingProgress[p.student_id] = p.completion_pct ?? 0
+    existingProgress[p.student_id] = p.completion_pct ?? null
     if (p.submit_date) existingSubmitDates[p.student_id] = p.submit_date
   }
 

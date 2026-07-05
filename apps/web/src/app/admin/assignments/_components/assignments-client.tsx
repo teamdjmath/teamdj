@@ -15,6 +15,7 @@ type Assignment = {
   id: string
   title: string
   category: string
+  issue_date: string
   due_date: string
   week_num: number | null
   class_id: string
@@ -52,6 +53,7 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
     classId: selectedClassId ?? classOptions[0]?.id ?? '',
     title: '',
     category: categoryOptions[0] || '',
+    issueDate: '',
     dueDate: '',
     weekNum: '',
   })
@@ -72,13 +74,13 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
   }
 
   function openCreate() {
-    setForm({ classId: selectedClassId ?? classOptions[0]?.id ?? '', title: '', category: categoryOptions[0] || '', dueDate: '', weekNum: '' })
+    setForm({ classId: selectedClassId ?? classOptions[0]?.id ?? '', title: '', category: categoryOptions[0] || '', issueDate: '', dueDate: '', weekNum: '' })
     setErr('')
     setModal({ type: 'create' })
   }
 
   function openEdit(a: Assignment) {
-    setForm({ classId: a.class_id, title: a.title, category: a.category || (categoryOptions[0] || ''), dueDate: a.due_date, weekNum: a.week_num?.toString() ?? '' })
+    setForm({ classId: a.class_id, title: a.title, category: a.category || (categoryOptions[0] || ''), issueDate: a.issue_date, dueDate: a.due_date, weekNum: a.week_num?.toString() ?? '' })
     setErr('')
     setModal({ type: 'edit', assignment: a })
   }
@@ -95,11 +97,12 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
     setErr('')
     startTransition(async () => {
       const data = {
-        classId: form.classId,
-        title: form.title.trim(),
-        category: form.category,
-        dueDate: form.dueDate,
-        weekNum: form.weekNum ? parseInt(form.weekNum) : null,
+        classId:   form.classId,
+        title:     form.title.trim(),
+        category:  form.category,
+        issueDate: form.issueDate,
+        dueDate:   form.dueDate,
+        weekNum:   form.weekNum ? parseInt(form.weekNum) : null,
       }
       const result =
         modal?.type === 'edit'
@@ -327,13 +330,23 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
             )}
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-zinc-400">마감일</label>
-            <DatePicker
-              value={form.dueDate}
-              onChange={(d) => setForm((f) => ({ ...f, dueDate: d }))}
-              placeholder="마감일을 선택하세요"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-zinc-400">출제일</label>
+              <DatePicker
+                value={form.issueDate}
+                onChange={(d) => setForm((f) => ({ ...f, issueDate: d }))}
+                placeholder="출제일 선택"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-zinc-400">마감일</label>
+              <DatePicker
+                value={form.dueDate}
+                onChange={(d) => setForm((f) => ({ ...f, dueDate: d }))}
+                placeholder="마감일 선택"
+              />
+            </div>
           </div>
 
           <InputField

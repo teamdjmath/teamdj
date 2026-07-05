@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
 
-export type AttendanceStatus = 'present' | 'absent' | 'late'
+export type AttendanceStatus = 'present' | 'absent' | 'late' | 'absent_video'
 
 export type AttendanceEntry = {
   studentId:      string

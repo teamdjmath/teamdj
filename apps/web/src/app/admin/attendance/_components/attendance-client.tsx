@@ -24,13 +24,18 @@ const STATUS_CONFIG: Record<
     inactiveClass:'border border-zinc-200 text-zinc-400 hover:border-zinc-400 hover:text-zinc-700',
   },
   absent: {
-    label:        '결석',
+    label:        '결석(차감)',
     activeClass:  'bg-zinc-200 text-zinc-700',
+    inactiveClass:'border border-zinc-200 text-zinc-400 hover:border-zinc-400 hover:text-zinc-700',
+  },
+  absent_video: {
+    label:        '결석(영상)',
+    activeClass:  'bg-blue-100 text-blue-800',
     inactiveClass:'border border-zinc-200 text-zinc-400 hover:border-zinc-400 hover:text-zinc-700',
   },
 }
 
-const ALL_STATUSES: AttendanceStatus[] = ['present', 'late', 'absent']
+const ALL_STATUSES: AttendanceStatus[] = ['present', 'late', 'absent', 'absent_video']
 
 interface Props {
   classOptions:     ClassOption[]
@@ -132,10 +137,11 @@ export function AttendanceClient({
 
   // 요약 집계
   const summary = {
-    present:   students.filter((s) => statusMap[s.id] === 'present').length,
-    late:      students.filter((s) => statusMap[s.id] === 'late').length,
-    absent:    students.filter((s) => statusMap[s.id] === 'absent').length,
-    unchecked: students.filter((s) => statusMap[s.id] === null).length,
+    present:      students.filter((s) => statusMap[s.id] === 'present').length,
+    late:         students.filter((s) => statusMap[s.id] === 'late').length,
+    absent:       students.filter((s) => statusMap[s.id] === 'absent').length,
+    absent_video: students.filter((s) => statusMap[s.id] === 'absent_video').length,
+    unchecked:    students.filter((s) => statusMap[s.id] === null).length,
   }
 
   const isExisting = Object.keys(existingLogs).length > 0
@@ -238,8 +244,9 @@ export function AttendanceClient({
                         <tr
                           key={student.id}
                           className={`transition-colors ${
-                            current === 'absent' ? 'bg-zinc-50/60' :
-                            current === 'late'   ? 'bg-zinc-50/30' : ''
+                            current === 'absent'       ? 'bg-zinc-50/60' :
+                            current === 'late'         ? 'bg-zinc-50/30' :
+                            current === 'absent_video' ? 'bg-blue-50/40' : ''
                           }`}
                         >
                           {/* 번호 */}
@@ -252,9 +259,10 @@ export function AttendanceClient({
                             <div className="flex items-center gap-2">
                               {/* 상태 인디케이터 */}
                               <span className={`h-2 w-2 shrink-0 rounded-full ${
-                                current === 'present' ? 'bg-zinc-900' :
-                                current === 'late'    ? 'bg-zinc-400' :
-                                current === 'absent'  ? 'bg-zinc-200' :
+                                current === 'present'      ? 'bg-zinc-900' :
+                                current === 'late'         ? 'bg-zinc-400' :
+                                current === 'absent'       ? 'bg-zinc-200' :
+                                current === 'absent_video' ? 'bg-blue-300' :
                                 'bg-zinc-100'
                               }`} />
                               <span className="text-sm font-medium text-zinc-900">
@@ -290,7 +298,7 @@ export function AttendanceClient({
 
                           {/* 결석 사유 (결석/지각 시 표시) */}
                           <td className="hidden md:table-cell px-5 py-3.5">
-                            {(current === 'absent' || current === 'late') ? (
+                            {(current === 'absent' || current === 'late' || current === 'absent_video') ? (
                               <input
                                 type="text"
                                 value={reasonMap[student.id] ?? ''}
@@ -332,10 +340,16 @@ export function AttendanceClient({
                       dotClass="bg-zinc-400"
                     />
                     <SummaryItem
-                      label="결석"
+                      label="결석(차감)"
                       count={summary.absent}
                       total={students.length}
                       dotClass="bg-zinc-200 border border-zinc-300"
+                    />
+                    <SummaryItem
+                      label="결석(영상)"
+                      count={summary.absent_video}
+                      total={students.length}
+                      dotClass="bg-blue-300"
                     />
                     {summary.unchecked > 0 && (
                       <span className="text-xs text-zinc-300">
