@@ -14,23 +14,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans selection:bg-zinc-950 selection:text-white">
-      {/* 상단 네비 — 소개 페이지와 동일한 구조 */}
-      <div className="w-full px-4 pt-4">
-        <div className="max-w-5xl mx-auto">
-          <nav className="flex items-center justify-between rounded-xl bg-white py-2 px-4 shadow-lg border border-zinc-200">
-            <Link href="/" className="text-lg font-black tracking-tighter text-zinc-950 uppercase italic">
-              TeamDJ
-            </Link>
-            <Link
-              href="/"
-              className="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors"
-            >
-              ← 홈으로
-            </Link>
-          </nav>
-        </div>
-      </div>
-
       {/* 메인 콘텐츠 */}
       <div className="flex flex-1 items-center justify-center px-4 py-16">
         <motion.div

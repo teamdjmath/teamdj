@@ -19,7 +19,7 @@ export default async function ConsultationsPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (admin as any)
       .from('student_inquiries')
-      .select('id, student_name, content, is_read, created_at')
+      .select('id, user_id, student_name, content, is_read, created_at, users!user_id(school, grade)')
       .order('created_at', { ascending: false }),
   ])
 
@@ -36,7 +36,10 @@ export default async function ConsultationsPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const inquiries = (inquiriesRes.data ?? []).map((r: any) => ({
     id:           r.id           as string,
+    user_id:      r.user_id      as string,
     student_name: r.student_name as string,
+    school:       (r.users as { school?: string; grade?: string } | null)?.school ?? '',
+    grade:        (r.users as { school?: string; grade?: string } | null)?.grade  ?? '',
     content:      r.content      as string,
     is_read:      r.is_read      as boolean,
     created_at:   r.created_at   as string,

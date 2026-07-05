@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { markConsultationRead, markInquiryRead } from '@/lib/actions/consultations'
 
 interface Consultation {
@@ -15,7 +16,10 @@ interface Consultation {
 
 interface Inquiry {
   id: string
+  user_id: string
   student_name: string
+  school: string
+  grade: string
   content: string
   is_read: boolean
   created_at: string
@@ -154,7 +158,8 @@ export function ConsultationsClient({
                   >
                     <td className="px-4 py-3 font-medium text-zinc-900">
                       {!i.is_read && <UnreadDot />}
-                      {i.student_name}
+                      <span>{i.student_name}</span>
+                      {i.school && <span className="ml-1.5 text-xs text-zinc-400 font-normal">{i.school}</span>}
                     </td>
                     <td className="px-4 py-3 text-zinc-700 max-w-xs">
                       <span className="line-clamp-1">{i.content.slice(0, 40)}{i.content.length > 40 ? '…' : ''}</span>
@@ -234,8 +239,17 @@ export function ConsultationsClient({
             <div className="space-y-3 mb-6">
               <div className="flex justify-between text-sm">
                 <span className="text-zinc-400">학생</span>
-                <span className="font-medium text-zinc-900">{selectedInquiry.student_name}</span>
+                <span className="font-medium text-zinc-900">
+                  {selectedInquiry.student_name}
+                  {selectedInquiry.grade && <span className="ml-1 text-zinc-500">{selectedInquiry.grade}</span>}
+                </span>
               </div>
+              {selectedInquiry.school && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-zinc-400">학교</span>
+                  <span className="text-zinc-700">{selectedInquiry.school}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-zinc-400">접수일</span>
                 <span className="text-zinc-600">{formatDate(selectedInquiry.created_at)}</span>
@@ -247,19 +261,24 @@ export function ConsultationsClient({
                 </p>
               </div>
             </div>
-            <div className="rounded-xl bg-zinc-50 px-4 py-3 mb-4 text-xs text-zinc-500 text-center">
-              답변은 쪽지 기능을 이용해주세요
-            </div>
-            {!selectedInquiry.is_read && (
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={() => handleMarkInquiryRead(selectedInquiry.id)}
-                className="w-full rounded-xl bg-zinc-950 py-3 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 transition-colors"
+            <div className="flex gap-2">
+              <Link
+                href="/admin/messages"
+                className="flex-1 rounded-xl border border-zinc-200 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 transition-colors text-center"
               >
-                {isPending ? '처리 중…' : '읽음 처리'}
-              </button>
-            )}
+                쪽지 보내기
+              </Link>
+              {!selectedInquiry.is_read && (
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => handleMarkInquiryRead(selectedInquiry.id)}
+                  className="flex-1 rounded-xl bg-zinc-950 py-3 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 transition-colors"
+                >
+                  {isPending ? '처리 중…' : '읽음 처리'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -92,10 +92,10 @@ export default async function NewReportPage({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       admin
         .from('assignments')
-        .select('id, title, issue_date, due_date')
+        .select('id, title, issue_date, due_date, created_at')
         .eq('class_id', selectedClassId)
         .order('created_at', { ascending: false })
-        .limit(10) as unknown as Promise<{ data: Array<{ id: string; title: string; issue_date: string | null; due_date: string | null }> | null }>,
+        .limit(10) as unknown as Promise<{ data: Array<{ id: string; title: string; issue_date: string | null; due_date: string | null; created_at: string }> | null }>,
       // attRows: studentIds 의존이지만 빈 배열이면 limit(0)으로 안전하게 처리
       studentIds.length > 0
         ? admin
@@ -177,8 +177,8 @@ export default async function NewReportPage({
         studentAssignments[sid].push({
           title:         asgn?.title ?? '',
           completionPct: row.completion_pct ?? 0,  // null(미지참) → 0circles
-          issueDate:     asgn?.issue_date ?? undefined,
-          submitDate:    row.submit_date ?? undefined,  // 제출일 미입력 시 비워둠 (due_date로 대체 X)
+          issueDate:     asgn?.issue_date ?? asgn?.created_at?.slice(0, 10) ?? undefined,
+          submitDate:    row.submit_date ?? asgn?.due_date ?? undefined,
         })
       }
       for (const sid of studentIds) {
