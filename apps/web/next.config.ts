@@ -8,7 +8,7 @@ const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https://img.youtube.com https://i.ytimg.com",
+  "img-src 'self' data: https://img.youtube.com https://i.ytimg.com https://*.supabase.co",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://kapi.kakao.com",
   "frame-src https://www.youtube.com https://youtube.com",
   "font-src 'self'",

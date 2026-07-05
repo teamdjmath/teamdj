@@ -2,13 +2,17 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from './lib/supabase/middleware'
 
 // ── Rate Limiting (Upstash Redis REST API) ──────────────────────
-const RATE_LIMIT_MAX = 60
-const SLACK_WARN_AT  = 50
+// 학원 환경: 학생·선생님이 NAT 뒤 공유 IP를 사용하므로 한도를 넉넉하게 설정
+// 대상은 외부 노출 API와 admin만 — dashboard 페이지 로드는 제외
+const RATE_LIMIT_MAX = 300
+const SLACK_WARN_AT  = 200
 const KEY_PREFIX     = 'teamdj:rl:'
 const WINDOW_SEC     = 60
 
 // Rate limit 적용 경로 접두어
-const RATE_LIMITED_PREFIXES = ['/api/', '/admin/', '/dashboard/']
+// - /admin/ 제외: 인증된 사용자만 접근 가능하므로 IP 제한 불필요
+// - /dashboard/ 제외: 학원 NAT 환경에서 공유 IP로 인한 오탐 방지
+const RATE_LIMITED_PREFIXES = ['/api/']
 
 // 로컬/내부 IP는 rate limit 제외 (로컬 개발, Vercel health check)
 function isPrivateIp(ip: string): boolean {
