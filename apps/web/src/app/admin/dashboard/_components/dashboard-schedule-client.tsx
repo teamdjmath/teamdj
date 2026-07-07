@@ -621,9 +621,12 @@ export function DashboardScheduleClient({
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-zinc-900 flex items-center gap-1">
                         {member.name}
-                        <span className="text-xs font-normal text-zinc-500">
-                          {member.isSuperAdmin ? ' 관리자' : member.role === 'teacher' ? ' 선생님' : ' 조교'}
-                        </span>
+                        {(() => {
+                          const roleTag = member.isSuperAdmin ? '관리자' : member.role === 'teacher' ? '선생님' : '조교'
+                          return member.name === roleTag ? null : (
+                            <span className="text-xs font-normal text-zinc-500"> {roleTag}</span>
+                          )
+                        })()}
                         {isMe && <span className="text-[10px] font-normal text-zinc-400 ml-0.5">(나)</span>}
                       </p>
                       {isTa && (

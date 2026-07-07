@@ -226,7 +226,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     const { data } = await supabase.from('users').select('is_super_admin').eq('id', user.id).maybeSingle()
     isSuperAdmin = data?.is_super_admin ?? false
   }
-  const badgeLabel = isSuperAdmin ? '관리자' : staffRole
+  const badgeLabel = isSuperAdmin ? 'admin' : staffRole
 
   const unreadConsultations = staffRole === 'teacher' ? await getUnreadConsultationCount() : 0
   const badges: Record<string, number> = unreadConsultations > 0 ? { '/admin/consultations': unreadConsultations } : {}
