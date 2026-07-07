@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { unstable_cache } from 'next/cache'
 import { LearningClient } from './_components/learning-client'
 
@@ -49,8 +49,7 @@ const getCachedCourses = unstable_cache(
 )
 
 export default async function LearningPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   const userId = user!.id
 
   const admin = createAdminClient()

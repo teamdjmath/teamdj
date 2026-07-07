@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ReportDetailClient } from './_components/report-detail-client'
@@ -13,8 +13,7 @@ export default async function ReportDetailPage({
 }) {
   const { id } = await params
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) redirect('/login')
 
   const admin = createAdminClient()

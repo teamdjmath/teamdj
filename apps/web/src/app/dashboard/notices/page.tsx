@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { unstable_cache } from 'next/cache'
 import Link from 'next/link'
 
@@ -29,7 +30,7 @@ const getCachedNotices = unstable_cache(
 
 export default async function NoticesPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   const { data: memberships } = await supabase
     .from('class_members')

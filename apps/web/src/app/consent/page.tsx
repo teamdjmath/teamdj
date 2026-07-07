@@ -1,12 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { redirect } from 'next/navigation'
 import { ConsentClient } from './_components/consent-client'
 
 const STAFF_ROLES = ['teacher', 'ta_desk', 'ta_assistant']
 
 export default async function ConsentPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   if (!user) redirect('/login')
 

@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { redirect } from 'next/navigation'
 import { unstable_cache } from 'next/cache'
 import { MonitoringClient, type BehaviorStats } from './_components/monitoring-client'
@@ -22,8 +22,7 @@ const getBehaviorStats = unstable_cache(
 )
 
 export default async function MonitoringPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   const role = user?.user_metadata?.role as string | undefined
   if (!user || !['teacher', 'ta_desk'].includes(role ?? '')) redirect('/admin/dashboard')
 

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { redirect } from 'next/navigation'
 import { NewQuestionForm } from './_components/new-question-form'
 
@@ -8,7 +9,7 @@ export const metadata = {
 
 export default async function NewQuestionPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   if (!user) redirect('/login')
 

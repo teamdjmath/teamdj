@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { StaffClient } from './_components/staff-client'
 import type { StaffStatus } from '@/lib/actions/staff'
 
@@ -9,7 +10,7 @@ function statusOf(s: string | null | undefined): StaffStatus {
 
 export default async function StaffPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   const currentUserId = user!.id
 
   // 모든 스태프(teacher + ta) 조회

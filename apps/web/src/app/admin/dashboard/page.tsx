@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { DashboardScheduleClient } from './_components/dashboard-schedule-client'
@@ -28,7 +29,7 @@ type ClassRow = {
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) redirect('/login')
 
   const role        = user.user_metadata?.role as string | undefined
@@ -289,6 +290,7 @@ export default async function AdminDashboardPage() {
         extraSchedules={extraSchedulesRes.data ?? []}
         initialStaff={initialStaff}
         currentUserId={user.id}
+        currentUserRole={role ?? ''}
         myInitialStatus={toStatus(statusMap[user.id]?.status)}
       />
     </div>

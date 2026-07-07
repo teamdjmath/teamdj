@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { QnaDetailClient } from './_components/qna-detail-client'
@@ -11,7 +12,7 @@ export default async function QnaDetailPage({
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) notFound()
 
   const { data: q } = await supabase

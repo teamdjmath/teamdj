@@ -56,7 +56,16 @@ export function NotificationBell({ placement = 'down' }: { placement?: 'up' | 'd
       </button>
 
       {open && (
-        <div className={`absolute w-80 z-50 rounded-2xl border border-zinc-200 bg-white shadow-xl overflow-hidden ${placement === 'up' ? 'bottom-full mb-2 left-0' : 'top-full mt-2 right-0'}`}>
+        <div
+          className={
+            placement === 'up'
+              ? 'absolute w-80 z-50 rounded-2xl border border-zinc-200 bg-white shadow-xl overflow-hidden bottom-full mb-2 left-0'
+              // 'down'은 헤더 안 어디에 벨이 있든(이름 등 다른 요소가 오른쪽에 더 있어도) 항상 화면
+              // 우상단 안쪽에 고정 — absolute+ancestor 기준으로 두면 벨이 화면 우측 끝이 아닐 때
+              // 패널이 왼쪽으로 화면 밖까지 밀려나가 잘렸음
+              : 'fixed z-50 top-14 right-4 w-[calc(100vw-2rem)] max-w-80 rounded-2xl border border-zinc-200 bg-white shadow-xl overflow-hidden'
+          }
+        >
           {/* 헤더 */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
             <h3 className="text-sm font-semibold text-zinc-900">알림</h3>

@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
+import { logger } from '@/lib/logger'
 
 export const metadata = {
   title: '공지사항 상세 | TeamDJ',
@@ -21,11 +23,15 @@ export default async function NoticeDetailPage({ params }: { params: Promise<{ i
     redirect('/dashboard/notices')
   }
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) {
-    await supabase
+  const user = await getVerifiedUser()
+  // 학생의 열람만 기록 — 스태프가 /dashboard/notices를 들여다봐도 열람율 통계가 왜곡되지 않도록
+  if (user && user.user_metadata?.role === 'student') {
+    const { error: readError } = await supabase
       .from('notice_reads')
       .upsert({ notice_id: id, student_id: user.id }, { onConflict: 'notice_id,student_id', ignoreDuplicates: true })
+    if (readError) {
+      logger.warn('noticeDetail:read-tracking-failed', { action: 'noticeDetail', userId: user.id, error: readError })
+    }
   }
 
   return (

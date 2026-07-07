@@ -305,6 +305,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
   const [difficulty, setDifficulty] = useState<number | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiErr, setAiErr] = useState('')
+  const [usedAiDraft, setUsedAiDraft] = useState(false)
 
   const [editingAnswerId, setEditingAnswerId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
@@ -326,13 +327,19 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
     })
   }
 
+  function handleContentChange(v: string) {
+    setContent(v)
+    // 초안을 전부 지우고 새로 쓰기 시작하면 더 이상 AI 초안 기반이 아니므로 플래그 해제
+    if (v === '') setUsedAiDraft(false)
+  }
+
   async function handleAiDraft() {
     setAiErr('')
     setAiLoading(true)
     const res = await generateAiDraft(question.content, question.image_urls)
     setAiLoading(false)
     if (res.error) { setAiErr(res.error); return }
-    if (res.draft) setContent(res.draft)
+    if (res.draft) { setContent(res.draft); setUsedAiDraft(true) }
     if (res.mediaUrls?.length) setMediaUrls((prev) => [...new Set([...prev, ...res.mediaUrls!])])
   }
 
@@ -353,13 +360,14 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
         }
 
         const allMediaUrls = [...mediaUrls, ...uploadedUrls]
-        const res = await submitAnswer({ questionId: question.id, content: content.trim(), mediaUrls: allMediaUrls, isAiDraft: false, difficulty })
+        const res = await submitAnswer({ questionId: question.id, content: content.trim(), mediaUrls: allMediaUrls, isAiDraft: usedAiDraft, difficulty })
         if (res.error) { setErrMsg(res.error); return }
 
         setContent('')
         setMediaUrls([])
         setFiles([])
         setDifficulty(null)
+        setUsedAiDraft(false)
         router.refresh()
       } catch (err: unknown) {
         if (err instanceof Error) {
@@ -551,7 +559,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
             {answers.length > 0 ? '추가 답변 작성' : '답변 작성'}
           </h2>
           <AnswerEditor
-            content={content} onContentChange={setContent}
+            content={content} onContentChange={handleContentChange}
             mediaUrls={mediaUrls}
             onRemoveMedia={(i) => setMediaUrls(p => p.filter((_, idx) => idx !== i))}
             files={files}

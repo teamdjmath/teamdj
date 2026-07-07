@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Modal } from '@/components/ui/modal'
 import { InputField } from '@/components/ui/form-field'
 import { createExtraSchedule, deleteExtraSchedule } from '@/lib/actions/schedule'
-import { updateStaffStatus, type StaffStatus } from '@/lib/actions/staff'
+import { updateStaffStatus, deleteTaAccount, type StaffStatus } from '@/lib/actions/staff'
 
 // ── 상수
 const PX_PER_MIN = 0.55
@@ -87,6 +87,7 @@ export interface DashboardScheduleProps {
   extraSchedules: ExtraSchedule[]
   initialStaff: StaffMember[]
   currentUserId: string
+  currentUserRole: string
   myInitialStatus: StaffStatus
 }
 
@@ -152,7 +153,7 @@ function ExtraCard({
 
 // ── 메인 컴포넌트
 export function DashboardScheduleClient({
-  classes, extraSchedules, initialStaff, currentUserId, myInitialStatus,
+  classes, extraSchedules, initialStaff, currentUserId, currentUserRole, myInitialStatus,
 }: DashboardScheduleProps) {
   const [now, setNow]           = useState(new Date())
   const [staff, setStaff]       = useState(initialStaff)
@@ -161,6 +162,8 @@ export function DashboardScheduleClient({
   const [addOpen, setAddOpen]   = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteErr, setDeleteErr] = useState<string | null>(null)
   const [popup, setPopup]       = useState<PopupData | null>(null)
   const wasInClassRef           = useRef(false)
 
@@ -264,6 +267,18 @@ export function DashboardScheduleClient({
   function handleStatusChange(status: StaffStatus) {
     setMyStatus(status)
     startTransition(async () => { await updateStaffStatus(status) })
+  }
+
+  function handleDeleteTa(taId: string, name: string) {
+    if (!window.confirm(`${name} 조교 계정을 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return
+    setDeleteErr(null)
+    setDeletingId(taId)
+    startTransition(async () => {
+      const res = await deleteTaAccount(taId)
+      setDeletingId(null)
+      if (!res.success) { setDeleteErr(res.error); return }
+      setStaff((prev) => prev.filter((s) => s.userId !== taId))
+    })
   }
 
   function handleAddExtra(e: React.FormEvent<HTMLFormElement>) {
@@ -555,6 +570,9 @@ export function DashboardScheduleClient({
             <h2 className="text-sm font-semibold text-zinc-900">스태프 현황</h2>
             <span className="text-xs text-zinc-400">실시간</span>
           </div>
+          {deleteErr && (
+            <p className="px-5 pt-3 text-xs font-medium text-red-500">{deleteErr}</p>
+          )}
           {staff.length === 0 ? (
             <p className="px-5 py-6 text-center text-sm text-zinc-400">등록된 스태프가 없습니다.</p>
           ) : (
@@ -563,6 +581,8 @@ export function DashboardScheduleClient({
                 const s   = statusOf(member.status)
                 const cfg = STATUS_CONFIG[s]
                 const isMe = member.userId === currentUserId
+                const isTa = member.role === 'ta_desk' || member.role === 'ta_assistant'
+                const canDelete = currentUserRole === 'teacher' && isTa
                 return (
                   <li key={member.userId} className="flex items-center gap-3 px-5 py-3.5">
                     <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${cfg.dot}`} />
@@ -574,7 +594,7 @@ export function DashboardScheduleClient({
                         </span>
                         {isMe && <span className="text-[10px] font-normal text-zinc-400 ml-0.5">(나)</span>}
                       </p>
-                      {(member.role === 'ta_desk' || member.role === 'ta_assistant') && (
+                      {isTa && (
                         <p className="text-xs text-zinc-400">
                           {member.role === 'ta_desk' ? '(사무)' : '(첨삭)'}
                         </p>
@@ -583,6 +603,16 @@ export function DashboardScheduleClient({
                     <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${cfg.badge}`}>
                       {cfg.label}
                     </span>
+                    {canDelete && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteTa(member.userId, member.name)}
+                        disabled={deletingId === member.userId}
+                        className="text-xs font-medium text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                      >
+                        {deletingId === member.userId ? '삭제 중…' : '삭제'}
+                      </button>
+                    )}
                   </li>
                 )
               })}

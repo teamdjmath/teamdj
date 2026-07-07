@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { Card, CardHeader } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ScoreChart } from './_components/score-chart'
@@ -6,7 +7,7 @@ import { ReportList } from './_components/report-list'
 
 export default async function ReportPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   const userId = user!.id
 
   // 휴원 확인

@@ -1,15 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
+import { getActiveClassOptions } from '@/lib/data/class-options'
 import { ExamResultsClient } from './_components/exam-results-client'
 
 export default async function ExamResultsPage() {
   const supabase = await createClient()
 
-  const [classesResult, membersResult, resultsResult] = await Promise.all([
-    supabase
-      .from('class_groups')
-      .select('id, name')
-      .eq('is_active', true)
-      .order('name'),
+  const [classOptions, membersResult, resultsResult] = await Promise.all([
+    getActiveClassOptions(),
     supabase
       .from('class_members')
       .select('class_id, student_id, users!student_id(name)')
@@ -24,10 +21,7 @@ export default async function ExamResultsPage() {
       .order('created_at', { ascending: false }),
   ])
 
-  const classes = (classesResult.data ?? []).map((c) => ({
-    id: c.id as string,
-    name: c.name as string,
-  }))
+  const classes = classOptions.map((c) => ({ id: c.id, name: c.name }))
 
   const students: { id: string; name: string; classId: string }[] = []
   const seen = new Set<string>()

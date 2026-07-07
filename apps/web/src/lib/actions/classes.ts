@@ -58,7 +58,7 @@ export async function createClass(formData: FormData): Promise<ActionResult> {
 
     revalidatePath('/admin/classes')
     revalidatePath('/admin/schedule')
-    revalidateTag('classes', {})
+    revalidateTag('classes', { expire: 0 })
     return { success: true }
   })
 }
@@ -101,7 +101,7 @@ export async function updateClass(formData: FormData): Promise<ActionResult> {
     revalidatePath('/admin/classes')
     revalidatePath(`/admin/classes/${classId}`)
     revalidatePath('/admin/schedule')
-    revalidateTag('classes', {})
+    revalidateTag('classes', { expire: 0 })
     return { success: true }
   })
 }
@@ -124,7 +124,7 @@ export async function deleteClass(classId: string): Promise<ActionResult> {
     if (error) throw error
 
     revalidatePath('/admin/classes')
-    revalidateTag('classes', {})
+    revalidateTag('classes', { expire: 0 })
     return { success: true }
   })
 }
@@ -153,7 +153,7 @@ export async function hardDeleteClass(classId: string): Promise<ActionResult> {
     if (error) throw error
 
     revalidatePath('/admin/classes')
-    revalidateTag('classes', {})
+    revalidateTag('classes', { expire: 0 })
     return { success: true }
   })
 }

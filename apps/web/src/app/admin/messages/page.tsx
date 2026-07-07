@@ -1,17 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
+import { getActiveClassOptions } from '@/lib/data/class-options'
 import { MessagesClient } from './_components/messages-client'
 
 export default async function MessagesPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   const userId = user!.id
 
-  const [classesResult, membersResult, messagesResult] = await Promise.all([
-    supabase
-      .from('class_groups')
-      .select('id, name')
-      .eq('is_active', true)
-      .order('name'),
+  const [classOptions, membersResult, messagesResult] = await Promise.all([
+    getActiveClassOptions(),
     supabase
       .from('class_members')
       .select('class_id, student_id, users!student_id(name)')
@@ -26,10 +24,7 @@ export default async function MessagesPage() {
       .limit(30),
   ])
 
-  const classes = (classesResult.data ?? []).map((c) => ({
-    id: c.id as string,
-    name: c.name as string,
-  }))
+  const classes = classOptions.map((c) => ({ id: c.id, name: c.name }))
 
   // 분반별 학생 목록 (name 포함)
   const classNameMap: Record<string, string> = {}

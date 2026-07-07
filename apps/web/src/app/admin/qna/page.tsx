@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
+import { getActiveClassOptions } from '@/lib/data/class-options'
 import { QnaClient } from './_components/qna-client'
 
 export default async function QnaPage({
@@ -21,13 +23,13 @@ export default async function QnaPage({
   } = await searchParams
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
 
-  const [classesRes, textbooksRes, taListRes] = await Promise.all([
-    supabase.from('class_groups').select('id, name').eq('is_active', true).order('name'),
+  const [classes, textbooksRes, taListRes] = await Promise.all([
+    getActiveClassOptions(),
     db.from('textbooks').select('id, name').order('name'),
     supabase
       .from('users')
@@ -136,7 +138,7 @@ export default async function QnaPage({
 
   return (
     <QnaClient
-      classOptions={(classesRes.data ?? []).map((c) => ({ id: c.id, name: c.name }))}
+      classOptions={classes.map((c) => ({ id: c.id, name: c.name }))}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       textbookOptions={(textbooksRes.data ?? []).map((t: any) => ({ id: t.id as string, name: t.name as string }))}
       taOptions={(taListRes.data ?? []).map((t) => ({ id: t.id, name: t.name as string, role: t.role as string }))}

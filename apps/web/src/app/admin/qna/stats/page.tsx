@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
@@ -29,8 +29,7 @@ export default async function QnaStatsPage({
 }: {
   searchParams: Promise<{ period?: string }>
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) redirect('/login')
   if (user.user_metadata?.role !== 'teacher') redirect('/admin/qna')
 
@@ -69,7 +68,7 @@ export default async function QnaStatsPage({
   // 전체 기간 집계 (비교용)
   const { data: allAnswers } = await db
     .from('qna_answers')
-    .select('ta_id, difficulty, student_rating')
+    .select('ta_id, difficulty, student_rating, is_ai_draft')
     .in('ta_id', staffIds)
 
   // ta_id 기준 집계
@@ -88,6 +87,11 @@ export default async function QnaStatsPage({
     const id = row.ta_id as string
     periodCount[id] = (periodCount[id] ?? 0) + 1
   }
+
+  // AI 초안 채택률·평점 — 전체 기간 기준 (채택 여부와 무관하게 최근 데이터가 쌓여야 의미 있음)
+  let aiDraftCount = 0, aiRatingSum = 0, aiRatingCount = 0
+  let manualCount = 0, manualRatingSum = 0, manualRatingCount = 0
+
   for (const row of allAnswers ?? []) {
     const id = row.ta_id as string
     totalCount[id] = (totalCount[id] ?? 0) + 1
@@ -106,7 +110,20 @@ export default async function QnaStatsPage({
       ratingSum[id] = (ratingSum[id] ?? 0) + rating
       ratingCount[id] = (ratingCount[id] ?? 0) + 1
     }
+
+    const isAiDraft = row.is_ai_draft as boolean
+    if (isAiDraft) {
+      aiDraftCount++
+      if (rating != null) { aiRatingSum += rating; aiRatingCount++ }
+    } else {
+      manualCount++
+      if (rating != null) { manualRatingSum += rating; manualRatingCount++ }
+    }
   }
+  const totalAnswerCount = aiDraftCount + manualCount
+  const aiAdoptionRate = totalAnswerCount > 0 ? (aiDraftCount / totalAnswerCount) * 100 : null
+  const aiAvgRating = aiRatingCount > 0 ? aiRatingSum / aiRatingCount : null
+  const manualAvgRating = manualRatingCount > 0 ? manualRatingSum / manualRatingCount : null
 
   const rows = (staffList ?? [])
     .map((s) => {
@@ -161,6 +178,39 @@ export default async function QnaStatsPage({
             {periodLabel(p)}
           </Link>
         ))}
+      </div>
+
+      {/* AI 초안 채택률·평점 (전체 기간) */}
+      <div className="rounded-2xl border border-zinc-200 bg-white p-5">
+        <h2 className="text-sm font-semibold text-zinc-900">AI 초안 활용 현황</h2>
+        <p className="mt-0.5 text-xs text-zinc-400">전체 기간 · AI 초안을 채택해 제출한 답변과 직접 작성한 답변 비교</p>
+        {totalAnswerCount === 0 ? (
+          <p className="mt-4 text-sm text-zinc-400">데이터가 없습니다.</p>
+        ) : (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <p className="text-xs text-zinc-400">AI 초안 채택률</p>
+              <p className="mt-1 text-xl font-bold text-zinc-950">
+                {aiAdoptionRate !== null ? `${aiAdoptionRate.toFixed(1)}%` : '—'}
+              </p>
+              <p className="mt-0.5 text-xs text-zinc-400">{aiDraftCount} / {totalAnswerCount}건</p>
+            </div>
+            <div>
+              <p className="text-xs text-zinc-400">AI 초안 채택 답변 평균 별점</p>
+              <p className="mt-1 text-xl font-bold text-zinc-950">
+                {aiAvgRating !== null ? `★ ${aiAvgRating.toFixed(1)}` : '아직 없음'}
+              </p>
+              <p className="mt-0.5 text-xs text-zinc-400">{aiRatingCount}건 평가됨</p>
+            </div>
+            <div>
+              <p className="text-xs text-zinc-400">직접 작성 답변 평균 별점</p>
+              <p className="mt-1 text-xl font-bold text-zinc-950">
+                {manualAvgRating !== null ? `★ ${manualAvgRating.toFixed(1)}` : '아직 없음'}
+              </p>
+              <p className="mt-0.5 text-xs text-zinc-400">{manualRatingCount}건 평가됨</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 통계 테이블 */}

@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { MessagesClient } from './_components/messages-client'
 
 export default async function StudentMessagesPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   const userId = user!.id
 
   // 소속 반 ID 목록

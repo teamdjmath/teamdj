@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
+import { getActiveClassOptions } from '@/lib/data/class-options'
 import Link from 'next/link'
 import { ReportFormClient } from './_components/report-form-client'
 import { fromJson } from '@/types/db'
@@ -13,19 +14,12 @@ export default async function NewReportPage({
   const { classId: selectedClassId, sessionDate: selectedSessionDate } =
     await searchParams
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) return null
 
   const admin = createAdminClient()
 
-  const { data: classes } = await admin
-    .from('class_groups')
-    .select('id, name')
-    .eq('is_active', true)
-    .order('name')
-
-  const classOptions = (classes ?? []).map((c) => ({ id: c.id, name: c.name }))
+  const classOptions = (await getActiveClassOptions()).map((c) => ({ id: c.id, name: c.name }))
   const className    = classOptions.find((c) => c.id === selectedClassId)?.name ?? ''
 
   type StudentData = {

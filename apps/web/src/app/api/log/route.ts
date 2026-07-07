@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { logger } from '@/lib/logger'
 import { reportError } from '@/lib/error-report'
 
@@ -19,14 +19,13 @@ export async function POST(req: NextRequest) {
     const { level, message, source, digest, context, url } = body
     if (!level || !message) return NextResponse.json({ ok: false }, { status: 400 })
 
-    // 세션에서 사용자 정보 확보 (비로그인 오류도 수집은 함)
+    // 세션에서 사용자 정보 확보 (비로그인 오류도 수집은 함, 조회 실패해도 로그 자체는 남겨야 함)
     let userId: string | undefined
     let userRole: string | undefined
     try {
-      const supabase = await createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getVerifiedUser()
       userId   = user?.id
-      userRole = user?.user_metadata?.role as string | undefined
+      userRole = user?.user_metadata?.role
     } catch {}
 
     const ctx = { action: 'client', ...context, url }

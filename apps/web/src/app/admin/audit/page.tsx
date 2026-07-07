@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { redirect } from 'next/navigation'
 import { purgeOldRows } from '@/lib/retention'
 import { AuditClient, type AuditRow } from './_components/audit-client'
@@ -13,8 +13,7 @@ export default async function AuditPage({
 }) {
   const { action: actionFilter } = await searchParams
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   const role = user?.user_metadata?.role as string | undefined
   if (!user || role !== 'teacher') redirect('/admin/dashboard')
 
