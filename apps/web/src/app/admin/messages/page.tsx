@@ -3,7 +3,12 @@ import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { getActiveClassOptions } from '@/lib/data/class-options'
 import { MessagesClient } from './_components/messages-client'
 
-export default async function MessagesPage() {
+export default async function MessagesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ studentId?: string }>
+}) {
+  const { studentId: preselectedStudentId } = await searchParams
   const supabase = await createClient()
   const user = await getVerifiedUser()
   const userId = user!.id
@@ -70,6 +75,7 @@ export default async function MessagesPage() {
         classes={classes}
         students={students}
         messages={messages}
+        initialStudentId={preselectedStudentId ?? null}
       />
     </div>
   )

@@ -52,11 +52,13 @@ export async function markInquiryRead(id: string): Promise<{ error?: string }> {
 
 export async function getUnreadConsultationCount(): Promise<number> {
   const admin = createAdminClient()
+  // 상담 & 문의 페이지가 랜딩 상담 신청 + 학생 1:1 문의를 모두 보여주므로 뱃지도 둘 다 합산
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { count } = await (admin as any)
-    .from('consultations')
-    .select('id', { count: 'exact', head: true })
-    .eq('is_read', false)
+  const db = admin as any
+  const [consultationsRes, inquiriesRes] = await Promise.all([
+    db.from('consultations').select('id', { count: 'exact', head: true }).eq('is_read', false),
+    db.from('student_inquiries').select('id', { count: 'exact', head: true }).eq('is_read', false),
+  ])
 
-  return count ?? 0
+  return (consultationsRes.count ?? 0) + (inquiriesRes.count ?? 0)
 }

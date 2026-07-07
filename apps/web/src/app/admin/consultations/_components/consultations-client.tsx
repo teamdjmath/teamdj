@@ -263,7 +263,7 @@ export function ConsultationsClient({
             </div>
             <div className="flex gap-2">
               <Link
-                href="/admin/messages"
+                href={`/admin/messages?studentId=${selectedInquiry.user_id}`}
                 className="flex-1 rounded-xl border border-zinc-200 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 transition-colors text-center"
               >
                 쪽지 보내기

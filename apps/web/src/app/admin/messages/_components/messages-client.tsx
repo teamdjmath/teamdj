@@ -27,14 +27,18 @@ export function MessagesClient({
   classes,
   students,
   messages,
+  initialStudentId = null,
 }: {
   classes: ClassOption[]
   students: StudentOption[]
   messages: MessageRecord[]
+  initialStudentId?: string | null
 }) {
-  const [targetType, setTargetType] = useState<TargetType>('class')
+  // 1:1 문의의 "쪽지 보내기"로 진입한 경우 해당 학생이 선택된 상태로 시작
+  const preselected = initialStudentId ? students.find((s) => s.id === initialStudentId) : undefined
+  const [targetType, setTargetType] = useState<TargetType>(preselected ? 'student' : 'class')
   const [classId, setClassId] = useState(classes[0]?.id ?? '')
-  const [studentId, setStudentId] = useState(students[0]?.id ?? '')
+  const [studentId, setStudentId] = useState(preselected?.id ?? students[0]?.id ?? '')
   const [content, setContent] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)

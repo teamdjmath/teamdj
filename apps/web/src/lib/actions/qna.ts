@@ -185,9 +185,12 @@ export async function rateAnswer(answerId: string, rating: number): Promise<{ er
   return {}
 }
 
+export type AiDraftMode = 'hint' | 'full'
+
 export async function generateAiDraft(
   questionContent: string,
   imageUrls: string[] = [],
+  mode: AiDraftMode = 'hint',
 ): Promise<{ draft?: string; mediaUrls?: string[]; error?: string }> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'Gemini API 키가 설정되지 않았습니다.' }
@@ -202,15 +205,31 @@ export async function generateAiDraft(
   try {
     const ai = new GoogleGenAI({ apiKey })
 
+    const scopeRules = mode === 'full'
+      ? `답변 범위: **최종 답까지 완전한 풀이**를 제시한다.
+- 반드시 풀이 전체를 속으로 먼저 완성해 답을 확정한 뒤, **확정된 풀이만** 서술할 것.
+- 시도하다 버린 접근, "다른 방법을 고려합니다", "하지만 ~이 아닙니다" 같은 탐색·번복·자기수정 과정은 절대 출력하지 말 것. 학생에게는 완성된 풀이 하나만 보여야 한다.
+- 풀이 본체는 교과서 해설지(EBS 해설)처럼 간결하게: 가장 짧고 표준적인 경로 하나만 택하고, 각 단계는 "어느 도형에서 무슨 법칙" 한 마디 + 수식이면 충분하다. 연결은 "~이므로", "따라서" 수준으로만 하고 설명 문장을 늘어놓지 말 것.
+- 단 하나의 예외: **학생이 질문한 바로 그 지점**(예: 보조선을 어디에 왜 긋는지, 그 발상이 어디서 나오는지)은 2~4문장으로 공들여 설명할 것. 나머지 단계는 전부 짧게.
+- 핵심 수식은 인라인으로 길게 잇지 말고 $$...$$ 블록으로 한 줄씩 분리할 것.
+- 자명한 산술 중간 단계는 생략할 것 (예: $\\sqrt{9+16}=\\sqrt{25}=5$ 전부 대신 $\\overline{AC}=5$만).
+- 마지막 줄에 "**최종 답:** ..." 형태로 답을 명시하고 끝낼 것.`
+      : `답변 범위: **학생이 물어본 것에만** 답한다. 최종 답·최종 계산 결과는 알려주지 말 것.
+- 첫 줄부터 질문에 대한 직접적인 답(예: 어떤 보조선을 그어야 하는지, 어떤 성질을 쓰는지)을 제시할 것.
+- 그 다음 학생이 스스로 이어서 풀 수 있게 다음 단계 1~3개를 번호 목록으로. 마지막 단계의 답은 쓰지 말 것.
+- 전체 10줄 이내.`
+
     const systemInstruction = `너는 수학 학원의 조교다. 학생의 질문에 대해 조교가 검토 후 보낼 "답변 초안"을 작성한다.
 
-**목표: 정답을 알려주는 것이 아니라, 학생이 스스로 다음 단계를 밟도록 유도하는 것.**
+말투 규칙 (엄수):
+1. 실제 사람 조교가 쓰는 자연스러운 존댓말로, 첫 문장부터 바로 수학 내용을 말할 것.
+2. 학생의 상태나 질문 의도를 분석·요약하는 메타 문장 절대 금지 — "~로 보입니다", "~하시는 것 같습니다", "~를 파악했습니다", "학생은/학생이 ~" 같은 표현 쓰지 말 것.
+3. 문제 조건을 그대로 길게 되풀이하지 말 것. 풀이에 필요한 조건만 그 자리에서 짧게 인용.
+4. 이미지가 있으면 이미지 속 문제를 정확히 읽고 답할 것.
+5. 같은 내용을 표현만 바꿔 반복하지 말 것.
+6. 한국어로만 작성 (수식 제외).
 
-규칙 (엄수):
-1. 최종 답·최종 계산 결과를 직접 알려주지 말 것. 방향과 힌트만 제시.
-2. 이미지가 있으면 이미지 속 문제를 먼저 정확히 읽고, 질문 텍스트와 함께 학생이 "어디서 막혔는지"를 파악한 뒤 답할 것.
-3. 전체 8줄 이내. 같은 내용을 표현만 바꿔 반복하지 말 것 — 각 섹션은 서로 다른 정보만 담는다.
-4. 한국어로만 작성 (수식 제외).
+${scopeRules}
 
 수식 규칙 (렌더러: KaTeX):
 - 인라인 $x^2$, 블록 $$\\frac{a}{b}$$ 만 사용. \\( \\) 나 \\[ \\] 금지.
@@ -218,14 +237,7 @@ export async function generateAiDraft(
 - 여러 줄 수식은 $$...$$ 안에서 aligned 환경만 사용.
 - 출력 전에 수식이 KaTeX 문법상 유효한지 스스로 검증할 것.
 
-출력 형식 (태그 포함 그대로, 다른 내용 추가 금지):
-###CHECK###
-(문제와 질문 의도 확인 1문장 — 이미지의 문제를 어떻게 읽었고 학생이 무엇을 묻는지. 조교가 오독 여부를 검증하는 용도)
-###CONCEPT###
-(이 문제를 뚫는 핵심 개념·성질 딱 하나, 1~2줄)
-###NEXTSTEP###
-(학생이 스스로 풀도록 유도하는 다음 단계 1~3개. 번호 목록. 각 항목은 "~해 보세요" 또는 되묻는 질문 형태. 마지막 단계의 답까지 쓰지 말 것)
-###END###`
+출력 형식: 다른 태그나 제목 없이, 학생에게 보낼 답변 본문(마크다운)만 출력할 것.`
 
     const contentsParts: Array<string | { inlineData: { data: string; mimeType: string } }> = []
 
@@ -264,8 +276,13 @@ export async function generateAiDraft(
       config: {
         systemInstruction,
         temperature: 0.3,
-        maxOutputTokens: 2048,
-        thinkingConfig: { thinkingBudget: 512 },
+        // full 모드: 사고 예산이 부족하면 모델이 답변 텍스트 안에서 문제를 풀며 헤매는 과정이
+        // 그대로 노출됨 — thinkingBudget -1(동적)로 난이도에 맞게 알아서 충분히 사고하게 한다.
+        // Gemini 2.5는 thinking 토큰도 maxOutputTokens에 포함되고 budget을 초과할 수 있어서,
+        // 어려운 문제에서 한도가 작으면 MAX_TOKENS로 잘림 → 모델 최대치(65536)로 연다.
+        // 실제 답변 길이는 프롬프트(EBS 해설 수준 간결함)로 제어한다.
+        maxOutputTokens: mode === 'full' ? 65536 : 4096,
+        thinkingConfig: { thinkingBudget: mode === 'full' ? -1 : 1024 },
       },
     })
     
@@ -295,28 +312,37 @@ export async function generateAiDraft(
       }
     }
 
+    // 토큰 사용량 기록 (모니터링 예상 요금 산출용) — 실패해도 초안 생성에 영향 없음.
+    // 잘리거나 버려진 응답도 과금은 되므로 파싱 결과와 무관하게 기록한다.
+    try {
+      const usage = response.usageMetadata
+      await admin.from('ai_usage_logs').insert({
+        user_id: user.id,
+        feature: 'qna_draft',
+        mode,
+        model: 'gemini-2.5-flash',
+        prompt_tokens: usage?.promptTokenCount ?? 0,
+        thoughts_tokens: usage?.thoughtsTokenCount ?? 0,
+        output_tokens: usage?.candidatesTokenCount ?? 0,
+      })
+    } catch (e) {
+      logger.warn('generateAiDraft:usage-log-failed', { action: 'generateAiDraft', userId: user.id, error: e })
+    }
+
     if (!rawText) return { error: 'AI 응답을 받지 못했습니다.' }
+
+    // 토큰 한도로 풀이가 중간에 끊긴 초안은 그대로 쓰면 안 됨 — 재시도 유도
+    const finishReason = String(response.candidates?.[0]?.finishReason ?? '')
+    if (finishReason === 'MAX_TOKENS') {
+      logger.warn('generateAiDraft:truncated', { action: 'generateAiDraft', userId: user.id, input: rawText.slice(-200) })
+      return { error: '풀이가 너무 길어 응답이 중간에 잘렸습니다. 다시 시도해 주세요.' }
+    }
 
     logger.info('generateAiDraft:raw', { action: 'generateAiDraft', userId: user.id, input: rawText.slice(0, 500) })
 
-    function extractSection(text: string, tag: string): string {
-      const re = new RegExp(`###${tag}###\\s*([\\s\\S]*?)(?=###[A-Z]+###|$)`, 'i')
-      return text.match(re)?.[1]?.trim() ?? ''
-    }
-
-    const check    = extractSection(rawText, 'CHECK')
-    const concept  = extractSection(rawText, 'CONCEPT')
-    const nextStep = extractSection(rawText, 'NEXTSTEP')
-
-    if (!check && !concept && !nextStep) {
-      // 태그 없이 답변한 경우 — 태그 흔적만 제거하고 원문 사용
-      logger.warn('generateAiDraft:parse-failed', { action: 'generateAiDraft', userId: user.id, input: rawText.slice(0, 300) })
-      const fallback = rawText.replace(/###[A-Z]+###/g, '').trim()
-      if (!fallback) return { error: 'AI 응답 형식을 파싱할 수 없습니다. 다시 시도해 주세요.' }
-      return { draft: fallback, mediaUrls }
-    }
-
-    const draft = [check, concept, nextStep].filter(Boolean).join('\n\n')
+    // 모델이 관성으로 예전 형식의 태그를 붙여도 본문만 남긴다
+    const draft = rawText.replace(/###[A-Z]+###/g, '').trim()
+    if (!draft) return { error: 'AI 응답을 파싱할 수 없습니다. 다시 시도해 주세요.' }
     return { draft, mediaUrls }
   } catch (err: unknown) {
     logger.error('generateAiDraft:error', { action: 'generateAiDraft', userId: user.id, error: err })

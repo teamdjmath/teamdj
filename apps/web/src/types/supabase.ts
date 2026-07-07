@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage_logs: {
+        Row: {
+          created_at: string
+          feature: string
+          id: string
+          mode: string | null
+          model: string
+          output_tokens: number
+          prompt_tokens: number
+          thoughts_tokens: number
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          feature: string
+          id?: string
+          mode?: string | null
+          model: string
+          output_tokens?: number
+          prompt_tokens?: number
+          thoughts_tokens?: number
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          feature?: string
+          id?: string
+          mode?: string | null
+          model?: string
+          output_tokens?: number
+          prompt_tokens?: number
+          thoughts_tokens?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignment_categories: {
         Row: {
           created_at: string

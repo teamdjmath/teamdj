@@ -64,7 +64,7 @@ function AnswerEditor({
   mediaUrls, onRemoveMedia,
   files, onFileChange, onRemoveFile,
   tab, onTabChange,
-  aiLoading, aiErr, onAiDraft,
+  aiLoading, aiErr, onAiDraft, aiFullAnswer, onAiFullAnswerChange,
   difficulty, onDifficultyChange,
   errMsg, onSubmit, submitLabel, isPending, onCancel,
 }: {
@@ -80,6 +80,8 @@ function AnswerEditor({
   aiLoading?: boolean
   aiErr?: string
   onAiDraft?: () => void
+  aiFullAnswer?: boolean
+  onAiFullAnswerChange?: (v: boolean) => void
   difficulty: number | null
   onDifficultyChange: (v: number | null) => void
   errMsg: string
@@ -110,12 +112,23 @@ function AnswerEditor({
           ))}
         </div>
         {onAiDraft && (
-          <button
-            type="button"
-            onClick={onAiDraft}
-            disabled={aiLoading}
-            className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-50 mb-1"
-          >
+          <div className="flex items-center gap-3 mb-1">
+            <label className="flex items-center gap-1.5 text-xs text-zinc-500 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={aiFullAnswer ?? false}
+                onChange={(e) => onAiFullAnswerChange?.(e.target.checked)}
+                disabled={aiLoading}
+                className="h-3.5 w-3.5 rounded border-zinc-300 accent-zinc-950"
+              />
+              최종 답까지 풀이
+            </label>
+            <button
+              type="button"
+              onClick={onAiDraft}
+              disabled={aiLoading}
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+            >
             {aiLoading ? (
               <>
                 <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -132,7 +145,8 @@ function AnswerEditor({
                 AI 초안
               </>
             )}
-          </button>
+            </button>
+          </div>
         )}
       </div>
 
@@ -306,6 +320,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
   const [aiLoading, setAiLoading] = useState(false)
   const [aiErr, setAiErr] = useState('')
   const [usedAiDraft, setUsedAiDraft] = useState(false)
+  const [aiFullAnswer, setAiFullAnswer] = useState(false)
 
   const [editingAnswerId, setEditingAnswerId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
@@ -336,7 +351,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
   async function handleAiDraft() {
     setAiErr('')
     setAiLoading(true)
-    const res = await generateAiDraft(question.content, question.image_urls)
+    const res = await generateAiDraft(question.content, question.image_urls, aiFullAnswer ? 'full' : 'hint')
     setAiLoading(false)
     if (res.error) { setAiErr(res.error); return }
     if (res.draft) { setContent(res.draft); setUsedAiDraft(true) }
@@ -571,6 +586,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
             onRemoveFile={(i) => setFiles(p => p.filter((_, idx) => idx !== i))}
             tab={tab} onTabChange={setTab}
             aiLoading={aiLoading} aiErr={aiErr} onAiDraft={handleAiDraft}
+            aiFullAnswer={aiFullAnswer} onAiFullAnswerChange={setAiFullAnswer}
             difficulty={difficulty} onDifficultyChange={setDifficulty}
             errMsg={errMsg} onSubmit={handleSubmit}
             submitLabel="답변 제출하기" isPending={pending}

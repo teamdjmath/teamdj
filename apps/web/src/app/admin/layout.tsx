@@ -238,7 +238,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       <div className="flex min-h-screen bg-zinc-50">
 
         {/* 데스크탑 사이드바 */}
-        <aside className="hidden md:flex md:w-56 md:flex-col md:fixed md:inset-y-0 border-r border-zinc-200 bg-white">
+        {/* z-30: 본문 내 z-index 요소(시간표 현재 시각 라인 등)보다 위 — 알림 드롭다운이 사이드바 폭을 넘어 본문 위로 열리므로 */}
+        <aside className="hidden md:flex md:w-56 md:flex-col md:fixed md:inset-y-0 md:z-30 border-r border-zinc-200 bg-white">
           {/* 로고 */}
           <div className="flex h-14 items-center px-5 border-b border-zinc-100">
             <span className="text-base font-bold tracking-tight text-zinc-950">TeamDJ</span>

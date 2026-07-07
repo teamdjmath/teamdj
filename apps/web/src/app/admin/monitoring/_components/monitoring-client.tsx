@@ -12,8 +12,19 @@ export type BehaviorStats = {
   login_7d:          { success: number; failed: number }
 }
 
+export type AiUsageStats = {
+  calls: number
+  hintCalls: number
+  fullCalls: number
+  totalTokens: number
+  costKrw: number
+  avgHintKrw: number | null
+  avgFullKrw: number | null
+}
+
 interface Props {
   stats: BehaviorStats | null
+  aiUsage: AiUsageStats | null
   checkedAt: string
 }
 
@@ -61,7 +72,12 @@ function MetricCard({
   )
 }
 
-export function MonitoringClient({ stats, checkedAt }: Props) {
+function formatKrw(v: number): string {
+  if (v >= 100) return `${Math.round(v).toLocaleString('ko-KR')}원`
+  return `${v.toFixed(1)}원`
+}
+
+export function MonitoringClient({ stats, aiUsage, checkedAt }: Props) {
   const router = useRouter()
   const [refreshing, setRefreshing] = useState(false)
 
@@ -136,6 +152,46 @@ export function MonitoringClient({ stats, checkedAt }: Props) {
           </p>
           <p className="mt-1 text-xs text-zinc-400">성공 {stats.login_7d.success} · 실패 {stats.login_7d.failed}</p>
         </div>
+      </div>
+
+      {/* AI 사용량 · 예상 요금 */}
+      <div className="mb-4 rounded-2xl border border-zinc-200 bg-white p-5">
+        <div className="mb-4">
+          <h2 className="text-sm font-semibold text-zinc-900">AI 초안 사용량 (이번 달)</h2>
+          <p className="mt-0.5 text-xs text-zinc-400">
+            Gemini 2.5 Flash 유료 티어 단가 기준 예상 금액 — 무료 티어 키 사용 중에는 실제 청구 0원
+          </p>
+        </div>
+        {!aiUsage || aiUsage.calls === 0 ? (
+          <p className="py-4 text-center text-xs text-zinc-400">이번 달 AI 호출 기록이 없습니다.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <p className="text-xs text-zinc-400">호출 수</p>
+              <p className="mt-1 text-xl font-bold text-zinc-950 tabular-nums">{aiUsage.calls}건</p>
+              <p className="mt-0.5 text-xs text-zinc-400">힌트 {aiUsage.hintCalls} · 최종답 {aiUsage.fullCalls}</p>
+            </div>
+            <div>
+              <p className="text-xs text-zinc-400">예상 요금</p>
+              <p className="mt-1 text-xl font-bold text-zinc-950 tabular-nums">{formatKrw(aiUsage.costKrw)}</p>
+              <p className="mt-0.5 text-xs text-zinc-400">토큰 {aiUsage.totalTokens.toLocaleString('ko-KR')}개</p>
+            </div>
+            <div>
+              <p className="text-xs text-zinc-400">평균 비용 / 건</p>
+              <p className="mt-1 text-xl font-bold text-zinc-950 tabular-nums">
+                {aiUsage.avgFullKrw !== null ? formatKrw(aiUsage.avgFullKrw) : '—'}
+                <span className="ml-1 text-xs font-normal text-zinc-400">최종답</span>
+              </p>
+              <p className="mt-0.5 text-xs text-zinc-400">
+                힌트 {aiUsage.avgHintKrw !== null ? formatKrw(aiUsage.avgHintKrw) : '—'} / 건
+              </p>
+            </div>
+          </div>
+        )}
+        <p className="mt-4 border-t border-zinc-100 pt-3 text-[11px] leading-relaxed text-zinc-400">
+          참고 단가 (건당 예상): 힌트 모드 ~5원 · 최종답 모드 평이한 문제 ~20원, 보통 ~30원, 킬러급 ~75원.
+          실측 평균이 쌓이면 위 "평균 비용 / 건"을 기준으로 보세요.
+        </p>
       </div>
 
       {/* 트렌드 차트 */}
