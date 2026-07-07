@@ -5,7 +5,11 @@ import { createClient } from '@/lib/supabase/client'
 import { Modal } from '@/components/ui/modal'
 import { InputField } from '@/components/ui/form-field'
 import { createExtraSchedule, deleteExtraSchedule } from '@/lib/actions/schedule'
-import { updateStaffStatus, deleteTaAccount, type StaffStatus } from '@/lib/actions/staff'
+import { useRouter } from 'next/navigation'
+import {
+  updateStaffStatus, deleteTaAccount, deleteTeacherAccount, withdrawOwnTeacherAccount,
+  type StaffStatus,
+} from '@/lib/actions/staff'
 
 // ── 상수
 const PX_PER_MIN = 0.55
@@ -75,7 +79,7 @@ type ExtraSchedule = {
   start_time: string; end_time: string; note: string | null
 }
 type StaffMember = {
-  userId: string; name: string; role: string
+  userId: string; name: string; role: string; isSuperAdmin: boolean
   status: StaffStatus; updatedAt: string | null
 }
 type PopupData =
@@ -88,6 +92,7 @@ export interface DashboardScheduleProps {
   initialStaff: StaffMember[]
   currentUserId: string
   currentUserRole: string
+  currentUserIsSuperAdmin: boolean
   myInitialStatus: StaffStatus
 }
 
@@ -153,8 +158,9 @@ function ExtraCard({
 
 // ── 메인 컴포넌트
 export function DashboardScheduleClient({
-  classes, extraSchedules, initialStaff, currentUserId, currentUserRole, myInitialStatus,
+  classes, extraSchedules, initialStaff, currentUserId, currentUserRole, currentUserIsSuperAdmin, myInitialStatus,
 }: DashboardScheduleProps) {
+  const router = useRouter()
   const [now, setNow]           = useState(new Date())
   const [staff, setStaff]       = useState(initialStaff)
   const [myStatus, setMyStatus] = useState(myInitialStatus)
@@ -269,15 +275,28 @@ export function DashboardScheduleClient({
     startTransition(async () => { await updateStaffStatus(status) })
   }
 
-  function handleDeleteTa(taId: string, name: string) {
-    if (!window.confirm(`${name} 조교 계정을 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return
+  function handleDeleteStaff(member: StaffMember) {
+    const isTa = member.role === 'ta_desk' || member.role === 'ta_assistant'
+    if (!window.confirm(`${member.name} ${isTa ? '조교' : '선생님'} 계정을 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return
     setDeleteErr(null)
-    setDeletingId(taId)
+    setDeletingId(member.userId)
     startTransition(async () => {
-      const res = await deleteTaAccount(taId)
+      const res = isTa
+        ? await deleteTaAccount(member.userId)
+        : await deleteTeacherAccount(member.userId)
       setDeletingId(null)
       if (!res.success) { setDeleteErr(res.error); return }
-      setStaff((prev) => prev.filter((s) => s.userId !== taId))
+      setStaff((prev) => prev.filter((s) => s.userId !== member.userId))
+    })
+  }
+
+  function handleWithdraw() {
+    if (!window.confirm('정말 탈퇴하시겠어요? 계정이 완전히 삭제되며 되돌릴 수 없습니다.')) return
+    setDeleteErr(null)
+    startTransition(async () => {
+      const res = await withdrawOwnTeacherAccount()
+      if (!res.success) { setDeleteErr(res.error); return }
+      router.push('/login')
     })
   }
 
@@ -562,6 +581,18 @@ export function DashboardScheduleClient({
               )
             })}
           </div>
+          {currentUserRole === 'teacher' && (
+            <div className="mt-4 pt-3 border-t border-zinc-100">
+              <button
+                type="button"
+                onClick={handleWithdraw}
+                disabled={isPending}
+                className="text-xs font-medium text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
+              >
+                계정 탈퇴
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 스태프 현황 */}
@@ -582,7 +613,8 @@ export function DashboardScheduleClient({
                 const cfg = STATUS_CONFIG[s]
                 const isMe = member.userId === currentUserId
                 const isTa = member.role === 'ta_desk' || member.role === 'ta_assistant'
-                const canDelete = currentUserRole === 'teacher' && isTa
+                const canDelete =
+                  !isMe && ((currentUserRole === 'teacher' && isTa) || (currentUserIsSuperAdmin && member.role === 'teacher'))
                 return (
                   <li key={member.userId} className="flex items-center gap-3 px-5 py-3.5">
                     <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${cfg.dot}`} />
@@ -590,7 +622,7 @@ export function DashboardScheduleClient({
                       <p className="text-sm font-medium text-zinc-900 flex items-center gap-1">
                         {member.name}
                         <span className="text-xs font-normal text-zinc-500">
-                          {member.role === 'teacher' ? ' 선생님' : ' 조교'}
+                          {member.isSuperAdmin ? ' 관리자' : member.role === 'teacher' ? ' 선생님' : ' 조교'}
                         </span>
                         {isMe && <span className="text-[10px] font-normal text-zinc-400 ml-0.5">(나)</span>}
                       </p>
@@ -606,7 +638,7 @@ export function DashboardScheduleClient({
                     {canDelete && (
                       <button
                         type="button"
-                        onClick={() => handleDeleteTa(member.userId, member.name)}
+                        onClick={() => handleDeleteStaff(member)}
                         disabled={deletingId === member.userId}
                         className="text-xs font-medium text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
                       >

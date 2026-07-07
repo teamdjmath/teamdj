@@ -24,3 +24,8 @@ Thumbs.db
 # Expo
 .expo/
 package-lock.json
+
+# Supabase CLI 로컬 상태 (링크된 프로젝트 ref 등 — 머신마다 다름)
+.temp/
+.branches/
+tsconfig.tsbuildinfo

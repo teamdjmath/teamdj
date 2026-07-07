@@ -93,7 +93,7 @@ export default async function AdminDashboardPage() {
       .eq('status', 'open'),
     supabase
       .from('users')
-      .select('id, name, role')
+      .select('id, name, role, is_super_admin')
       .in('role', ['teacher', 'ta_desk', 'ta_assistant'])
       .eq('is_active', true)
       .order('role').order('name'),
@@ -163,11 +163,15 @@ export default async function AdminDashboardPage() {
     userId:    u.id   as string,
     name:      u.name as string,
     role:      u.role as string,
+    isSuperAdmin: (u.is_super_admin ?? false) as boolean,
     status:    toStatus(statusMap[u.id as string]?.status),
     updatedAt: statusMap[u.id as string]?.updatedAt ?? null,
   }))
 
-  const roleLabel = role === 'teacher' ? '선생님' : '조교'
+  const currentStaffRow = (staffUsersRes.data ?? []).find((u) => u.id === user.id)
+  const currentUserIsSuperAdmin = (currentStaffRow?.is_super_admin ?? false) as boolean
+
+  const roleLabel = currentUserIsSuperAdmin ? '관리자' : role === 'teacher' ? '선생님' : '조교'
 
   return (
     <div className="space-y-6">
@@ -291,6 +295,7 @@ export default async function AdminDashboardPage() {
         initialStaff={initialStaff}
         currentUserId={user.id}
         currentUserRole={role ?? ''}
+        currentUserIsSuperAdmin={currentUserIsSuperAdmin}
         myInitialStatus={toStatus(statusMap[user.id]?.status)}
       />
     </div>
