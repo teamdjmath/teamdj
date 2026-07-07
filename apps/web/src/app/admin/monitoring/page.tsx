@@ -7,6 +7,19 @@ import { MonitoringClient, type BehaviorStats, type AiUsageStats } from './_comp
 
 export const dynamic = 'force-dynamic'
 
+// 최근 7일 로그인 성공/실패 — auth.audit_log_entries는 이 Supabase 버전에서 항상 비어있어
+// (인증 이벤트를 DB에 기록하지 않음), signIn 액션이 직접 남기는 audit_logs를 센다.
+async function getLogin7d(admin: ReturnType<typeof createAdminClient>): Promise<{ success: number; failed: number }> {
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = admin as any
+  const [successRes, failedRes] = await Promise.all([
+    db.from('audit_logs').select('id', { count: 'exact', head: true }).eq('action', 'auth.login').gte('created_at', weekAgo),
+    db.from('audit_logs').select('id', { count: 'exact', head: true }).eq('action', 'auth.login_failed').gte('created_at', weekAgo),
+  ])
+  return { success: successRes.count ?? 0, failed: failedRes.count ?? 0 }
+}
+
 // 이번 달 AI 호출량·토큰·예상 요금 집계
 async function getAiUsageStats(admin: ReturnType<typeof createAdminClient>): Promise<AiUsageStats | null> {
   const now = new Date()
@@ -45,13 +58,17 @@ async function getAiUsageStats(admin: ReturnType<typeof createAdminClient>): Pro
 const getBehaviorStats = unstable_cache(
   async (): Promise<{ stats: BehaviorStats | null; aiUsage: AiUsageStats | null; checkedAt: string }> => {
     const admin = createAdminClient()
-    const [rpcRes, aiUsage] = await Promise.all([
+    const [rpcRes, aiUsage, login7d] = await Promise.all([
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (admin as any).rpc('monitoring_behavior_stats') as Promise<{ data: unknown; error: unknown }>,
       getAiUsageStats(admin),
+      getLogin7d(admin),
     ])
+    const stats = rpcRes.error ? null : (rpcRes.data as BehaviorStats)
+    // RPC의 login_7d(auth.audit_log_entries 기반, 항상 0)를 자체 기록으로 교체
+    if (stats) stats.login_7d = login7d
     return {
-      stats: rpcRes.error ? null : (rpcRes.data as BehaviorStats),
+      stats,
       aiUsage,
       checkedAt: new Date().toISOString(),
     }

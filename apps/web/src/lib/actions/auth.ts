@@ -10,6 +10,30 @@ export type AuthState = {
 
 const STAFF_ROLES = ['teacher', 'ta_desk', 'ta_assistant']
 
+// 로그인 성공/실패 기록 — 이 Supabase 버전은 auth.audit_log_entries에 인증 이벤트를
+// 기록하지 않아서(항상 빈 테이블), 모니터링 로그인 지표를 위해 직접 audit_logs에 남긴다.
+// 실패해도 로그인 흐름을 막지 않는다. 실패 건은 입력한 아이디를 저장하지 않는다(개인정보).
+async function logLoginAttempt(entry: {
+  success: boolean
+  userId?: string
+  name?: string
+  role?: string
+}): Promise<void> {
+  try {
+    const admin = createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (admin as any).from('audit_logs').insert({
+      actor_id:    entry.userId ?? null,
+      actor_name:  entry.name ?? '',
+      actor_role:  entry.role ?? '',
+      action:      entry.success ? 'auth.login' : 'auth.login_failed',
+      target_type: 'auth',
+    })
+  } catch {
+    // 감사 로그 실패는 무시
+  }
+}
+
 // ────────────────────────────────────────────────
 // 로그인
 // role: 'student' | 'parent' → 전화번호를 이메일 형식으로 변환
@@ -33,6 +57,7 @@ export async function signIn(
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
+    await logLoginAttempt({ success: false })
     return { error: '아이디 또는 비밀번호가 올바르지 않습니다.' }
   }
 
@@ -42,6 +67,13 @@ export async function signIn(
   } = await supabase.auth.getUser()
 
   const role = user?.user_metadata?.role as string | undefined
+  await logLoginAttempt({
+    success: true,
+    userId: user?.id,
+    name: (user?.user_metadata?.name as string | undefined) ?? '',
+    role: role ?? '',
+  })
+
   const dest = STAFF_ROLES.includes(role ?? '') ? '/admin/dashboard' : '/dashboard'
 
   redirect(dest)

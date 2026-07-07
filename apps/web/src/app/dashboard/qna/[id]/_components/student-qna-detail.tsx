@@ -26,6 +26,7 @@ type Answer = {
   answered_at: string
   taName: string
   studentRating: number | null
+  isAiDraft: boolean
 }
 
 function StarRating({
@@ -106,7 +107,7 @@ function formatDatetime(iso: string) {
 
 const mdPlugins = { remark: [remarkMath], rehype: [rehypeKatex] }
 
-function buildStudentContent(content: string, studentName: string, taName: string): string {
+function buildStudentContent(content: string, studentName: string, taName: string, isAiDraft: boolean): string {
   const praiseMatch = content.match(/### 칭찬\n([\s\S]*?)(?=\n### |$)/)
   const keyMatch = content.match(/### 핵심 포인트\n([\s\S]*?)(?=\n### |$)/)
   const solutionMatch = content.match(/### 풀이\n([\s\S]*?)(?=\n### |$)/)
@@ -118,7 +119,12 @@ function buildStudentContent(content: string, studentName: string, taName: strin
     : content.trim()
 
   const name = studentName ? `**${studentName}**` : '학생'
-  return `안녕하세요 ${name} 학생, **${taName}** 조교입니다.\n\n${body}\n\n---\n감사합니다. 더 궁금하신 내용이 있다면 언제든 질문해주시기 바랍니다. \n\n*26년 1월 22일부터 시행되는 인공지능 발전과 신뢰 기반 조성 등에 관한 기본법 (약칭 : 인공지능기본법)의 31조 2항에 따라, 본 답변은 AI가 초안을 생성 후 조교가 검수하여 수정을 거친 뒤 답변됨을 고지드립니다.`
+  // AI 초안 고지는 실제로 AI 초안을 사용한 답변에만 표시 (인공지능기본법 제31조 — 생성형 AI 결과물 표시 의무).
+  // AI를 쓰지 않은 답변에 붙이면 사실과 다른 표시가 되므로 붙이지 않는다.
+  const aiNotice = isAiDraft
+    ? `\n\n*본 답변은 AI가 작성한 초안을 조교가 검수·수정한 것입니다. (인공지능기본법 제31조에 따른 고지)*`
+    : ''
+  return `안녕하세요 ${name} 학생, **${taName}** 조교입니다.\n\n${body}\n\n---\n감사합니다. 더 궁금하신 내용이 있다면 언제든 질문해주시기 바랍니다.${aiNotice}`
 }
 
 export function StudentQnaDetail({ question, answers, studentName }: Props) {
@@ -213,7 +219,7 @@ export function StudentQnaDetail({ question, answers, studentName }: Props) {
                 <CardContent>
                   <div className="prose prose-sm prose-zinc max-w-none text-[15px] font-medium leading-relaxed">
                     <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
-                      {buildStudentContent(a.content, studentName, a.taName)}
+                      {buildStudentContent(a.content, studentName, a.taName, a.isAiDraft)}
                     </ReactMarkdown>
                   </div>
                   {a.media_urls.length > 0 && (

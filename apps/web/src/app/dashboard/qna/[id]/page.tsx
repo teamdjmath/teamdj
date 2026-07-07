@@ -35,7 +35,7 @@ export default async function QnaDetailPage({ params }: { params: Promise<{ id: 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: aData } = await (supabase as any)
     .from('qna_answers')
-    .select('id, content, media_urls, answered_at, student_rating, ta:users!qna_answers_ta_id_fkey(name)')
+    .select('id, content, media_urls, answered_at, student_rating, is_ai_draft, ta:users!qna_answers_ta_id_fkey(name)')
     .eq('question_id', id)
     .order('answered_at', { ascending: true })
 
@@ -47,6 +47,7 @@ export default async function QnaDetailPage({ params }: { params: Promise<{ id: 
     answered_at: a.answered_at as string,
     taName: (a.ta as { name?: string } | null)?.name || 'TA',
     studentRating: (a.student_rating as number | null) ?? null,
+    isAiDraft: (a.is_ai_draft as boolean | null) ?? false,
   }))
 
   return (

@@ -29,7 +29,8 @@ interface Props {
 }
 
 function fmtDay(iso: string) {
-  const parts = iso.split('-')
+  // qna_daily는 timestamp 캐스팅이라 "2026-06-24 00:00:00+00" 형태로 옴 — 날짜 부분만 사용
+  const parts = iso.slice(0, 10).split('-')
   return parts.length >= 3 ? `${Number(parts[1])}/${Number(parts[2])}` : iso
 }
 
