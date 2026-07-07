@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getActiveClassOptions } from '@/lib/data/class-options'
 import Link from 'next/link'
 import { ReportsClient } from './_components/reports-client'
 
@@ -10,11 +11,7 @@ export default async function ReportsPage({
   const { classId: selectedClassId, date: selectedDate } = await searchParams
   const admin = createAdminClient()
 
-  const { data: classes } = await admin
-    .from('class_groups')
-    .select('id, name')
-    .eq('is_active', true)
-    .order('name')
+  const classes = await getActiveClassOptions()
 
   let query = admin
     .from('reports')

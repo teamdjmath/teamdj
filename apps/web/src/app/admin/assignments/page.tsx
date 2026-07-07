@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getActiveClassOptions } from '@/lib/data/class-options'
 import { AssignmentsClient } from './_components/assignments-client'
 
 export default async function AssignmentsPage({
@@ -9,11 +10,7 @@ export default async function AssignmentsPage({
   const { classId: selectedClassId } = await searchParams
   const adminSupabase = createAdminClient()
 
-  const { data: classes } = await adminSupabase
-    .from('class_groups')
-    .select('id, name')
-    .eq('is_active', true)
-    .order('name')
+  const classes = await getActiveClassOptions()
 
   type AssignmentRow = {
     id: string; title: string; category: string | null

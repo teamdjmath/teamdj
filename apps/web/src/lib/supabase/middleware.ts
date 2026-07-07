@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { setTrustedUserHeaders } from './trusted-user-headers'
 
 // proxy.ts 에서 호출 — 세션 쿠키를 갱신하고 유저 정보를 반환
 export async function updateSession(request: NextRequest) {
@@ -32,6 +33,17 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
+
+  // 검증된 유저 정보를 요청 헤더로 하위(레이아웃/페이지)에 전달 — 매번 auth.getUser()를 다시 호출하지 않도록.
+  // 클라이언트가 같은 이름의 헤더를 보내더라도 setTrustedUserHeaders가 항상 먼저 지우고 검증된 값으로만 채우므로 위조 불가.
+  const requestHeaders = new Headers(request.headers)
+  setTrustedUserHeaders(requestHeaders, user)
+
+  const responseWithUserHeaders = NextResponse.next({ request: { headers: requestHeaders } })
+  supabaseResponse.cookies.getAll().forEach((cookie) => {
+    responseWithUserHeaders.cookies.set(cookie)
+  })
+  supabaseResponse = responseWithUserHeaders
 
   return { supabaseResponse, user }
 }

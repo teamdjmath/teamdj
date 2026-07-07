@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
 
@@ -58,6 +58,7 @@ export async function createClass(formData: FormData): Promise<ActionResult> {
 
     revalidatePath('/admin/classes')
     revalidatePath('/admin/schedule')
+    revalidateTag('classes', {})
     return { success: true }
   })
 }
@@ -100,6 +101,7 @@ export async function updateClass(formData: FormData): Promise<ActionResult> {
     revalidatePath('/admin/classes')
     revalidatePath(`/admin/classes/${classId}`)
     revalidatePath('/admin/schedule')
+    revalidateTag('classes', {})
     return { success: true }
   })
 }
@@ -122,6 +124,7 @@ export async function deleteClass(classId: string): Promise<ActionResult> {
     if (error) throw error
 
     revalidatePath('/admin/classes')
+    revalidateTag('classes', {})
     return { success: true }
   })
 }
@@ -150,6 +153,7 @@ export async function hardDeleteClass(classId: string): Promise<ActionResult> {
     if (error) throw error
 
     revalidatePath('/admin/classes')
+    revalidateTag('classes', {})
     return { success: true }
   })
 }

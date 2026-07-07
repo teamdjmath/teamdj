@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react'
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { redirect } from 'next/navigation'
 import { LogoutButton } from '@/components/ui/logout-button'
 import { MobileNav } from './_components/mobile-nav'
@@ -209,8 +209,7 @@ function filterNavByRole(role: StaffRole) {
 }
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   if (!user) redirect('/login')
 

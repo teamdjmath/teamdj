@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getActiveClassOptions } from '@/lib/data/class-options'
 import { ScoresClient } from './_components/scores-client'
 
 export default async function ScoresPage({
@@ -9,11 +10,7 @@ export default async function ScoresPage({
   const { classId: selectedClassId, date: selectedDate } = await searchParams
   const adminSupabase = createAdminClient()
 
-  const { data: classes } = await adminSupabase
-    .from('class_groups')
-    .select('id, name')
-    .eq('is_active', true)
-    .order('name')
+  const classes = await getActiveClassOptions()
 
   let query = adminSupabase
     .from('tests')

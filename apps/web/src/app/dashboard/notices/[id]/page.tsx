@@ -21,6 +21,13 @@ export default async function NoticeDetailPage({ params }: { params: Promise<{ i
     redirect('/dashboard/notices')
   }
 
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    await supabase
+      .from('notice_reads')
+      .upsert({ notice_id: id, student_id: user.id }, { onConflict: 'notice_id,student_id', ignoreDuplicates: true })
+  }
+
   return (
     <div className="max-w-2xl mx-auto pb-20">
       {/* 상단 네비게이션 */}

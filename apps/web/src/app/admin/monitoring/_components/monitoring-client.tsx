@@ -8,7 +8,7 @@ export type BehaviorStats = {
   qna_daily:         Array<{ day: string; questions: number; answers: number }>
   assignment_weekly: Array<{ week: string; avg_pct: number; entries: number }>
   report_kakao:      { total: number; sent: number }
-  notices_30d:       number
+  notices_30d:       { total: number; read_rate: number | null }
   login_7d:          { success: number; failed: number }
 }
 
@@ -120,9 +120,11 @@ export function MonitoringClient({ stats, checkedAt }: Props) {
           </p>
         </div>
         <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-          <p className="text-xs text-zinc-400 mb-1">공지 발행 (30일)</p>
-          <p className="text-2xl font-bold text-zinc-950 tabular-nums">{stats.notices_30d}건</p>
-          <p className="mt-1 text-xs text-zinc-400">공지사항 등록 수</p>
+          <p className="text-xs text-zinc-400 mb-1">공지 열람율 (30일)</p>
+          <p className="text-2xl font-bold text-zinc-950 tabular-nums">
+            {stats.notices_30d.read_rate !== null ? `${stats.notices_30d.read_rate}%` : '—'}
+          </p>
+          <p className="mt-1 text-xs text-zinc-400">발행 {stats.notices_30d.total}건 기준</p>
         </div>
         <div className="rounded-2xl border border-zinc-200 bg-white p-5">
           <p className="text-xs text-zinc-400 mb-1">로그인 (7일)</p>

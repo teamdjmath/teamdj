@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 
 interface ReportItem {
   id: string
@@ -71,12 +72,15 @@ export function ReportList({ reports }: { reports: ReportItem[] }) {
             >
               닫기 ✕
             </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={selected.imageUrl!}
-              alt="학습 리포트"
-              className="w-full rounded-2xl shadow-2xl"
-            />
+            <div className="relative w-full h-[80vh]">
+              <Image
+                src={selected.imageUrl!}
+                alt="학습 리포트"
+                fill
+                sizes="(max-width: 640px) 100vw, 384px"
+                className="rounded-2xl object-contain shadow-2xl"
+              />
+            </div>
           </div>
         </div>
       )}

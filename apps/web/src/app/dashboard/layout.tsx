@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { redirect } from 'next/navigation'
 import { BottomNav } from './_components/bottom-nav'
 import { NotificationsProvider } from '@/contexts/notifications-context'
@@ -12,12 +13,12 @@ export default async function DashboardLayout({
 }: {
   children: ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   if (!user) redirect('/login')
 
   // 휴원 상태 확인
+  const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: dbUser } = await (supabase as any)
     .from('users')
