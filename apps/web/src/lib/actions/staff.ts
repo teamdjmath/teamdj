@@ -51,7 +51,10 @@ export async function deleteTaAccount(taId: string): Promise<ActionResult> {
       return { success: false, error: '조교 계정만 삭제할 수 있습니다.' }
     }
 
-    const { error: dbErr } = await adminSupabase.from('users').delete().eq('id', taId)
+    // 완전 삭제 대신 비활성화 — qna_answers/notices/push_messages 등이 ta_id/author_id/sender_id를
+    // ON DELETE RESTRICT로 참조하고 있어서, 답변/공지/쪽지를 하나라도 남긴 계정은 하드 삭제가 불가능함.
+    // is_active=false로 로그인·목록 노출은 막되, 과거 기록의 작성자 정보는 그대로 보존한다.
+    const { error: dbErr } = await adminSupabase.from('users').update({ is_active: false }).eq('id', taId)
     if (dbErr) throw dbErr
 
     const { error: authErr } = await adminSupabase.auth.admin.deleteUser(taId)
@@ -68,12 +71,13 @@ export async function deleteTaAccount(taId: string): Promise<ActionResult> {
   })
 }
 
-// 마지막 남은 선생님 계정은 삭제(탈퇴 포함) 불가 — 관리 기능 전체가 잠기는 것을 방지
+// 마지막 남은 (활성) 선생님 계정은 삭제(탈퇴 포함) 불가 — 관리 기능 전체가 잠기는 것을 방지
 async function isLastTeacher(adminSupabase: ReturnType<typeof createAdminClient>, excludingId: string): Promise<boolean> {
   const { count } = await adminSupabase
     .from('users')
     .select('id', { count: 'exact', head: true })
     .eq('role', 'teacher')
+    .eq('is_active', true)
     .neq('id', excludingId)
   return (count ?? 0) === 0
 }
@@ -95,7 +99,8 @@ export async function withdrawOwnTeacherAccount(): Promise<ActionResult> {
       return { success: false, error: '마지막 남은 선생님 계정은 탈퇴할 수 없습니다.' }
     }
 
-    const { error: dbErr } = await adminSupabase.from('users').delete().eq('id', caller.id)
+    // 완전 삭제 대신 비활성화 — 과거에 작성한 답변/공지/쪽지의 참조 무결성을 깨지 않기 위함 (deleteTaAccount 주석 참고)
+    const { error: dbErr } = await adminSupabase.from('users').update({ is_active: false }).eq('id', caller.id)
     if (dbErr) throw dbErr
 
     const { error: authErr } = await adminSupabase.auth.admin.deleteUser(caller.id)
@@ -135,7 +140,8 @@ export async function deleteTeacherAccount(teacherId: string): Promise<ActionRes
       return { success: false, error: '마지막 남은 선생님 계정은 삭제할 수 없습니다.' }
     }
 
-    const { error: dbErr } = await adminSupabase.from('users').delete().eq('id', teacherId)
+    // 완전 삭제 대신 비활성화 — 과거에 작성한 답변/공지/쪽지의 참조 무결성을 깨지 않기 위함 (deleteTaAccount 주석 참고)
+    const { error: dbErr } = await adminSupabase.from('users').update({ is_active: false }).eq('id', teacherId)
     if (dbErr) throw dbErr
 
     const { error: authErr } = await adminSupabase.auth.admin.deleteUser(teacherId)

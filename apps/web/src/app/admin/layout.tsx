@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react'
 import { getVerifiedUser } from '@/lib/supabase/verified-user'
+import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { LogoutButton } from '@/components/ui/logout-button'
 import { MobileNav } from './_components/mobile-nav'
@@ -219,6 +220,14 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const staffRole = role as StaffRole
   const displayName = user.user_metadata?.name ?? user.email ?? ''
 
+  let isSuperAdmin = false
+  if (staffRole === 'teacher') {
+    const supabase = await createClient()
+    const { data } = await supabase.from('users').select('is_super_admin').eq('id', user.id).maybeSingle()
+    isSuperAdmin = data?.is_super_admin ?? false
+  }
+  const badgeLabel = isSuperAdmin ? '관리자' : staffRole
+
   const unreadConsultations = staffRole === 'teacher' ? await getUnreadConsultationCount() : 0
   const badges: Record<string, number> = unreadConsultations > 0 ? { '/admin/consultations': unreadConsultations } : {}
 
@@ -234,7 +243,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <div className="flex h-14 items-center px-5 border-b border-zinc-100">
             <span className="text-base font-bold tracking-tight text-zinc-950">TeamDJ</span>
             <span className="ml-2 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 uppercase">
-              {staffRole}
+              {badgeLabel}
             </span>
           </div>
 

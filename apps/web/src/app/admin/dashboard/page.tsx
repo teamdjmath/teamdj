@@ -180,7 +180,7 @@ export default async function AdminDashboardPage() {
       <div>
         <h1 className="text-xl font-bold text-zinc-950">
           안녕하세요, {displayName}
-          {role && (
+          {role && displayName !== roleLabel && (
             <span className="ml-2 text-sm font-normal text-zinc-400">({roleLabel})</span>
           )}
         </h1>
