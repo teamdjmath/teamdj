@@ -179,7 +179,7 @@ export default async function AdminDashboardPage() {
       {/* 헤더 */}
       <div>
         <h1 className="text-xl font-bold text-zinc-950">
-          안녕하세요, {displayName}
+          안녕하세요, {displayName}님
           {role && displayName !== roleLabel && (
             <span className="ml-2 text-sm font-normal text-zinc-400">({roleLabel})</span>
           )}

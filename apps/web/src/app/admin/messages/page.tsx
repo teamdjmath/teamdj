@@ -20,6 +20,7 @@ export default async function MessagesPage() {
         'id, content, created_at, class_id, student_id, class_groups!class_id(name), users!student_id(name)',
       )
       .eq('sender_id', userId)
+      .eq('is_system', false)
       .order('created_at', { ascending: false })
       .limit(30),
   ])

@@ -43,7 +43,7 @@ export async function createNotice(data: {
 
         if (members && members.length > 0) {
           const messages = members.map((m) => ({
-            sender_id: user.id, student_id: m.student_id, content: `[공지] ${data.title}`,
+            sender_id: user.id, student_id: m.student_id, content: `[공지] ${data.title}`, is_system: true,
           }))
           await adminSupabase.from('push_messages').insert(messages)
           await Promise.all(
@@ -62,7 +62,7 @@ export async function createNotice(data: {
         const { data: students } = await adminSupabase.from('users').select('id').eq('role', 'student')
         if (students && students.length > 0) {
           const messages = students.map((s) => ({
-            sender_id: user.id, student_id: s.id, content: `[전체 공지] ${data.title}`,
+            sender_id: user.id, student_id: s.id, content: `[전체 공지] ${data.title}`, is_system: true,
           }))
           await adminSupabase.from('push_messages').insert(messages)
           await Promise.all(

@@ -552,6 +552,7 @@ export type Database = {
           created_at: string
           id: string
           is_read: boolean
+          is_system: boolean
           sender_id: string
           student_id: string | null
         }
@@ -561,6 +562,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_read?: boolean
+          is_system?: boolean
           sender_id: string
           student_id?: string | null
         }
@@ -570,6 +572,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_read?: boolean
+          is_system?: boolean
           sender_id?: string
           student_id?: string | null
         }

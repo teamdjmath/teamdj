@@ -66,6 +66,7 @@ export async function submitAnswer(data: {
       sender_id: user.id,
       student_id: qData.student_id,
       content: '질문에 대한 답변이 등록되었습니다.',
+      is_system: true,
     })
     try {
       await createNotification(
