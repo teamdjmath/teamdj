@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -17,7 +18,7 @@ export default async function QnaDetailPage({ params }: { params: Promise<{ id: 
 
   const { data: qData, error: qError } = await supabase
     .from('qna_questions')
-    .select('*, ta:users!qna_questions_assigned_ta_id_fkey(name)')
+    .select('*')
     .eq('id', id)
     .single()
 
@@ -26,14 +27,24 @@ export default async function QnaDetailPage({ params }: { params: Promise<{ id: 
   // check permission
   if (qData.student_id !== user.id) redirect('/dashboard/qna')
 
+  // 학생 RLS로는 스태프의 users 행을 읽을 수 없어 TA 이름 조인이 전부 null이 됨.
+  // 본인 질문임을 확인한 뒤이므로, 이름 조회만 admin으로 수행 (노출 필드는 name뿐).
+  const admin = createAdminClient()
+
+  let assignedTaName: string | null = null
+  if (qData.assigned_ta_id) {
+    const { data: taRow } = await admin.from('users').select('name').eq('id', qData.assigned_ta_id).maybeSingle()
+    assignedTaName = taRow?.name ?? null
+  }
+
   const question = {
     ...qData,
     status: qData.status as 'open' | 'in_progress' | 'answered',
-    assignedTaName: qData.ta?.name || null,
+    assignedTaName,
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: aData } = await (supabase as any)
+  const { data: aData } = await (admin as any)
     .from('qna_answers')
     .select('id, content, media_urls, answered_at, student_rating, is_ai_draft, ta:users!qna_answers_ta_id_fkey(name)')
     .eq('question_id', id)
