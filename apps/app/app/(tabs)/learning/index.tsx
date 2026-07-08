@@ -12,14 +12,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { categoryBadgeColor } from '@/lib/category-style'
 
 const TODAY = new Date().toISOString().split('T')[0]
-
-const CAT_COLORS: Record<string, { bg: string; text: string }> = {
-  '매월승리': { bg: '#09090b', text: '#fff' },
-  'KBS':      { bg: '#3f3f46', text: '#fff' },
-  'EB-Schema':{ bg: '#a1a1aa', text: '#fff' },
-}
 
 interface Lecture {
   id: string
@@ -310,9 +305,7 @@ export default function LearningScreen() {
                 <View style={styles.asgnList}>
                   {weekGroups[wk].map((a) => {
                     const isOverdue = a.due_date && a.due_date < TODAY && a.pct < 100
-                    const catColor = a.category
-                      ? (CAT_COLORS[a.category] ?? { bg: '#e4e4e7', text: '#71717a' })
-                      : { bg: '#e4e4e7', text: '#71717a' }
+                    const catColor = categoryBadgeColor(a.category)
                     return (
                       <View key={a.id} style={styles.asgnItem}>
                         <View style={styles.asgnRow}>

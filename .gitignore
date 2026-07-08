@@ -29,3 +29,6 @@ package-lock.json
 .temp/
 .branches/
 tsconfig.tsbuildinfo
+
+# 서비스 전 내부 검증용 더미 데이터 시드/정리 스크립트 — 로컬에서만 사용, 저장소에는 안 올림
+apps/web/scripts/

@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { categoryBadgeColor } from '@/lib/category-style'
 
 // ────── 상수 ──────
 const TODAY = new Date().toISOString().split('T')[0]
@@ -17,11 +18,6 @@ const CSAT_DEFAULT = '2026-11-19'
 const LS_DDAY      = 'teamdj_dday_target'
 const LS_DDAY_TITLE = 'teamdj_dday_title'
 
-const CAT_COLORS: Record<string, { bg: string; text: string }> = {
-  '매월승리': { bg: '#09090b', text: '#fff' },
-  'KBS':       { bg: '#3f3f46', text: '#fff' },
-  'EB-Schema': { bg: '#a1a1aa', text: '#fff' },
-}
 const QNA_STATUS: Record<string, { label: string; bg: string; text: string }> = {
   open:        { label: '미답변',   bg: '#f4f4f5', text: '#71717a' },
   in_progress: { label: '답변중',   bg: '#09090b', text: '#fff'    },
@@ -584,9 +580,7 @@ export default function HomeScreen() {
           ) : (
             assignments.map((a) => {
               const isOverdue = a.due_date && a.due_date < TODAY && a.pct < 100
-              const catColor = a.category
-                ? (CAT_COLORS[a.category] ?? { bg: '#f4f4f5', text: '#52525b' })
-                : { bg: '#f4f4f5', text: '#52525b' }
+              const catColor = categoryBadgeColor(a.category)
               return (
                 <View key={a.id} style={styles.asgnItem}>
                   <View style={styles.asgnRow}>
