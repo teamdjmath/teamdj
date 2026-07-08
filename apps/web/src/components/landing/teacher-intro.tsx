@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "motion/react";
 
 export function TeacherIntro() {
@@ -40,10 +41,15 @@ export function TeacherIntro() {
             transition={{ duration: 0.8 }}
           >
             <div className="aspect-4/5 rounded-[40px] bg-zinc-100 overflow-hidden relative border border-zinc-200">
-               {/* 여기에 선생님 이미지가 들어갈 예정 */}
-               <div className="absolute inset-0 flex items-center justify-center text-zinc-400 font-bold italic text-3xl">
-                  TEACHER IMAGE
-               </div>
+               <Image
+                  src="/teacher.png"
+                  alt="TEAM DJ, 이동재T"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 500px"
+                  quality={100}
+                  className="object-cover"
+                  priority
+               />
                <div className="absolute bottom-8 left-8 right-8 p-6 bg-white/80 backdrop-blur-md rounded-3xl border border-white/20 shadow-xl">
                   <p className="text-zinc-950 font-black text-xl mb-1">TEAM DJ, 이동재T</p>
                   <p className="text-zinc-500 text-sm font-medium">역전의 기회가 찾아올때까지 늘 뒤에서 서포트 하겠습니다</p>

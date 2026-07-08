@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "motion/react";
 
 export function AcmeHero() {
@@ -43,6 +44,22 @@ export function AcmeHero() {
               11월의 기초공사부터 수능 날의 마지막 스퍼트까지.<br />
               당신의 <span className="font-bold text-zinc-950 tracking-tighter">&apos;1등급 역전극&apos;</span>, 저희 TeamDJ가 함께합니다.
             </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.5 }}
+            >
+              <Link
+                href="#special-lecture"
+                className="inline-flex items-center gap-2 h-12 md:h-14 px-6 md:px-8 rounded-full bg-zinc-950 text-white hover:bg-zinc-800 text-sm md:text-base font-bold transition-all shadow-lg"
+              >
+                2026 여름방학 특강 바로가기
+                <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+              </Link>
+            </motion.div>
 
           </motion.div>
         </section>
