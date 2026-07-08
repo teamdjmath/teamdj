@@ -4,21 +4,12 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
+import { categoryBadgeStyle } from '@/lib/category-style'
 import { createTodo, toggleTodo, deleteTodo } from '@/lib/actions/todos'
 
 type Lecture = { id: string; title: string; videoId: string; orderNum: number }
 type Course = { courseName: string; lectures: Lecture[] }
 type Todo = { id: string; content: string; is_completed: boolean }
-
-const CATEGORY_STYLE: Record<string, string> = {
-  '매월승리': 'bg-zinc-950 text-white',
-  'KBS': 'bg-zinc-700 text-white',
-  'EB-Schema': 'bg-zinc-400 text-white',
-}
-
-function catStyle(cat: string | null) {
-  return cat ? (CATEGORY_STYLE[cat] ?? 'bg-zinc-100 text-zinc-500') : 'bg-zinc-100 text-zinc-500'
-}
 
 interface Props {
   courses: Course[]
@@ -186,7 +177,7 @@ export function LearningClient({ courses, weekGroups, sortedWeeks, progressMap, 
                         <div className="flex items-center justify-between gap-2 mb-1.5">
                           <div className="flex items-center gap-2 min-w-0">
                             <span
-                              className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${catStyle(category)}`}
+                              className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${categoryBadgeStyle(category)}`}
                             >
                               {category || '기타'}
                             </span>

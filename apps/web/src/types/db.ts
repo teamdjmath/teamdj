@@ -27,6 +27,7 @@ export interface ReportContent {
     title:        string
     examType:     string
     date:         string
+    maxScore?:    number
     totalQ?:      number
     objQ?:        number
     subjQ?:       number
@@ -50,6 +51,7 @@ export interface TestScoreJoin {
   title:      string
   exam_type:  string
   test_date:  string
+  max_score:  number | null
   total_q:    number | null
   obj_q:      number | null
   subj_q:     number | null

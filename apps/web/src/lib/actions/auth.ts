@@ -53,11 +53,16 @@ export async function signIn(
       ? `${identity.replace(/\D/g, '')}@teamdj.com`
       : identity
 
+  // CI(GitHub Actions)의 E2E 테스트가 매 push마다 이 계정으로 로그인하는데,
+  // 실사용자 로그인이 아니라서 감사 로그/모니터링 지표에 섞이면 안 됨.
+  // 로컬에서 이 값을 안 쓰면 process.env.E2E_STAFF_EMAIL이 비어있어 아무 영향 없음.
+  const isE2eBot = !!process.env.E2E_STAFF_EMAIL && email === process.env.E2E_STAFF_EMAIL
+
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
-    await logLoginAttempt({ success: false })
+    if (!isE2eBot) await logLoginAttempt({ success: false })
     return { error: '아이디 또는 비밀번호가 올바르지 않습니다.' }
   }
 
@@ -67,12 +72,14 @@ export async function signIn(
   } = await supabase.auth.getUser()
 
   const role = user?.user_metadata?.role as string | undefined
-  await logLoginAttempt({
-    success: true,
-    userId: user?.id,
-    name: (user?.user_metadata?.name as string | undefined) ?? '',
-    role: role ?? '',
-  })
+  if (!isE2eBot) {
+    await logLoginAttempt({
+      success: true,
+      userId: user?.id,
+      name: (user?.user_metadata?.name as string | undefined) ?? '',
+      role: role ?? '',
+    })
+  }
 
   const dest = STAFF_ROLES.includes(role ?? '') ? '/admin/dashboard' : '/dashboard'
 

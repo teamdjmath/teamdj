@@ -24,6 +24,7 @@ type StudentData = {
     title: string
     examType: string
     date: string
+    maxScore?: number
     totalQ?: number
     objQ?: number
     subjQ?: number

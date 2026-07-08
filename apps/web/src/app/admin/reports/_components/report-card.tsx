@@ -172,7 +172,7 @@ export function ReportCard({ data, cardRef }: Props) {
   const { studentName, school, grade, className, reportDate, content } = data
   const {
     studyContent, homework, announcement, notes, todayAttendance,
-    recentScore, classStdDev, assignmentsDetail,
+    recentScore, classStdDev, assignmentsDetail, absenceReason,
   } = content
 
   const dateObj = new Date(reportDate)
@@ -204,10 +204,17 @@ export function ReportCard({ data, cardRef }: Props) {
       }
     })
 
-  const maxScore    = recentScore?.totalQ ?? null
+  // maxScore(만점)는 tests.max_score를 써야 함 — totalQ(문항 수)는 만점과 다른 값
+  // (예: 20문항 100점). 옛 리포트는 maxScore가 저장 전이라 totalQ로 대체 표시.
+  const maxScore    = recentScore?.maxScore ?? recentScore?.totalQ ?? null
   const classAvg    = recentScore?.classAverage ?? null
   const testScore   = recentScore?.score ?? null
-  const specialNote = notes
+  // 결석 사유는 특이사항 맨 앞에 표시 — absenceReason은 사유 없을 때 '-'로 채워져 있으므로 제외
+  const hasAbsenceReason = !!absenceReason?.trim() && absenceReason.trim() !== '-'
+  const specialNote = [
+    hasAbsenceReason && `결석 사유: ${absenceReason!.trim()}`,
+    notes?.trim(),
+  ].filter(Boolean).join('\n')
 
   // class-wide notice: homework first, then announcement
   const classNotice = [

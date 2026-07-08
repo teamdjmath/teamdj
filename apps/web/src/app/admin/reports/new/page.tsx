@@ -34,6 +34,7 @@ export default async function NewReportPage({
       title: string
       examType: string
       date: string
+      maxScore?: number
       totalQ?: number
       objQ?: number
       subjQ?: number
@@ -117,7 +118,7 @@ export default async function NewReportPage({
       const testIds = testOptions.map((t) => t.id)
       const { data: allScores } = await admin
         .from('test_scores')
-        .select('student_id, test_id, score, tests!test_id(title, exam_type, total_q, obj_q, subj_q, difficulty, test_date)')
+        .select('student_id, test_id, score, tests!test_id(title, exam_type, max_score, total_q, obj_q, subj_q, difficulty, test_date)')
         .in('test_id', testIds)
 
       const testStats: Record<string, { sum: number; count: number }> = {}
@@ -140,6 +141,7 @@ export default async function NewReportPage({
           title:        t.title,
           examType:     t.exam_type,
           date:         t.test_date,
+          maxScore:     t.max_score  ?? undefined,
           totalQ:       t.total_q    ?? undefined,
           objQ:         t.obj_q      ?? undefined,
           subjQ:        t.subj_q     ?? undefined,
