@@ -43,6 +43,7 @@ export default async function NewReportPage({
     }>
     assignments: Array<{ title: string; completionPct: number | null; issueDate?: string; submitDate?: string; weekNum?: number }>
     avgAssignmentPct: number
+    initialNotes?: string
   }
 
   let students: StudentData[] = []
@@ -121,10 +122,11 @@ export default async function NewReportPage({
         .select('student_id, test_id, score, tests!test_id(title, exam_type, max_score, total_q, obj_q, subj_q, difficulty, test_date)')
         .in('test_id', testIds)
 
+      // 미응시(score null) 행은 개인 점수·분반 평균 모두에서 제외
       const testStats: Record<string, { sum: number; count: number }> = {}
       for (const s of allScores ?? []) {
         const tid = s.test_id ?? ''
-        if (!tid) continue
+        if (!tid || s.score === null) continue
         if (!testStats[tid]) testStats[tid] = { sum: 0, count: 0 }
         testStats[tid].sum += s.score ?? 0
         testStats[tid].count++
@@ -133,7 +135,7 @@ export default async function NewReportPage({
       for (const row of allScores ?? []) {
         const sid = row.student_id ?? ''
         const tid = row.test_id ?? ''
-        if (!sid || !tid) continue
+        if (!sid || !tid || row.score === null) continue
         const t = fromJson<TestScoreJoin>(row.tests)
         if (!scoreMap[sid]) scoreMap[sid] = {}
         scoreMap[sid][tid] = {
@@ -228,6 +230,8 @@ export default async function NewReportPage({
         scores:           scoreMap[m.id] ?? {},
         assignments:      studentAssignments[m.id] ?? [],
         avgAssignmentPct: assignmentPctMap[m.id] ?? 0,
+        // 기존 리포트가 있으면 특이사항을 채워서 수정 모드에서 이어서 편집 가능하게
+        initialNotes:     existing?.notes ?? '',
       }
     })
 

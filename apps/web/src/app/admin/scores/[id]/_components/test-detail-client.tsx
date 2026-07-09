@@ -12,6 +12,7 @@ interface Props {
   testId: string
   students: Student[]
   scoreMap: Record<string, number>
+  absentMap: Record<string, string> // studentId → 미응시 사유 (미응시 학생만)
   gradeCuts: Record<string, number> | null
   examType: string
   maxScore: number
@@ -30,6 +31,7 @@ export function TestDetailClient({
   testId,
   students,
   scoreMap,
+  absentMap,
   gradeCuts,
   examType,
   maxScore,
@@ -40,6 +42,13 @@ export function TestDetailClient({
   const [scores, setScores] = useState<Record<string, string>>(
     () => Object.fromEntries(Object.entries(scoreMap).map(([k, v]) => [k, v.toString()])),
   )
+  // 미응시: studentId → true, 사유: studentId → string
+  const [absent, setAbsent] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(Object.keys(absentMap).map((k) => [k, true])),
+  )
+  const [absentReasons, setAbsentReasons] = useState<Record<string, string>>(
+    () => ({ ...absentMap }),
+  )
   const [saveErr, setSaveErr] = useState('')
   const [saveOk, setSaveOk]   = useState(false)
 
@@ -49,12 +58,15 @@ export function TestDetailClient({
 
   const showGrades = GRADE_EXAM_TYPES.includes(examType) && gradeCuts !== null
 
-  // 통계
+  // 통계 — 미응시 학생은 평균/최고/최저에서 제외
   const validScores = students
+    .filter((s) => !absent[s.id])
     .map((s) => scores[s.id])
     .filter((v) => v !== undefined && v !== '')
     .map(Number)
     .filter((v) => !isNaN(v))
+
+  const absentCount = students.filter((s) => absent[s.id]).length
 
   const avg = validScores.length > 0
     ? validScores.reduce((a, b) => a + b, 0) / validScores.length
@@ -66,16 +78,38 @@ export function TestDetailClient({
     setSaveErr('')
     setSaveOk(false)
     startTransition(async () => {
-      const entries = students
-        .filter((s) => scores[s.id] !== undefined && scores[s.id] !== '')
+      // 미응시 학생: 점수 없이 미응시+사유로 저장 / 응시 학생: 입력된 점수만 저장
+      const absentEntries = students
+        .filter((s) => absent[s.id])
+        .map((s) => ({
+          studentId: s.id,
+          score: null,
+          isAbsent: true,
+          absenceReason: absentReasons[s.id] ?? '',
+        }))
+
+      const scoreEntries = students
+        .filter((s) => !absent[s.id] && scores[s.id] !== undefined && scores[s.id] !== '')
         .map((s) => ({ studentId: s.id, score: parseFloat(scores[s.id]) }))
         .filter((e) => !isNaN(e.score))
 
-      const result = await saveTestScores(testId, entries)
+      const result = await saveTestScores(testId, [...scoreEntries, ...absentEntries])
       if (!result.success) { setSaveErr(result.error); return }
       setSaveOk(true)
       router.refresh()
     })
+  }
+
+  function toggleAbsent(studentId: string) {
+    setAbsent((prev) => {
+      const next = !prev[studentId]
+      if (next) {
+        // 미응시로 전환하면 입력돼 있던 점수는 비운다
+        setScores((sc) => ({ ...sc, [studentId]: '' }))
+      }
+      return { ...prev, [studentId]: next }
+    })
+    setSaveOk(false)
   }
 
   async function handleOmrFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -104,13 +138,18 @@ export function TestDetailClient({
     startTransition(async () => {
       const result = await bulkSaveTestScores(testId, rows)
       setOmrResult(result)
-      // 로컬 점수도 업데이트
+      // 로컬 점수도 업데이트 — 점수가 들어온 학생은 미응시 표시 해제
       const updated = { ...scores }
+      const clearedAbsent = { ...absent }
       for (const row of rows) {
         const student = students.find((s) => s.name === row.name)
-        if (student) updated[student.id] = row.score.toString()
+        if (student) {
+          updated[student.id] = row.score.toString()
+          clearedAbsent[student.id] = false
+        }
       }
       setScores(updated)
+      setAbsent(clearedAbsent)
       router.refresh()
     })
   }
@@ -141,6 +180,14 @@ export function TestDetailClient({
           <span className="text-zinc-500">
             입력 <span className="font-bold text-zinc-900">{validScores.length}</span>/{students.length}명
           </span>
+          {absentCount > 0 && (
+            <>
+              <span className="text-zinc-300">|</span>
+              <span className="text-zinc-500">
+                미응시 <span className="font-bold text-zinc-900">{absentCount}</span>명 <span className="text-zinc-400">(평균 제외)</span>
+              </span>
+            </>
+          )}
         </div>
       )}
 
@@ -195,8 +242,9 @@ export function TestDetailClient({
               </tr>
             ) : (
               students.map((s) => {
+                const isAbsent = !!absent[s.id]
                 const raw      = scores[s.id]
-                const numScore = raw !== undefined && raw !== '' ? parseFloat(raw) : null
+                const numScore = !isAbsent && raw !== undefined && raw !== '' ? parseFloat(raw) : null
                 const grade    =
                   showGrades && numScore !== null && !isNaN(numScore) && gradeCuts
                     ? calcGrade(numScore, gradeCuts)
@@ -205,19 +253,44 @@ export function TestDetailClient({
                 return (
                   <tr key={s.id} className="hover:bg-zinc-50 transition-colors">
                     <td className="px-5 py-3 font-medium text-zinc-900">{s.name}</td>
-                    <td className="px-5 py-3 text-center">
-                      <input
-                        type="number"
-                        value={scores[s.id] ?? ''}
-                        min={0}
-                        max={maxScore}
-                        step="0.5"
-                        onChange={(e) =>
-                          setScores((prev) => ({ ...prev, [s.id]: e.target.value }))
-                        }
-                        className="w-24 rounded-lg border border-zinc-200 bg-white px-2 py-2 text-center text-base font-bold text-zinc-950 placeholder:text-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 focus:outline-none transition-all shadow-sm"
-                        placeholder="—"
-                      />
+                    <td className="px-5 py-3">
+                      <div className="flex items-center justify-center gap-2">
+                        {isAbsent ? (
+                          <input
+                            type="text"
+                            value={absentReasons[s.id] ?? ''}
+                            onChange={(e) =>
+                              setAbsentReasons((prev) => ({ ...prev, [s.id]: e.target.value }))
+                            }
+                            className="w-40 rounded-lg border border-amber-200 bg-amber-50 px-2 py-2 text-sm text-zinc-800 placeholder:text-amber-400 focus:border-amber-400 focus:outline-none transition-all"
+                            placeholder="미응시 사유 (선택)"
+                          />
+                        ) : (
+                          <input
+                            type="number"
+                            value={scores[s.id] ?? ''}
+                            min={0}
+                            max={maxScore}
+                            step="0.5"
+                            onChange={(e) =>
+                              setScores((prev) => ({ ...prev, [s.id]: e.target.value }))
+                            }
+                            className="w-24 rounded-lg border border-zinc-200 bg-white px-2 py-2 text-center text-base font-bold text-zinc-950 placeholder:text-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 focus:outline-none transition-all shadow-sm"
+                            placeholder="—"
+                          />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => toggleAbsent(s.id)}
+                          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                            isAbsent
+                              ? 'bg-amber-500 text-white hover:bg-amber-600'
+                              : 'border border-zinc-200 text-zinc-400 hover:border-zinc-400 hover:text-zinc-700'
+                          }`}
+                        >
+                          미응시
+                        </button>
+                      </div>
                     </td>
                     {showGrades && (
                       <td className="px-5 py-3 text-center">

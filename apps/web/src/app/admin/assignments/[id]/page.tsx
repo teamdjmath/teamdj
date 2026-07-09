@@ -66,7 +66,9 @@ export default async function AssignmentProgressPage({
         </div>
       </div>
 
+      {/* key: 다른 과제로 이동 시 리마운트 — 이전 과제의 입력 상태가 남지 않도록 */}
       <ProgressClient
+        key={id}
         assignmentId={id}
         dueDate={assignment.due_date as string | null}
         students={students}

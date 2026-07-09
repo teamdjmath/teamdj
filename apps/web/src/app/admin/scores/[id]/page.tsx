@@ -37,15 +37,22 @@ export default async function TestDetailPage({
     .filter((s) => s.name)
     .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
 
-  // 이 테스트에 기입된 점수
-  const { data: scores } = await adminSupabase
+  // 이 테스트에 기입된 점수 (미응시 포함)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: scores } = await (adminSupabase as any)
     .from('test_scores')
-    .select('student_id, score')
+    .select('student_id, score, is_absent, absence_reason')
     .eq('test_id', id)
 
   const scoreMap: Record<string, number> = {}
-  for (const s of scores ?? []) {
-    scoreMap[s.student_id as string] = s.score as number
+  const absentMap: Record<string, string> = {} // studentId → 미응시 사유
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const s of (scores ?? []) as any[]) {
+    if (s.is_absent) {
+      absentMap[s.student_id as string] = (s.absence_reason as string | null) ?? ''
+    } else if (s.score !== null) {
+      scoreMap[s.student_id as string] = s.score as number
+    }
   }
 
   const totalQ    = test.total_q   as number | null
@@ -97,10 +104,13 @@ export default async function TestDetailPage({
         )}
       </div>
 
+      {/* key: 다른 테스트로 이동 시 리마운트 — 이전 테스트의 점수 입력 상태가 남지 않도록 */}
       <TestDetailClient
+        key={id}
         testId={id}
         students={students}
         scoreMap={scoreMap}
+        absentMap={absentMap}
         gradeCuts={gradeCuts}
         examType={examType}
         maxScore={maxScore}

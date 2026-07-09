@@ -58,15 +58,17 @@ export default async function ReportPage() {
   const reports = reportsResult.data ?? []
   const scores = scoresResult.data ?? []
 
-  const scoreData = scores.map((s) => {
-    const t = s.tests as { test_date: string; max_score: number; title: string } | null
-    return {
-      date:     t?.test_date ?? '',
-      score:    s.score ?? 0,
-      maxScore: t?.max_score ?? 100,
-      subject:  t?.title ?? '',
-    }
-  })
+  const scoreData = scores
+    .filter((s) => s.score !== null) // 미응시 기록은 추이 그래프에서 제외
+    .map((s) => {
+      const t = s.tests as { test_date: string; max_score: number; title: string } | null
+      return {
+        date:     t?.test_date ?? '',
+        score:    s.score ?? 0,
+        maxScore: t?.max_score ?? 100,
+        subject:  t?.title ?? '',
+      }
+    })
 
   const reportItems = reports.map((r) => ({
     id: r.id as string,

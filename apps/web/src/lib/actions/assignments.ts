@@ -129,6 +129,7 @@ export async function saveProgress(
     if (error) throw error
 
     revalidatePath('/admin/assignments')
+    revalidatePath(`/admin/assignments/${assignmentId}`)
     return { success: true, data: { savedCount: count ?? rows.length } }
   })
 }

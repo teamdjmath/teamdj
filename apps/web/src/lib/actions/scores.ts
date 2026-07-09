@@ -27,7 +27,9 @@ export type TestFormData = {
 
 export type ScoreEntry = {
   studentId: string
-  score: number
+  score: number | null       // 미응시면 null
+  isAbsent?: boolean
+  absenceReason?: string
 }
 
 export type BulkScoreRow = {
@@ -112,13 +114,17 @@ export async function saveTestScores(testId: string, entries: ScoreEntry[]): Pro
 
     const rows = entries.map((e) => ({
       test_id: testId, class_id: test.class_id, student_id: e.studentId,
-      test_date: test.test_date, score: e.score,
+      test_date: test.test_date,
+      score: e.isAbsent ? null : e.score,
+      is_absent: e.isAbsent ?? false,
+      absence_reason: e.isAbsent ? (e.absenceReason?.trim() || null) : null,
       total_q: test.total_q ?? null, obj_q: test.obj_q ?? null,
       subj_q: test.subj_q ?? null, difficulty: test.difficulty ?? null,
       input_method: 'manual' as const,
     }))
 
-    const { error } = await adminSupabase.from('test_scores').insert(rows)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (adminSupabase as any).from('test_scores').insert(rows)
     if (error) throw error
 
     revalidatePath(`/admin/scores/${testId}`)

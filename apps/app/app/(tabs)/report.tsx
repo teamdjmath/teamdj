@@ -58,13 +58,15 @@ export default function ReportScreen() {
         ])
 
         setScores(
-          (scoreRes.data ?? []).map((s) => ({
-            id: s.id as string,
-            score: s.score as number,
-            totalQ: s.total_q as number | null,
-            difficulty: s.difficulty as string | null,
-            testDate: s.test_date as string,
-          })),
+          (scoreRes.data ?? [])
+            .filter((s) => s.score !== null) // 미응시 기록은 제외
+            .map((s) => ({
+              id: s.id as string,
+              score: s.score as number,
+              totalQ: s.total_q as number | null,
+              difficulty: s.difficulty as string | null,
+              testDate: s.test_date as string,
+            })),
         )
         setReports(
           (reportRes.data ?? []).map((r) => ({
