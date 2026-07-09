@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback, useMemo } from 'react'
 import * as XLSX from 'xlsx'
-import { toPng } from 'html-to-image'
+import { toBlob } from 'html-to-image'
 import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
 import { StudentReportCard, type StudentData, type AssignmentItem } from './student-report-card'
@@ -298,7 +298,9 @@ export function ReportBuilderClient() {
         const node = captureRefs.current.get(i)
         if (!node) continue
 
-        const dataUrl = await toPng(node, {
+        // fetch(dataUrl)로 data: URL을 다시 읽으면 CSP connect-src에 막혀
+        // "Failed to fetch"가 남 — toBlob으로 바로 Blob을 받는다.
+        const blob = await toBlob(node, {
           cacheBust: true,
           pixelRatio: 2,
           backgroundColor: '#ffffff',
@@ -306,9 +308,7 @@ export function ReportBuilderClient() {
           width: node.offsetWidth,
           height: node.offsetHeight,
         })
-
-        const res = await fetch(dataUrl)
-        const blob = await res.blob()
+        if (!blob) continue
         zip.file(`${student.school}_${student.name}.png`, blob)
         setDownloadProgress(Math.round(((i + 1) / students.length) * 100))
       }

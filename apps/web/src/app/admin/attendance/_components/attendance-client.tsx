@@ -199,7 +199,7 @@ export function AttendanceClient({
             <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5">
               <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />
               <p className="text-xs text-zinc-500">
-                {selectedDate} 출결이 이미 기록되어 있습니다. 수정 후 저장하면 덮어씁니다.
+                {selectedDate} 출결 기록을 불러왔습니다. 아래에 기존 상태가 표시되어 있으니 수정할 부분만 바꾸고 저장하세요.
               </p>
             </div>
           )}

@@ -21,6 +21,18 @@ export default async function StudentsPage({
     class_groups: { name: string } | null
   }
 
+  // 분반 필터: embedded 관계에 .eq('class_members.class_id', ...)를 걸면 학생은 안 걸러지고
+  // 학생 안의 분반 목록만 걸러져서 미소속 학생도 그대로 나옴 — 소속 학생 id를 먼저 뽑아 .in()으로 거른다.
+  let filterStudentIds: string[] | null = null
+  if (filterClassId) {
+    const { data: memberRows } = await supabase
+      .from('class_members')
+      .select('student_id')
+      .eq('class_id', filterClassId)
+      .eq('is_active', true)
+    filterStudentIds = (memberRows ?? []).map((r) => r.student_id)
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let studentsQuery = (supabase as any)
     .from('users')
@@ -36,8 +48,8 @@ export default async function StudentsPage({
   if (q) {
     studentsQuery = studentsQuery.or(`name.ilike.%${q}%,phone.ilike.%${q}%`) as typeof studentsQuery
   }
-  if (filterClassId) {
-    studentsQuery = studentsQuery.eq('class_members.class_id', filterClassId) as typeof studentsQuery
+  if (filterStudentIds) {
+    studentsQuery = studentsQuery.in('id', filterStudentIds) as typeof studentsQuery
   }
 
   const [studentsRes, classesRes] = await Promise.all([

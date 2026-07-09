@@ -53,7 +53,10 @@ export default async function AttendancePage({ searchParams }: PageProps) {
     )
 
   return (
+    // key: 분반/날짜가 바뀌면 리마운트 — useState 초기값이 다시 실행되어
+    // 기존 출결 기록이 버튼 상태·결석 사유에 그대로 채워진다
     <AttendanceClient
+      key={`${selectedClassId ?? 'none'}-${selectedDate}`}
       classOptions={classOptions}
       selectedClassId={selectedClassId}
       selectedDate={selectedDate}

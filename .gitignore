@@ -33,7 +33,5 @@ tsconfig.tsbuildinfo
 # 서비스 전 내부 검증용 더미 데이터 시드/정리 스크립트 — 로컬에서만 사용, 저장소에는 안 올림
 apps/web/scripts/
 
-# public/은 인증 없이 누구나 접근 가능 — 학생 개인정보가 담긴 파일이 실수로 들어간 적 있어 엑셀/스프레드시트 전면 차단
-apps/web/public/*.xlsx
-apps/web/public/*.xls
-apps/web/public/*.csv
+# 내부 전달용 문서 (시스템 문서, 사용설명서 등) — 저장소에는 안 올림
+docs/
