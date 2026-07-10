@@ -59,6 +59,14 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
     setSubmitDateMap((m) => ({ ...m, [studentId]: value }))
   }
 
+  // 모든 학생의 제출일을 오늘로 일괄 설정
+  function setAllSubmitDatesToday() {
+    const next: Record<string, string> = {}
+    for (const s of students) next[s.id] = TODAY
+    setSubmitDateMap(next)
+    setResultMsg('')
+  }
+
   function setAll(value: number | null) {
     const updated: Record<string, number | null> = {}
     for (const s of students) updated[s.id] = value
@@ -134,7 +142,18 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
               <tr className="border-b border-zinc-100 text-left text-xs text-zinc-400">
                 <th className="px-4 py-3 font-medium whitespace-nowrap">학생</th>
                 <th className="px-4 py-3 font-medium">과제 진행도</th>
-                <th className="px-4 py-3 font-medium whitespace-nowrap">제출일</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    제출일
+                    <button
+                      type="button"
+                      onClick={setAllSubmitDatesToday}
+                      className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-zinc-600 hover:border-zinc-400 hover:text-zinc-900 transition-colors normal-case"
+                    >
+                      전원 오늘로
+                    </button>
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50">
