@@ -12,6 +12,8 @@ export default async function ClassesPage() {
     supabase
       .from('class_groups')
       .select(`id, name, subject, grade, schedule, is_active, start_time, end_time, day_of_week, class_members(count)`)
+      // 소속 해제(is_active=false)된 학생은 인원 수에서 제외
+      .eq('class_members.is_active', true)
       .order('created_at', { ascending: false }),
     supabase
       .from('users')
