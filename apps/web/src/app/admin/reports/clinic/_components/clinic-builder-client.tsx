@@ -9,7 +9,7 @@ import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
 import { ClinicReportCard, type ClinicStudentData } from './clinic-report-card'
 import { DatePicker } from '@/components/ui/date-picker'
-import { matchClinicStudents, saveClinicReports, type ClinicContent } from '@/lib/actions/reports'
+import { matchClinicStudents, saveClinicReports, sendBatchClinicKakao, type ClinicContent } from '@/lib/actions/reports'
 
 const PREVIEW_COUNT = 4
 
@@ -131,11 +131,13 @@ export function ClinicBuilderClient() {
   const [downloading, setDownloading] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
 
-  // 학생 매칭 (index → studentId | null)
+  // 학생 매칭 (index → studentId | null) — 저장·발송 대상 판별용 (백그라운드 자동 처리)
   const [matchMap, setMatchMap] = useState<Record<number, string | null>>({})
   const [saving, setSaving] = useState(false)
   const [saveProgress, setSaveProgress] = useState<{ cur: number; total: number } | null>(null)
   const [savedCount, setSavedCount] = useState<number | null>(null)
+  const [sending, setSending] = useState(false)
+  const [sendResult, setSendResult] = useState('')
 
   const captureRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 
@@ -225,6 +227,7 @@ export function ClinicBuilderClient() {
       const res = await saveClinicReports(items)
       if (res.error) { setError(res.error); return }
       setSavedCount(res.saved)
+      setSendResult('')
     } catch (err) {
       setError(err instanceof Error ? err.message : '저장 중 오류가 발생했습니다.')
     } finally {
@@ -232,6 +235,21 @@ export function ClinicBuilderClient() {
       setSaveProgress(null)
     }
   }, [students, matchMap, startDate])
+
+  // 저장된 리포트를 학부모 카카오톡으로 일괄 발송
+  const handleSend = useCallback(async () => {
+    if (!startDate) return
+    if (!confirm(`${dateString || startDate} 클리닉 리포트를 전체 학부모에게 카카오톡으로 발송하시겠습니까?`)) return
+    setSending(true)
+    setSendResult('')
+    try {
+      const res = await sendBatchClinicKakao(startDate)
+      if (res.error && res.sent === 0) setError(res.error)
+      else setSendResult(`${res.sent}명 발송 완료${res.failed > 0 ? ` · ${res.failed}명 실패` : ''}`)
+    } finally {
+      setSending(false)
+    }
+  }, [startDate, dateString])
 
   const handleDownloadAll = useCallback(async () => {
     if (students.length === 0) return
@@ -373,31 +391,37 @@ export function ClinicBuilderClient() {
           )}
         </div>
 
-        {/* 매칭 상태 */}
-        {students.length > 0 && (
-          <div className="flex items-center gap-2 text-xs">
-            <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 font-medium text-zinc-600">
-              학생 매칭 {matchedCount}/{students.length}명
-            </span>
-            {unmatchedCount > 0 && (
-              <span className="text-amber-600">
-                미매칭 {unmatchedCount}명은 저장·발송에서 제외됩니다 (이름·학교가 등록 정보와 일치해야 함)
-              </span>
-            )}
-          </div>
+        {/* 미매칭 안내 (있을 때만 한 줄) */}
+        {students.length > 0 && unmatchedCount > 0 && (
+          <p className="text-xs text-amber-600">
+            학생 계정을 찾지 못한 {unmatchedCount}명은 저장·발송에서 제외됩니다 (ZIP 다운로드에는 포함)
+          </p>
         )}
 
-        {/* 저장 완료 */}
+        {/* 저장 완료 + 발송 */}
         {savedCount !== null && (
-          <div className="flex items-center gap-3 rounded-xl bg-zinc-50 border border-zinc-200 px-4 py-3">
-            <p className="text-sm font-medium text-zinc-900">✓ {savedCount}명의 클리닉 리포트가 저장되었습니다.</p>
-            <button
-              type="button"
-              onClick={() => router.push(`/admin/reports/clinic/session/${startDate}`)}
-              className="rounded-lg bg-zinc-950 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 transition-colors"
-            >
-              발송 / 관리 →
-            </button>
+          <div className="flex flex-wrap items-center gap-3 rounded-xl bg-zinc-50 border border-zinc-200 px-4 py-3">
+            <p className="text-sm font-medium text-zinc-900">
+              ✓ {savedCount}명 저장 완료
+              {sendResult && <span className="ml-2 text-zinc-600">· {sendResult}</span>}
+            </p>
+            <div className="flex items-center gap-2 ml-auto">
+              <button
+                type="button"
+                onClick={handleSend}
+                disabled={sending}
+                className="rounded-lg bg-zinc-950 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 disabled:opacity-50 transition-colors"
+              >
+                {sending ? '발송 중…' : sendResult ? '카카오 재발송' : '카카오 전체 발송'}
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push(`/admin/reports/clinic/session/${startDate}`)}
+                className="rounded-lg border border-zinc-200 bg-white px-3.5 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 transition-colors"
+              >
+                관리 페이지 →
+              </button>
+            </div>
           </div>
         )}
 

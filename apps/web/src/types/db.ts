@@ -23,7 +23,8 @@ export interface ReportContent {
   notes:            string
   todayAttendance:  'present' | 'late' | 'absent' | 'absent_video' | null
   recentScore: {
-    score:        number
+    score:        number | null   // null + absent=true → 미응시
+    absent?:      boolean
     title:        string
     examType:     string
     date:         string

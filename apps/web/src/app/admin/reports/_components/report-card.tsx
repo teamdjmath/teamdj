@@ -209,6 +209,7 @@ export function ReportCard({ data, cardRef }: Props) {
   const maxScore    = recentScore?.maxScore ?? recentScore?.totalQ ?? null
   const classAvg    = recentScore?.classAverage ?? null
   const testScore   = recentScore?.score ?? null
+  const testAbsent  = recentScore?.absent === true
   // 결석 사유는 특이사항 맨 앞에 표시 — absenceReason은 사유 없을 때 '-'로 채워져 있으므로 제외
   const hasAbsenceReason = !!absenceReason?.trim() && absenceReason.trim() !== '-'
   const specialNote = [
@@ -314,8 +315,10 @@ export function ReportCard({ data, cardRef }: Props) {
       <SectionHeader label="테스트 점수" />
       <div style={{ padding: '9px 12px', borderBottom: `1px solid ${C.border}` }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 6 }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: C.body }}>
-            {testScore !== null
+          <span style={{ fontSize: 15, fontWeight: 700, color: testAbsent ? '#c0392b' : C.body }}>
+            {testAbsent
+              ? '미응시'
+              : testScore !== null
               ? `${testScore}점${maxScore ? ` / ${maxScore}점` : ''}`
               : '—'}
           </span>

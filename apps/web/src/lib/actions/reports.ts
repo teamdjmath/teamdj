@@ -480,10 +480,19 @@ export async function matchClinicStudents(
   const matches = entries.map((e) => {
     const candidates = rows.filter((s) => s.name === e.name.trim())
     if (candidates.length === 0) return { ...e, studentId: null }
+    // 이름이 유일하면 학교 표기가 달라도 매칭 (사람이 입력하는 데이터라 느슨하게)
     if (candidates.length === 1) return { ...e, studentId: candidates[0].id }
-    // 동명이인: 학교로 구분
-    const bySchool = candidates.find((s) => (s.school ?? '').trim() === e.school.trim())
-    return { ...e, studentId: bySchool?.id ?? null }
+    // 동명이인만 학교로 구분: 완전 일치 → 부분 일치("대륜고" ⊂ "대륜고등학교") 순
+    const school = e.school.trim()
+    const exact = candidates.find((s) => (s.school ?? '').trim() === school)
+    if (exact) return { ...e, studentId: exact.id }
+    const partial = school
+      ? candidates.find((s) => {
+          const st = (s.school ?? '').trim()
+          return st.includes(school) || school.includes(st)
+        })
+      : undefined
+    return { ...e, studentId: partial?.id ?? null }
   })
 
   return { matches }

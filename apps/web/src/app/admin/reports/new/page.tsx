@@ -30,7 +30,8 @@ export default async function NewReportPage({
     attendance: 'present' | 'late' | 'absent' | 'absent_video' | null
     absenceReason: string
     scores: Record<string, {
-      score: number
+      score: number | null
+      absent?: boolean
       title: string
       examType: string
       date: string
@@ -116,14 +117,18 @@ export default async function NewReportPage({
     const scoreMap: Record<string, StudentData['scores']> = {}
     if (studentIds.length > 0 && testOptions.length > 0) {
       const testIds = testOptions.map((t) => t.id)
-      const { data: allScores } = await admin
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: allScores } = await (admin as any)
         .from('test_scores')
-        .select('student_id, test_id, score, tests!test_id(title, exam_type, max_score, total_q, obj_q, subj_q, difficulty, test_date)')
+        .select('student_id, test_id, score, is_absent, tests!test_id(title, exam_type, max_score, total_q, obj_q, subj_q, difficulty, test_date)')
         .in('test_id', testIds)
 
-      // 미응시(score null) 행은 개인 점수·분반 평균 모두에서 제외
+      type ScoreRow = { student_id: string | null; test_id: string | null; score: number | null; is_absent: boolean | null; tests: unknown }
+      const scoreRows = (allScores ?? []) as ScoreRow[]
+
+      // 미응시(score null) 행은 분반 평균에서 제외
       const testStats: Record<string, { sum: number; count: number }> = {}
-      for (const s of allScores ?? []) {
+      for (const s of scoreRows) {
         const tid = s.test_id ?? ''
         if (!tid || s.score === null) continue
         if (!testStats[tid]) testStats[tid] = { sum: 0, count: 0 }
@@ -131,14 +136,17 @@ export default async function NewReportPage({
         testStats[tid].count++
       }
 
-      for (const row of allScores ?? []) {
+      for (const row of scoreRows) {
         const sid = row.student_id ?? ''
         const tid = row.test_id ?? ''
-        if (!sid || !tid || row.score === null) continue
+        if (!sid || !tid) continue
+        // 미응시는 absent 플래그로 전달, 그 외 score null(미입력)은 제외
+        if (row.score === null && !row.is_absent) continue
         const t = fromJson<TestScoreJoin>(row.tests)
         if (!scoreMap[sid]) scoreMap[sid] = {}
         scoreMap[sid][tid] = {
-          score:        row.score ?? 0,
+          score:        row.score,
+          absent:       row.is_absent ?? false,
           title:        t.title,
           examType:     t.exam_type,
           date:         t.test_date,

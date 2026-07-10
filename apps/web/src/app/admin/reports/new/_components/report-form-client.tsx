@@ -20,7 +20,8 @@ type StudentData = {
   attendance: 'present' | 'late' | 'absent' | 'absent_video' | null
   absenceReason: string
   scores: Record<string, {
-    score: number
+    score: number | null
+    absent?: boolean
     title: string
     examType: string
     date: string
@@ -86,7 +87,7 @@ export function ReportFormClient({
   const classStdDev = useMemo(() => {
     const scores = students
       .map(s => selectedTestId ? s.scores[selectedTestId]?.score : undefined)
-      .filter((s): s is number => s !== undefined)
+      .filter((s): s is number => typeof s === 'number')  // 미응시(null)·미입력(undefined) 제외
     if (scores.length < 2) return null
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length
     const variance = scores.reduce((sum, s) => sum + (s - avg) ** 2, 0) / scores.length
@@ -327,7 +328,9 @@ export function ReportFormClient({
                 <tbody className="divide-y divide-zinc-50">
                   {students.map((s) => {
                     const sd = perStudent[s.id] ?? { att: '', notes: '' }
-                    const score = selectedTestId ? s.scores[selectedTestId]?.score : null
+                    const scoreEntry = selectedTestId ? s.scores[selectedTestId] : undefined
+                    const isAbsent   = scoreEntry?.absent === true
+                    const score      = scoreEntry?.score ?? null  // undefined(미입력)도 null로 통일
                     return (
                       <tr key={s.id} className="hover:bg-zinc-50/50 transition-colors">
                         <td className="px-5 py-4">
@@ -358,9 +361,13 @@ export function ReportFormClient({
                           </select>
                         </td>
                         <td className="px-5 py-4 text-center">
-                          <span className={`text-sm font-bold ${score === null ? 'text-zinc-300' : 'text-zinc-900'}`}>
-                            {score !== null ? `${score}점` : '—'}
-                          </span>
+                          {isAbsent ? (
+                            <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-[11px] font-bold text-zinc-500">미응시</span>
+                          ) : (
+                            <span className={`text-sm font-bold ${score === null ? 'text-zinc-300' : 'text-zinc-900'}`}>
+                              {score !== null ? `${score}점` : '—'}
+                            </span>
+                          )}
                         </td>
                         <td className="px-5 py-4">
                           <input

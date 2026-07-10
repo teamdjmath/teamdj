@@ -9,6 +9,7 @@ type ParsedRow = StudentBulkRow & { _idx: number }
 
 type BulkResult = {
   succeeded: number
+  merged: number   // 기존 학생에 누락 정보만 보강한 건수
   failed: Array<{ name: string; phone: string; reason: string }>
 }
 
@@ -77,7 +78,7 @@ export function ExcelImportModal({
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const res = await bulkCreateStudents(rows.map(({ _idx, ...r }) => r))
       setResult(res)
-      if (res.succeeded > 0) router.refresh()
+      if (res.succeeded > 0 || res.merged > 0) router.refresh()
     })
   }
 
@@ -94,11 +95,19 @@ export function ExcelImportModal({
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-5 py-4">
             <p className="text-sm font-semibold text-zinc-900">등록 완료</p>
             <p className="mt-1 text-sm text-zinc-600">
-              성공 <span className="font-bold text-zinc-900">{result.succeeded}명</span>
+              신규 <span className="font-bold text-zinc-900">{result.succeeded}명</span>
+              {result.merged > 0 && (
+                <span> · 정보 보강 <span className="font-bold text-emerald-600">{result.merged}명</span></span>
+              )}
               {result.failed.length > 0 && (
                 <span> · 실패 <span className="font-bold text-red-500">{result.failed.length}명</span></span>
               )}
             </p>
+            {result.merged > 0 && (
+              <p className="mt-1 text-xs text-zinc-400">
+                정보 보강: 이미 등록된 학생(전화번호·이름 일치)에게 분반 소속·학부모 연결·빈 학교/학년만 추가했습니다.
+              </p>
+            )}
           </div>
 
           {result.failed.length > 0 && (

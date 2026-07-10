@@ -20,6 +20,7 @@ export type StudentBulkRow = {
 
 export type BulkResult = {
   succeeded: number
+  merged: number   // 기존 학생(전화번호+이름 일치)에 누락 정보만 보강한 건수
   failed: Array<{ name: string; phone: string; reason: string }>
 }
 
@@ -29,6 +30,13 @@ function toAuthEmail(phone: string) {
 
 function getInitialPassword() {
   return process.env.INITIAL_STUDENT_PASSWORD ?? 'teamdj1234'
+}
+
+function formatPhone(phone: string): string {
+  const d = phone.replace(/\D/g, '')
+  if (d.length === 11) return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`
+  if (d.length === 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`
+  return phone
 }
 
 export async function createStudent(formData: FormData): Promise<ActionResult> {
@@ -50,6 +58,25 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
     const parentPhone = (formData.get('parentPhone') as string || '').trim()
 
     if (!name || !phone) return { success: false, error: '필수 항목을 입력해주세요.' }
+
+    // 같은 이름+학교의 학생이 이미 있는데 전화번호가 다르면 실패 (중복 계정 방지)
+    if (school) {
+      const { data: sameNames } = await adminSupabase
+        .from('users')
+        .select('phone, school')
+        .eq('role', 'student')
+        .eq('name', name)
+      const hit = (sameNames ?? []).find((s) => {
+        const st = (s.school ?? '').trim()
+        return st === school || (!!st && (st.includes(school) || school.includes(st)))
+      })
+      if (hit && (hit.phone as string).replace(/\D/g, '') !== phone.replace(/\D/g, '')) {
+        return {
+          success: false,
+          error: `전화번호가 다릅니다 (지금 등록된 전화번호: ${formatPhone(hit.phone as string)})`,
+        }
+      }
+    }
 
     const password = getInitialPassword()
     const email = toAuthEmail(phone)
@@ -116,7 +143,7 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
   const { data: { user: caller } } = await supabase.auth.getUser()
 
   if (!caller) {
-    return { succeeded: 0, failed: rows.map((r) => ({ name: r.name, phone: r.phone, reason: '인증 필요' })) }
+    return { succeeded: 0, merged: 0, failed: rows.map((r) => ({ name: r.name, phone: r.phone, reason: '인증 필요' })) }
   }
 
   const password = getInitialPassword()
@@ -126,11 +153,105 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
   const classMap = new Map<string, string>((classes ?? []).map((c) => [c.name, c.id]))
 
   let succeeded = 0
+  let merged = 0
   const failed: BulkResult['failed'] = []
+
+  // 이름+학교가 같은 기존 학생 사전 조회 — 전화번호가 다르면 중복 계정 생성 대신 실패 처리
+  const rowNames = [...new Set(rows.map((r) => r.name.trim()).filter(Boolean))]
+  const { data: existingStudents } = rowNames.length > 0
+    ? await adminSupabase
+        .from('users')
+        .select('name, school, phone')
+        .eq('role', 'student')
+        .in('name', rowNames)
+    : { data: [] }
+
+  function findSameNameSchool(row: StudentBulkRow): { phone: string } | null {
+    const school = row.school.trim()
+    if (!school) return null
+    const hit = (existingStudents ?? []).find((s) => {
+      if (s.name.trim() !== row.name.trim()) return false
+      const st = (s.school ?? '').trim()
+      return st === school || (!!st && (st.includes(school) || school.includes(st)))
+    })
+    return hit ? { phone: hit.phone as string } : null
+  }
+
+  // 기존 학생(전화번호+이름 일치)에게 누락 정보만 보강 (분반 추가 등)
+  async function mergeIntoExisting(row: StudentBulkRow): Promise<string | null> {
+    const { data: existing } = await adminSupabase
+      .from('users')
+      .select('id, name, school, grade')
+      .eq('phone', row.phone)
+      .eq('role', 'student')
+      .maybeSingle()
+
+    if (!existing) return '이미 등록된 전화번호 (학생 정보 조회 실패)'
+    if (existing.name.trim() !== row.name.trim()) {
+      return `이미 다른 이름(${existing.name})으로 등록된 전화번호`
+    }
+
+    const userId = existing.id as string
+
+    // 빈 학교/학년만 채움 — 기존 값은 덮어쓰지 않음
+    const fill: Record<string, string> = {}
+    if (!existing.school?.trim() && row.school.trim()) fill.school = row.school.trim()
+    if (!existing.grade?.trim()  && row.grade.trim())  fill.grade  = row.grade.trim()
+    if (Object.keys(fill).length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await adminSupabase.from('users').update(fill as any).eq('id', userId)
+    }
+
+    // 분반: 없으면 추가, 비활성이면 재활성화
+    const classId = classMap.get(row.className)
+    if (classId) {
+      const { data: member } = await adminSupabase
+        .from('class_members')
+        .select('id, is_active')
+        .eq('student_id', userId)
+        .eq('class_id', classId)
+        .maybeSingle()
+
+      if (!member) {
+        await adminSupabase.from('class_members').insert({ class_id: classId, student_id: userId })
+      } else if (!member.is_active) {
+        await adminSupabase.from('class_members').update({ is_active: true }).eq('id', member.id)
+      }
+    }
+
+    // 학부모 연결: 없을 때만 추가
+    if (row.parentPhone) {
+      const { data: parent } = await adminSupabase
+        .from('users').select('id').eq('phone', row.parentPhone).eq('role', 'parent').maybeSingle()
+      if (parent) {
+        const { data: link } = await adminSupabase
+          .from('parent_links')
+          .select('id')
+          .eq('parent_id', parent.id)
+          .eq('student_id', userId)
+          .maybeSingle()
+        if (!link) {
+          await adminSupabase.from('parent_links').insert({ parent_id: parent.id, student_id: userId })
+        }
+      }
+    }
+
+    return null
+  }
 
   for (const row of rows) {
     const email = toAuthEmail(row.phone)
     try {
+      // 같은 이름+학교의 학생이 이미 있는데 전화번호가 다르면 실패 (오타/번호 변경 확인 유도)
+      const sameStudent = findSameNameSchool(row)
+      if (sameStudent && sameStudent.phone.replace(/\D/g, '') !== row.phone.replace(/\D/g, '')) {
+        failed.push({
+          name: row.name, phone: row.phone,
+          reason: `전화번호가 다릅니다 (지금 등록된 전화번호: ${formatPhone(sameStudent.phone)})`,
+        })
+        continue
+      }
+
       const { data: authData, error: authErr } = await adminSupabase.auth.admin.createUser({
         email, password, email_confirm: true,
         user_metadata: { name: row.name, role: 'student', phone: row.phone, school: row.school, grade: row.grade, must_change_password: true },
@@ -138,7 +259,14 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
 
       if (authErr) {
         const isDuplicate = authErr.message.includes('already been registered') || authErr.message.includes('already exists') || authErr.message.includes('duplicate')
-        failed.push({ name: row.name, phone: row.phone, reason: isDuplicate ? '이미 등록된 전화번호' : authErr.message })
+        if (isDuplicate) {
+          // 같은 전화번호+이름이면 누락 정보만 보강
+          const mergeErr = await mergeIntoExisting(row)
+          if (mergeErr) failed.push({ name: row.name, phone: row.phone, reason: mergeErr })
+          else merged++
+        } else {
+          failed.push({ name: row.name, phone: row.phone, reason: authErr.message })
+        }
         continue
       }
 
@@ -174,7 +302,7 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
   }
 
   revalidatePath('/admin/students')
-  return { succeeded, failed }
+  return { succeeded, merged, failed }
 }
 
 export async function updateStudent(formData: FormData): Promise<ActionResult> {
