@@ -90,7 +90,9 @@ export function ReportsClient({ classOptions, selectedClassId, selectedDate, ses
           {sessions.map((s) => (
             <Link
               key={`${s.date}__${s.classId}`}
-              href={`/admin/reports/session/${s.classId}/${s.date}`}
+              href={s.classId === 'clinic'
+                ? `/admin/reports/clinic/session/${s.date}`
+                : `/admin/reports/session/${s.classId}/${s.date}`}
               className="group rounded-xl border border-zinc-200 bg-white overflow-hidden hover:border-zinc-300 hover:shadow-sm transition-all"
             >
               {/* 썸네일 */}

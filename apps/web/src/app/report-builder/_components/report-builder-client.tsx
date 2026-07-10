@@ -353,11 +353,11 @@ export function ReportBuilderClient() {
                 >
                   당일
                 </button>
-                <div className="w-[155px]">
+                <div className="w-[200px]">
                   <DatePicker value={startDate} onChange={setStartDate} placeholder="시작일" />
                 </div>
                 <span className="text-zinc-400 font-bold text-sm">~</span>
-                <div className="w-[155px]">
+                <div className="w-[200px]">
                   <DatePicker value={endDate} onChange={setEndDate} placeholder="종료일" />
                 </div>
               </div>

@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveClassOptions } from '@/lib/data/class-options'
-import Link from 'next/link'
 import { ReportsClient } from './_components/reports-client'
+import { NewReportButton } from './_components/new-report-button'
 
 export default async function ReportsPage({
   searchParams,
@@ -13,14 +13,15 @@ export default async function ReportsPage({
 
   const classes = await getActiveClassOptions()
 
-  let query = admin
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query = (admin as any)
     .from('reports')
-    .select('id, report_date, class_id, image_url, kakao_sent_at, class:class_groups!class_id(name)')
+    .select('id, report_date, class_id, report_type, image_url, kakao_sent_at, class:class_groups!class_id(name)')
     .order('report_date', { ascending: false })
     .order('class_id')
 
-  if (selectedClassId) query = query.eq('class_id', selectedClassId) as typeof query
-  if (selectedDate)    query = query.eq('report_date', selectedDate)  as typeof query
+  if (selectedClassId) query = query.eq('class_id', selectedClassId)
+  if (selectedDate)    query = query.eq('report_date', selectedDate)
 
   const { data: rows } = await query
 
@@ -35,10 +36,13 @@ export default async function ReportsPage({
   }>()
 
   for (const row of rows ?? []) {
-    const r         = row as Record<string, unknown>
-    const classId   = r.class_id as string
-    const date      = r.report_date as string
-    const className = ((r.class as { name?: string } | null)?.name ?? '') as string
+    const r        = row as Record<string, unknown>
+    const isClinic = r.report_type === 'clinic'
+    const classId  = isClinic ? 'clinic' : (r.class_id as string)
+    const date     = r.report_date as string
+    const className = isClinic
+      ? '클리닉'
+      : (((r.class as { name?: string } | null)?.name ?? '') as string)
     const key       = `${date}__${classId}`
 
     if (!sessionMap.has(key)) {
@@ -57,15 +61,7 @@ export default async function ReportsPage({
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-zinc-950">학습 리포트</h1>
-        <Link
-          href="/admin/reports/new"
-          className="flex items-center gap-1.5 rounded-lg bg-zinc-950 px-3.5 py-2 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          리포트 작성
-        </Link>
+        <NewReportButton />
       </div>
 
       <ReportsClient

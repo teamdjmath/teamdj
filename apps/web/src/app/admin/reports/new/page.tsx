@@ -85,7 +85,6 @@ export default async function NewReportPage({
         .eq('class_id', selectedClassId)
         .order('test_date', { ascending: false })
         .limit(10),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       admin
         .from('assignments')
         .select('id, title, issue_date, due_date, created_at, week_num')

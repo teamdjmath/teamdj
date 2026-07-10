@@ -232,9 +232,10 @@ export async function sendKakaoReport(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: '인증이 필요합니다.' }
 
-  const { data: report } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: report } = await (supabase as any)
     .from('reports')
-    .select('id, student_id, image_url, report_date, student:users!student_id(name)')
+    .select('id, student_id, image_url, report_date, report_type, student:users!student_id(name)')
     .eq('id', reportId)
     .single()
 
@@ -253,6 +254,8 @@ export async function sendKakaoReport(
   const studentName = ((r.student as { name?: string } | null)?.name ?? '학생') as string
   const imageUrl    = r.image_url as string
   const reportDate  = r.report_date as string
+  const isClinic    = r.report_type === 'clinic'
+  const reportLabel = isClinic ? '클리닉 리포트' : '학습 리포트'
 
   const kakaoBody = (phone: string) => JSON.stringify({
     receiver_type: 'phone',
@@ -260,8 +263,8 @@ export async function sendKakaoReport(
     template_object: {
       object_type: 'feed',
       content: {
-        title:       `[TeamDJ] ${studentName} 학습 리포트`,
-        description: `${reportDate} 수업 학습 리포트입니다.`,
+        title:       `[TeamDJ] ${studentName} ${reportLabel}`,
+        description: isClinic ? `${reportDate} 클리닉 리포트입니다.` : `${reportDate} 수업 학습 리포트입니다.`,
         image_url:   imageUrl,
         link: { web_url: imageUrl, mobile_web_url: imageUrl },
       },
@@ -436,6 +439,253 @@ export async function sendBatchKakaoReports(
 
   revalidatePath('/admin/reports')
   revalidatePath(`/admin/reports/session/${classId}/${date}`)
+  return {
+    sent:   sentReportIds.size,
+    failed: failedReportIds.size + noImageFailed + noLinkFailed,
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// 클리닉 리포트 (엑셀 업로드 기반 · report_type = 'clinic')
+// ════════════════════════════════════════════════════════════════
+
+export type ClinicContent = {
+  type: 'clinic'
+  school: string
+  grade: string
+  arrivalTime: string
+  departureTime: string
+  clinicContent: string
+}
+
+// 엑셀의 이름/학교를 users 테이블 학생과 매칭 (카카오 발송에 student_id 필요)
+export async function matchClinicStudents(
+  entries: Array<{ name: string; school: string }>,
+): Promise<{ error?: string; matches: Array<{ name: string; school: string; studentId: string | null }> }> {
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error, matches: [] }
+
+  const admin = createAdminClient()
+  const names = [...new Set(entries.map((e) => e.name.trim()).filter(Boolean))]
+  if (names.length === 0) return { matches: [] }
+
+  const { data: students } = await admin
+    .from('users')
+    .select('id, name, school')
+    .eq('role', 'student')
+    .in('name', names)
+
+  const rows = (students ?? []) as Array<{ id: string; name: string; school: string | null }>
+
+  const matches = entries.map((e) => {
+    const candidates = rows.filter((s) => s.name === e.name.trim())
+    if (candidates.length === 0) return { ...e, studentId: null }
+    if (candidates.length === 1) return { ...e, studentId: candidates[0].id }
+    // 동명이인: 학교로 구분
+    const bySchool = candidates.find((s) => (s.school ?? '').trim() === e.school.trim())
+    return { ...e, studentId: bySchool?.id ?? null }
+  })
+
+  return { matches }
+}
+
+// 저장 (같은 학생+날짜의 clinic 리포트가 있으면 덮어씀 = 수정)
+export async function saveClinicReports(
+  items: Array<{
+    studentId: string
+    reportDate: string
+    contentJson: ClinicContent
+    imageBase64: string
+  }>,
+): Promise<{ error?: string; saved: number }> {
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error, saved: 0 }
+
+  const admin = createAdminClient()
+  let saved = 0
+
+  for (const item of items) {
+    const { error: uploadErr, publicUrl } = await uploadReportImage(
+      admin, item.studentId, item.reportDate, item.imageBase64,
+    )
+    if (uploadErr || !publicUrl) continue
+
+    // 기존 clinic 리포트 교체 (partial unique index는 upsert 타겟이 안 되므로 delete → insert)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = admin as any
+    await db.from('reports').delete()
+      .eq('student_id', item.studentId)
+      .eq('report_date', item.reportDate)
+      .eq('report_type', 'clinic')
+
+    const { error: insertErr } = await db.from('reports').insert({
+      class_id:     null,
+      student_id:   item.studentId,
+      report_date:  item.reportDate,
+      report_type:  'clinic',
+      content_json: asJson(item.contentJson),
+      image_url:    publicUrl,
+    })
+    if (!insertErr) saved++
+  }
+
+  await logAudit(auth.user, {
+    action: 'report.clinic_save', targetType: 'report',
+    targetId: items[0]?.reportDate ?? '', targetLabel: `클리닉 리포트 저장`,
+    detail: { count: saved, date: items[0]?.reportDate },
+  })
+
+  revalidatePath('/admin/reports')
+  return { saved }
+}
+
+// 날짜별 클리닉 리포트 전체 삭제 (이미지 포함)
+export async function deleteClinicSession(date: string): Promise<{ error?: string }> {
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error }
+
+  const admin = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = admin as any
+
+  const { data: reports } = await db
+    .from('reports')
+    .select('image_url')
+    .eq('report_type', 'clinic')
+    .eq('report_date', date)
+
+  const bucket = 'reports'
+  const marker = `/object/public/${bucket}/`
+  const filePaths = ((reports ?? []) as Array<{ image_url: string | null }>)
+    .map((r) => {
+      if (!r.image_url) return null
+      const idx = r.image_url.indexOf(marker)
+      return idx !== -1 ? decodeURIComponent(r.image_url.slice(idx + marker.length)) : null
+    })
+    .filter((p): p is string => !!p)
+
+  if (filePaths.length > 0) await admin.storage.from(bucket).remove(filePaths)
+
+  const { error } = await db
+    .from('reports')
+    .delete()
+    .eq('report_type', 'clinic')
+    .eq('report_date', date)
+
+  if (error) return { error: `삭제 실패: ${error.message}` }
+
+  await logAudit(auth.user, {
+    action: 'report.delete_session', targetType: 'report',
+    targetId: `clinic/${date}`, targetLabel: `${date} 클리닉 리포트`,
+    detail: { count: reports?.length ?? 0 },
+  })
+
+  revalidatePath('/admin/reports')
+  return {}
+}
+
+// 날짜별 클리닉 리포트 카카오 일괄 발송
+export async function sendBatchClinicKakao(
+  date: string,
+): Promise<{ error?: string; sent: number; failed: number }> {
+  const apiKey = process.env.KAKAO_API_KEY
+  if (!apiKey) return { error: '카카오 API 키가 설정되지 않았습니다.', sent: 0, failed: 0 }
+
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error, sent: 0, failed: 0 }
+
+  const admin = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = admin as any
+
+  const { data: reports } = await db
+    .from('reports')
+    .select('id, student_id, image_url, report_date, student:users!student_id(name)')
+    .eq('report_type', 'clinic')
+    .eq('report_date', date)
+
+  if (!reports?.length) return { error: '해당 날짜의 클리닉 리포트가 없습니다.', sent: 0, failed: 0 }
+
+  const now = new Date().toISOString()
+  const validReports = (reports as Array<Record<string, unknown>>).filter((r) => !!r.image_url)
+  const studentIds   = validReports.map((r) => r.student_id as string)
+
+  const { data: allLinks } = await admin
+    .from('parent_links')
+    .select('student_id, parent:users!parent_id(phone)')
+    .in('student_id', studentIds)
+
+  const linksByStudent = new Map<string, string[]>()
+  for (const link of allLinks ?? []) {
+    const lr    = link as Record<string, unknown>
+    const phone = (lr.parent as { phone?: string } | null)?.phone
+    const sid   = lr.student_id as string
+    if (!phone || !sid) continue
+    const phones = linksByStudent.get(sid) ?? []
+    phones.push(phone.replace(/-/g, ''))
+    linksByStudent.set(sid, phones)
+  }
+
+  const sendJobs = validReports.flatMap((r) => {
+    const sid         = r.student_id as string
+    const phones      = linksByStudent.get(sid) ?? []
+    const studentName = ((r.student as { name?: string } | null)?.name ?? '학생') as string
+    const imageUrl    = r.image_url as string
+    const reportDate  = r.report_date as string
+
+    return phones.map((phone) => ({
+      reportId: r.id as string,
+      body: JSON.stringify({
+        receiver_type: 'phone',
+        receiver_phone: phone,
+        template_object: {
+          object_type: 'feed',
+          content: {
+            title:       `[TeamDJ] ${studentName} 클리닉 리포트`,
+            description: `${reportDate} 클리닉 리포트입니다.`,
+            image_url:   imageUrl,
+            link: { web_url: imageUrl, mobile_web_url: imageUrl },
+          },
+          buttons: [
+            { title: '리포트 보기', link: { web_url: imageUrl, mobile_web_url: imageUrl } },
+          ],
+        },
+      }),
+    }))
+  })
+
+  const fetchResults = await Promise.allSettled(
+    sendJobs.map(({ body }) =>
+      fetch('https://kapi.kakao.com/v1/api/talk/friends/message/send', {
+        method:  'POST',
+        headers: { Authorization: `KakaoAK ${apiKey}`, 'Content-Type': 'application/json' },
+        body,
+      })
+    )
+  )
+
+  const sentReportIds = new Set<string>()
+  const failedReportIds = new Set<string>()
+  fetchResults.forEach((result, i) => {
+    const { reportId } = sendJobs[i]
+    if (result.status === 'fulfilled' && result.value.ok) sentReportIds.add(reportId)
+    else if (!sentReportIds.has(reportId)) failedReportIds.add(reportId)
+  })
+
+  if (sentReportIds.size > 0) {
+    await admin.from('reports').update({ kakao_sent_at: now }).in('id', [...sentReportIds])
+  }
+
+  const noImageFailed = reports.length - validReports.length
+  const noLinkFailed  = validReports.filter((r) => !linksByStudent.has(r.student_id as string)).length
+
+  await logAudit(auth.user, {
+    action: 'report.kakao_batch_send', targetType: 'report',
+    targetId: `clinic/${date}`, targetLabel: `${date} 클리닉 카카오 일괄 발송`,
+    detail: { sent: sentReportIds.size, failed: failedReportIds.size + noImageFailed + noLinkFailed },
+  })
+
+  revalidatePath('/admin/reports')
   return {
     sent:   sentReportIds.size,
     failed: failedReportIds.size + noImageFailed + noLinkFailed,
