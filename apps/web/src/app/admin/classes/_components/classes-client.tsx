@@ -333,10 +333,15 @@ export function ClassesClient({ classes, allTas }: { classes: ClassRow[]; allTas
               <span className="font-semibold">{deleteTarget.name}</span> 분반을 어떻게 처리하시겠습니까?
             </p>
 
-            {deleteTarget.studentCount > 0 && (
+            {deleteTarget.studentCount > 0 ? (
               <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
                 이 분반에 학생 {deleteTarget.studentCount}명이 있습니다.
                 완전 삭제하려면 먼저 모든 학생을 제거해주세요.
+              </div>
+            ) : (
+              <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600">
+                완전 삭제 시 이 분반의 과거 소속 이력·출결·점수·과제 기록도 함께 삭제됩니다.
+                기록을 남기려면 &ldquo;비활성화&rdquo;를 선택하세요.
               </div>
             )}
 

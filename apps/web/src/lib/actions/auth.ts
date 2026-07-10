@@ -10,6 +10,20 @@ export type AuthState = {
 
 const STAFF_ROLES = ['teacher', 'ta_desk', 'ta_assistant']
 
+// 스태프 근무 상태 자동 전환 — 로그인하면 온라인, 로그아웃하면 오프라인.
+// 실패해도 로그인/로그아웃 흐름을 막지 않는다.
+async function setStaffStatus(userId: string, status: 'online' | 'offline'): Promise<void> {
+  try {
+    const admin = createAdminClient()
+    await admin.from('staff_status').upsert(
+      { user_id: userId, status, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id' },
+    )
+  } catch {
+    // 상태 갱신 실패는 무시
+  }
+}
+
 // 로그인 성공/실패 기록 — 이 Supabase 버전은 auth.audit_log_entries에 인증 이벤트를
 // 기록하지 않아서(항상 빈 테이블), 모니터링 로그인 지표를 위해 직접 audit_logs에 남긴다.
 // 실패해도 로그인 흐름을 막지 않는다. 실패 건은 입력한 아이디를 저장하지 않는다(개인정보).
@@ -79,6 +93,10 @@ export async function signIn(
       name: (user?.user_metadata?.name as string | undefined) ?? '',
       role: role ?? '',
     })
+    // 스태프가 로그인하면 근무 상태를 자동으로 온라인 전환 (E2E 봇 제외)
+    if (user?.id && STAFF_ROLES.includes(role ?? '')) {
+      await setStaffStatus(user.id, 'online')
+    }
   }
 
   const dest = STAFF_ROLES.includes(role ?? '') ? '/admin/dashboard' : '/dashboard'
@@ -151,10 +169,18 @@ export async function signUp(
 }
 
 // ────────────────────────────────────────────────
-// 로그아웃
+// 로그아웃 — 수동 로그아웃과 무활동 자동 로그아웃 모두 이 함수를 거침
 // ────────────────────────────────────────────────
 export async function signOut(): Promise<void> {
   const supabase = await createClient()
+
+  // 스태프면 근무 상태를 오프라인으로 전환 (세션이 살아있을 때 먼저 처리)
+  const { data: { user } } = await supabase.auth.getUser()
+  const role = user?.user_metadata?.role as string | undefined
+  if (user?.id && STAFF_ROLES.includes(role ?? '')) {
+    await setStaffStatus(user.id, 'offline')
+  }
+
   await supabase.auth.signOut()
   redirect('/login')
 }

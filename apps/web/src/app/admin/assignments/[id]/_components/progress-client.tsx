@@ -59,11 +59,17 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
     setSubmitDateMap((m) => ({ ...m, [studentId]: value }))
   }
 
-  // 모든 학생의 제출일을 오늘로 일괄 설정
+  // 제출일 오늘로 일괄 설정 — 이미 100%(제출 완료)이고 제출일이 기록된 학생은
+  // 실제 제출일을 보존해야 하므로 덮어쓰지 않는다
   function setAllSubmitDatesToday() {
-    const next: Record<string, string> = {}
-    for (const s of students) next[s.id] = TODAY
-    setSubmitDateMap(next)
+    setSubmitDateMap((m) => {
+      const next: Record<string, string> = {}
+      for (const s of students) {
+        const done = pctMap[s.id] === 100 && !!m[s.id]
+        next[s.id] = done ? m[s.id] : TODAY
+      }
+      return next
+    })
     setResultMsg('')
   }
 
@@ -148,6 +154,7 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
                     <button
                       type="button"
                       onClick={setAllSubmitDatesToday}
+                      title="이미 100%이고 제출일이 있는 학생은 유지됩니다"
                       className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-zinc-600 hover:border-zinc-400 hover:text-zinc-900 transition-colors normal-case"
                     >
                       전원 오늘로

@@ -140,15 +140,19 @@ export async function hardDeleteClass(classId: string): Promise<ActionResult> {
     if (role !== 'teacher') return { success: false, error: '선생님만 분반을 삭제할 수 있습니다.' }
 
     const adminSupabase = createAdminClient()
+    // 재원 중(활성)인 학생만 검사 — 제외된 학생은 비활성 이력으로 남으므로
+    // 전체 행을 세면 학생을 모두 빼도 영원히 삭제가 막힌다 (분반 목록의 "0명" 표시와 같은 기준)
     const { count } = await adminSupabase
       .from('class_members')
       .select('*', { count: 'exact', head: true })
       .eq('class_id', classId)
+      .eq('is_active', true)
 
     if ((count ?? 0) > 0) {
-      return { success: false, error: '학생이 있는 분반은 완전 삭제할 수 없습니다. 학생을 모두 제거한 후 다시 시도해주세요.' }
+      return { success: false, error: '재원 중인 학생이 있는 분반은 완전 삭제할 수 없습니다. 학생을 모두 제거한 후 다시 시도해주세요.' }
     }
 
+    // 과거 소속 이력·출결·점수 등 분반에 연결된 기록은 DB 규칙(CASCADE)에 따라 함께 삭제됨
     const { error } = await adminSupabase.from('class_groups').delete().eq('id', classId)
     if (error) throw error
 
