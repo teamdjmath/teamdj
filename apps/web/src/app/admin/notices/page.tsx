@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { filterTestNamed, getViewerIsSuperAdmin, isTestName } from '@/lib/test-data'
 import { NoticesClient } from './_components/notices-client'
 
 export default async function NoticesPage({
@@ -43,11 +44,15 @@ export default async function NoticesPage({
     authorName: (n.users as { name: string } | null)?.name ?? '',
   }))
 
+  // 테스트 분반 대상 공지는 관리자에게만 노출
+  const viewerIsAdmin = await getViewerIsSuperAdmin()
+  const visibleNotices = notices.filter((n) => viewerIsAdmin || !n.className || !isTestName(n.className))
+
   return (
     <NoticesClient
-      classOptions={(classes ?? []).map((c) => ({ id: c.id, name: c.name }))}
+      classOptions={(await filterTestNamed(classes ?? [])).map((c) => ({ id: c.id, name: c.name }))}
       selectedClassId={selectedClassId ?? null}
-      notices={notices}
+      notices={visibleNotices}
     />
   )
 }

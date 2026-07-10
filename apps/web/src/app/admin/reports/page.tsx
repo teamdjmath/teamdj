@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getActiveClassOptions } from '@/lib/data/class-options'
+import { getVisibleClassOptions } from '@/lib/data/class-options'
 import { ReportsClient } from './_components/reports-client'
 import { NewReportButton } from './_components/new-report-button'
 
@@ -11,7 +11,7 @@ export default async function ReportsPage({
   const { classId: selectedClassId, date: selectedDate } = await searchParams
   const admin = createAdminClient()
 
-  const classes = await getActiveClassOptions()
+  const classes = await getVisibleClassOptions()
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (admin as any)

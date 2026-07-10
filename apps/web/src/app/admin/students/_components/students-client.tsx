@@ -68,12 +68,13 @@ export function StudentsClient({
     debounceRef.current = setTimeout(() => pushParams(val, 1), 350)
   }
 
+  // 초기 비밀번호는 시스템이 자동 설정하므로 샘플에 비밀번호 열을 두지 않는다
   async function handleSampleDownload() {
     const XLSX = await import('xlsx')
     const data = [
-      { 이름: '홍길동', 전화번호: '01012345678', 초기비밀번호: 'pass1234', 학교명: '세종고', 학년: '1', 분반명: '수학A반', 학부모전화번호: '01011112222' },
-      { 이름: '김철수', 전화번호: '01087654321', 초기비밀번호: 'pass1234', 학교명: '강남고', 학년: '2', 분반명: '수학A반', 학부모전화번호: '01033334444' },
-      { 이름: '이영희', 전화번호: '01055556666', 초기비밀번호: 'pass5678', 학교명: '세종중', 학년: '3', 분반명: '영어B반', 학부모전화번호: '' },
+      { 이름: '홍길동', 전화번호: '01012345678', 학교명: '세종고', 학년: '1', 분반명: '수학A반', 학부모전화번호: '01011112222' },
+      { 이름: '김철수', 전화번호: '01087654321', 학교명: '강남고', 학년: '2', 분반명: '수학A반', 학부모전화번호: '01033334444' },
+      { 이름: '이영희', 전화번호: '01055556666', 학교명: '세종중', 학년: '3', 분반명: '영어B반', 학부모전화번호: '' },
     ]
     const ws = XLSX.utils.json_to_sheet(data)
     const wb = XLSX.utils.book_new()
@@ -102,7 +103,7 @@ export function StudentsClient({
             onClick={handleSampleDownload}
             className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
           >
-            샘플 다운로드
+            등록용 샘플 엑셀
           </button>
           <button
             type="button"

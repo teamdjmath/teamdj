@@ -53,7 +53,6 @@ export function ExcelImportModal({
         _idx:      i + 2, // 엑셀 행 번호 (헤더=1)
         name:      String(row['이름'] ?? row['name'] ?? '').trim(),
         phone:     String(row['전화번호'] ?? row['phone'] ?? '').trim(),
-        password:  String(row['초기비밀번호'] ?? row['password'] ?? '').trim(),
         className: String(row['분반명'] ?? row['class'] ?? '').trim(),
         school:    String(row['학교명'] ?? row['school'] ?? '').trim(),
         grade:     String(row['학년'] ?? row['grade'] ?? '').trim(),
@@ -167,11 +166,16 @@ export function ExcelImportModal({
               onChange={handleFile}
               className="block w-full text-sm text-zinc-500 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-zinc-700"
             />
-            <p className="mt-1.5 text-[11px] text-zinc-400">
-              필수 컬럼: <span className="font-mono">이름, 전화번호, 학교명, 학년</span> &nbsp;|&nbsp;
-              선택: <span className="font-mono">분반명, 학부모전화번호</span>
-              &nbsp;·&nbsp;초기 비밀번호는 자동으로 설정됩니다.
-            </p>
+            <div className="mt-2 rounded-lg bg-zinc-50 border border-zinc-200 px-3 py-2.5 space-y-1">
+              <p className="text-[11px] font-semibold text-zinc-600">주의사항</p>
+              <ul className="list-disc pl-4 text-[11px] text-zinc-500 space-y-0.5">
+                <li><b>이름·전화번호는 반드시 입력</b>해야 합니다. 학생 전화번호가 로그인 아이디가 됩니다.</li>
+                <li>학교명·학년은 리포트에 표시되니 정확히 입력해주세요.</li>
+                <li>학부모 전화번호는 공란이어도 되지만, 비워두면 카카오 리포트 발송이 되지 않습니다.</li>
+                <li>분반명은 분반 관리에 등록된 이름과 정확히 같아야 자동 배정됩니다.</li>
+                <li>초기 비밀번호는 자동으로 설정됩니다 (첫 로그인 시 학생이 직접 변경).</li>
+              </ul>
+            </div>
             {parseError && (
               <p className="mt-1.5 text-xs text-red-500">{parseError}</p>
             )}

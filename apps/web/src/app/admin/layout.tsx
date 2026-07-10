@@ -9,6 +9,7 @@ import { NotificationsProvider } from '@/contexts/notifications-context'
 import { NotificationBell } from '@/components/ui/notification-bell'
 import { ToastContainer } from '@/components/ui/toast'
 import { InactivityGuard } from '@/components/ui/inactivity-guard'
+import { NativePickerOpener } from '@/components/ui/native-picker-opener'
 import { getUnreadConsultationCount } from '@/lib/actions/consultations'
 
 // 역할 계층 정의
@@ -280,6 +281,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
         <ToastContainer />
         <InactivityGuard />
+        <NativePickerOpener />
       </div>
     </NotificationsProvider>
   )

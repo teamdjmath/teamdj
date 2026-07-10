@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { filterTestNamed } from '@/lib/test-data'
 import { ClassesClient } from './_components/classes-client'
 
 export const revalidate = 0
@@ -41,7 +42,11 @@ export default async function ClassesPage() {
     taByClass.get(row.class_id)!.push(ta)
   }
 
-  const rows = (classesRes.data ?? []).map((c) => ({
+  // 테스트 이름 분반·조교는 관리자에게만 노출
+  const visibleClasses = await filterTestNamed(classesRes.data ?? [])
+  const visibleTas = await filterTestNamed(allTas)
+
+  const rows = visibleClasses.map((c) => ({
     id:           c.id,
     name:         c.name,
     subject:      c.subject,
@@ -57,7 +62,7 @@ export default async function ClassesPage() {
 
   return (
     <div>
-      <ClassesClient classes={rows} allTas={allTas} />
+      <ClassesClient classes={rows} allTas={visibleTas} />
     </div>
   )
 }

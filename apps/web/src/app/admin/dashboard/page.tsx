@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { isTestName } from '@/lib/test-data'
 import { DashboardScheduleClient } from './_components/dashboard-schedule-client'
 import type { StaffStatus } from '@/lib/actions/staff'
 
@@ -109,7 +110,13 @@ export default async function AdminDashboardPage() {
       .select('ta_id, class_id, is_all_classes'),
   ])
 
-  const classes = await classesPromise
+  const currentUserIsSuperAdmin =
+    ((staffUsersRes.data ?? []).find((u) => u.id === user.id)?.is_super_admin ?? false) as boolean
+
+  // 테스트 이름(test/테스트) 분반·스태프는 관리자에게만 노출
+  const classes = (await classesPromise).filter(
+    (c) => currentUserIsSuperAdmin || !isTestName(c.name),
+  )
 
   // ── 공지사항 가공 ──
   type NoticeRow = { id: string; title: string; created_at: string; is_pinned: boolean; class_id: string | null; className: string | null }
@@ -122,6 +129,8 @@ export default async function AdminDashboardPage() {
     class_id:  (n.class_id ?? null) as string | null,
     className: ((n.class_groups as { name?: string } | null)?.name ?? null) as string | null,
   }))
+    // 테스트 분반 대상 공지는 관리자에게만 (제목 기준 필터는 일반 공지 오탐 위험이 있어 분반명만)
+    .filter((n: NoticeRow) => currentUserIsSuperAdmin || !n.className || !isTestName(n.className))
 
   const openQnaCount = openQnaRes.count ?? 0
 
@@ -159,17 +168,17 @@ export default async function AdminDashboardPage() {
     statusMap[row.user_id] = { status: row.status, updatedAt: row.updated_at }
   }
 
-  const initialStaff = (staffUsersRes.data ?? []).map((u) => ({
-    userId:    u.id   as string,
-    name:      u.name as string,
-    role:      u.role as string,
-    isSuperAdmin: (u.is_super_admin ?? false) as boolean,
-    status:    toStatus(statusMap[u.id as string]?.status),
-    updatedAt: statusMap[u.id as string]?.updatedAt ?? null,
-  }))
-
-  const currentStaffRow = (staffUsersRes.data ?? []).find((u) => u.id === user.id)
-  const currentUserIsSuperAdmin = (currentStaffRow?.is_super_admin ?? false) as boolean
+  const initialStaff = (staffUsersRes.data ?? [])
+    // 테스트 계정은 관리자에게만 노출 (본인 계정은 항상 표시)
+    .filter((u) => currentUserIsSuperAdmin || u.id === user.id || !isTestName(u.name as string))
+    .map((u) => ({
+      userId:    u.id   as string,
+      name:      u.name as string,
+      role:      u.role as string,
+      isSuperAdmin: (u.is_super_admin ?? false) as boolean,
+      status:    toStatus(statusMap[u.id as string]?.status),
+      updatedAt: statusMap[u.id as string]?.updatedAt ?? null,
+    }))
 
   const roleLabel = currentUserIsSuperAdmin ? '관리자' : role === 'teacher' ? '선생님' : '조교'
 

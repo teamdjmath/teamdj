@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getVerifiedUser } from '@/lib/supabase/verified-user'
-import { getActiveClassOptions } from '@/lib/data/class-options'
+import { getVisibleClassOptions } from '@/lib/data/class-options'
 import { MessagesClient } from './_components/messages-client'
 
 export default async function MessagesPage({
@@ -14,7 +14,7 @@ export default async function MessagesPage({
   const userId = user!.id
 
   const [classOptions, membersResult, messagesResult] = await Promise.all([
-    getActiveClassOptions(),
+    getVisibleClassOptions(),
     supabase
       .from('class_members')
       .select('class_id, student_id, users!student_id(name)')

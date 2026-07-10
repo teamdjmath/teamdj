@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getVerifiedUser } from '@/lib/supabase/verified-user'
-import { getActiveClassOptions } from '@/lib/data/class-options'
+import { getVisibleClassOptions } from '@/lib/data/class-options'
 import { QnaClient } from './_components/qna-client'
 
 export default async function QnaPage({
@@ -29,7 +29,7 @@ export default async function QnaPage({
   const db = supabase as any
 
   const [classes, textbooksRes, taListRes] = await Promise.all([
-    getActiveClassOptions(),
+    getVisibleClassOptions(),
     db.from('textbooks').select('id, name').order('name'),
     supabase
       .from('users')

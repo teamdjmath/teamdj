@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { getActiveClassOptions } from '@/lib/data/class-options'
+import { getVisibleClassOptions } from '@/lib/data/class-options'
 import { AttendanceClient } from './_components/attendance-client'
 
 interface PageProps {
@@ -16,7 +16,7 @@ export default async function AttendancePage({ searchParams }: PageProps) {
 
   // 분반 목록 / 학생 목록 / 기존 출결 — 모두 URL 파라미터만 의존하므로 병렬 실행
   const [classes, { data: members }, { data: logs }] = await Promise.all([
-    getActiveClassOptions(),
+    getVisibleClassOptions(),
     selectedClassId
       ? supabase
           .from('class_members')

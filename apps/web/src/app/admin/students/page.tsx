@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { filterTestNamed } from '@/lib/test-data'
 import { StudentsClient } from './_components/students-client'
 
 const PAGE_SIZE = 50
@@ -85,7 +86,7 @@ export default async function StudentsPage({
     }
   })
 
-  const classOptions = (classesRes.data ?? []).map((c) => ({
+  const classOptions = (await filterTestNamed(classesRes.data ?? [])).map((c) => ({
     id:    c.id,
     label: `${c.name} (${c.subject} · ${c.grade})`,
   }))

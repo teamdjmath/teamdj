@@ -258,14 +258,13 @@ export function ReportBuilderClient() {
     }
   }, [students])
 
-  const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  // 파일 처리 공통 로직 — 버튼 업로드와 드래그앤드롭 양쪽에서 사용
+  const processFile = useCallback((file: File) => {
     setError('')
     setStudents([])
     setPreviewIndices([])
     setClassName('')
     setClassNotice('')
-    const file = e.target.files?.[0]
-    if (!file) return
 
     const reader = new FileReader()
     reader.onload = (ev) => {
@@ -281,8 +280,23 @@ export function ReportBuilderClient() {
       }
     }
     reader.readAsArrayBuffer(file)
-    e.target.value = ''
   }, [])
+
+  const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) processFile(file)
+    e.target.value = ''
+  }, [processFile])
+
+  // 드래그앤드롭 — 페이지 어디에나 엑셀을 떨어뜨리면 업로드
+  const [dragOver, setDragOver] = useState(false)
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    const file = Array.from(e.dataTransfer.files).find((f) => /\.(xlsx?|xls)$/i.test(f.name))
+    if (file) processFile(file)
+    else setError('엑셀 파일(.xlsx, .xls)만 업로드할 수 있습니다.')
+  }, [processFile])
 
   const handleDownloadAll = useCallback(async () => {
     if (students.length === 0) return
@@ -327,7 +341,25 @@ export function ReportBuilderClient() {
   const cardSharedProps = { className, dateString, maxScore, classAvg, classStdDev, classNotice }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div
+      className="min-h-screen bg-zinc-50"
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false) }}
+      onDrop={handleDrop}
+    >
+      {/* 드래그 중 오버레이 */}
+      {dragOver && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/60 pointer-events-none"
+          aria-hidden
+        >
+          <div className="rounded-2xl border-2 border-dashed border-white bg-white/10 px-10 py-8 text-center">
+            <p className="text-lg font-bold text-white">엑셀 파일을 여기에 놓으세요</p>
+            <p className="mt-1 text-sm text-zinc-300">{'{분반명}'}_학습리포트.xlsx</p>
+          </div>
+        </div>
+      )}
+
       {/* ── 헤더 */}
       <header className="sticky top-0 z-40 border-b border-zinc-100 bg-white/90 backdrop-blur-sm">
         <div className="container max-w-5xl mx-auto px-4 flex h-14 items-center justify-between">

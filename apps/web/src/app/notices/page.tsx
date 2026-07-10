@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { LandingNav } from '@/components/landing/landing-nav'
 import { SiteFooter } from '@/components/landing/site-footer'
-import { NoticeContent } from '@/components/notice-content'
 
 export const metadata: Metadata = {
   title: '공지사항 | TeamDJ',
@@ -14,25 +14,23 @@ function formatDate(iso: string) {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
 }
 
-// 로그인 없이 보는 공개 공지 — is_public=true인 공지만 노출 (admin 클라이언트로 조회, RLS 무관)
+// 로그인 없이 보는 공개 공지 목록 — 제목·등록일만 표시, 본문은 상세 페이지에서
 export default async function PublicNoticesPage() {
   const admin = createAdminClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: rows } = await (admin as any)
     .from('notices')
-    .select('id, title, content, is_pinned, image_urls, created_at')
+    .select('id, title, is_pinned, created_at')
     .eq('is_public', true)
     .order('is_pinned', { ascending: false })
     .order('created_at', { ascending: false })
-    .limit(50)
+    .limit(100)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const notices = ((rows ?? []) as any[]).map((n) => ({
     id: n.id as string,
     title: n.title as string,
-    content: n.content as string,
     isPinned: (n.is_pinned ?? false) as boolean,
-    imageUrls: (n.image_urls ?? []) as string[],
     createdAt: n.created_at as string,
   }))
 
@@ -54,20 +52,19 @@ export default async function PublicNoticesPage() {
             등록된 공지사항이 없습니다.
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="divide-y divide-zinc-100 border-t-2 border-zinc-950">
             {notices.map((n) => (
-              <article key={n.id} className="rounded-2xl border border-zinc-200 p-6 md:p-8">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <h2 className="text-lg md:text-xl font-bold text-zinc-950 break-keep">
-                    {n.isPinned && <span className="mr-1.5" aria-label="고정">📌</span>}
-                    {n.title}
-                  </h2>
-                  <time className="shrink-0 text-xs text-zinc-400 mt-1.5">{formatDate(n.createdAt)}</time>
-                </div>
-                <div className="text-[15px] text-zinc-700">
-                  <NoticeContent content={n.content} imageUrls={n.imageUrls} />
-                </div>
-              </article>
+              <Link
+                key={n.id}
+                href={`/notices/${n.id}`}
+                className="group flex items-center justify-between gap-4 py-5 px-1 hover:bg-zinc-50 transition-colors"
+              >
+                <span className="font-medium text-zinc-900 group-hover:text-zinc-950 break-keep">
+                  {n.isPinned && <span className="mr-1.5" aria-label="고정">📌</span>}
+                  {n.title}
+                </span>
+                <time className="shrink-0 text-sm text-zinc-400">{formatDate(n.createdAt)}</time>
+              </Link>
             ))}
           </div>
         )}

@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
-import { getActiveClassOptions } from '@/lib/data/class-options'
+import { getVisibleClassOptions } from '@/lib/data/class-options'
 import { ExamResultsClient } from './_components/exam-results-client'
 
 export default async function ExamResultsPage() {
   const supabase = await createClient()
 
   const [classOptions, membersResult, resultsResult] = await Promise.all([
-    getActiveClassOptions(),
+    getVisibleClassOptions(),
     supabase
       .from('class_members')
       .select('class_id, student_id, users!student_id(name)')

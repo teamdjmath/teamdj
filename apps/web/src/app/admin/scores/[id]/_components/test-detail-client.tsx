@@ -104,8 +104,9 @@ export function TestDetailClient({
     setAbsent((prev) => {
       const next = !prev[studentId]
       if (next) {
-        // 미응시로 전환하면 입력돼 있던 점수는 비운다
+        // 미응시로 전환하면 입력돼 있던 점수는 비우고, 사유는 기본값 '결석' (필요시 수정)
         setScores((sc) => ({ ...sc, [studentId]: '' }))
+        setAbsentReasons((r) => (r[studentId]?.trim() ? r : { ...r, [studentId]: '결석' }))
       }
       return { ...prev, [studentId]: next }
     })

@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { filterTestNamed } from '@/lib/test-data'
 
 export type ClassOption = {
   id: string
@@ -25,3 +26,9 @@ export const getActiveClassOptions = unstable_cache(
   ['active-class-options'],
   { tags: ['classes'], revalidate: 60 },
 )
+
+// 화면 표시용 — 이름에 test/테스트가 들어간 분반은 관리자(is_super_admin)에게만 보인다.
+// 캐시는 역할 무관하게 전체를 담고, 요청별로 필터만 적용.
+export async function getVisibleClassOptions(): Promise<ClassOption[]> {
+  return filterTestNamed(await getActiveClassOptions())
+}

@@ -445,8 +445,13 @@ export function QnaClient({
               {questions.map((q) => (
                 <tr
                   key={q.id}
+                  onClick={(e) => {
+                    // 행 내부의 버튼/링크(담당 조교 필터, 답변하기) 클릭은 제외
+                    if ((e.target as HTMLElement).closest('a, button')) return
+                    router.push(`/admin/qna/${q.id}`)
+                  }}
                   className={[
-                    'transition-colors',
+                    'cursor-pointer transition-colors',
                     q.isDuplicate ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-zinc-50',
                   ].join(' ')}
                 >

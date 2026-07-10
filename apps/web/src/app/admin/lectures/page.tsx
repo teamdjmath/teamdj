@@ -1,13 +1,13 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { getActiveClassOptions } from '@/lib/data/class-options'
+import { getVisibleClassOptions } from '@/lib/data/class-options'
 import { LecturesClient } from './_components/lectures-client'
 
 export default async function LecturesPage() {
   const admin = createAdminClient()
   const supabase = await createClient()
 
-  const classes = await getActiveClassOptions()
+  const classes = await getVisibleClassOptions()
 
   // 강좌별 접근 분반
   const { data: accessRows } = await admin
