@@ -321,8 +321,41 @@ export async function updateStudent(formData: FormData): Promise<ActionResult> {
     if (!studentId || !name || !phone) return { success: false, error: '필수 항목을 입력해주세요.' }
 
     const adminSupabase = createAdminClient()
+
+    // 전화번호가 바뀌는 경우: 전화번호가 곧 로그인 ID(내부 이메일)이므로
+    // 계정을 파기/재생성하지 않고 같은 계정의 로그인 ID를 함께 갱신한다 (기록 보존).
+    const { data: current } = await adminSupabase
+      .from('users').select('phone').eq('id', studentId).maybeSingle()
+    const phoneChanged = !!current && current.phone !== phone
+
+    if (phoneChanged) {
+      // 중복 선확인 — DB unique 제약에 걸리기 전에 친절한 메시지로 거부
+      const { data: dup } = await adminSupabase
+        .from('users').select('id').eq('phone', phone).neq('id', studentId).maybeSingle()
+      if (dup) return { success: false, error: '이미 등록된 전화번호입니다.' }
+
+      // 로그인 이메일 + 메타데이터의 전화번호 동기화 (기존 메타데이터 보존)
+      const { data: authUser } = await adminSupabase.auth.admin.getUserById(studentId)
+      const { error: authErr } = await adminSupabase.auth.admin.updateUserById(studentId, {
+        email: toAuthEmail(phone),
+        email_confirm: true,
+        user_metadata: { ...(authUser?.user?.user_metadata ?? {}), phone },
+      })
+      if (authErr) {
+        logger.error('updateStudent:auth-email-sync-failed', { action: 'updateStudent', userId: caller.id, error: authErr })
+        return { success: false, error: '로그인 정보 변경에 실패했습니다. 잠시 후 다시 시도해주세요.' }
+      }
+    }
+
     const { error } = await adminSupabase.from('users').update({ name, phone, school, grade }).eq('id', studentId)
     if (error) throw error
+
+    if (phoneChanged) {
+      await logAudit(caller, {
+        action: 'student.phone_change', targetType: 'student',
+        targetId: studentId, targetLabel: name,
+      })
+    }
 
     revalidatePath('/admin/students')
     revalidatePath(`/admin/students/${studentId}`)

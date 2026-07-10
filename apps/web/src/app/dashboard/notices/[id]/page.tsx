@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import ReactMarkdown from 'react-markdown'
+import { NoticeContent } from '@/components/notice-content'
 import { logger } from '@/lib/logger'
 
 export const metadata = {
@@ -60,11 +60,13 @@ export default async function NoticeDetailPage({ params }: { params: Promise<{ i
         </div>
       </div>
 
-      {/* 본문 영역 */}
-      <div className="prose prose-zinc max-w-none prose-sm md:prose-base text-zinc-700 leading-relaxed">
-        <ReactMarkdown>
-          {notice.content}
-        </ReactMarkdown>
+      {/* 본문 영역 — 이미지 URL/유튜브 링크는 미리보기로, 첨부 이미지는 본문 아래에 */}
+      <div className="text-zinc-700 text-[15px] md:text-base">
+        <NoticeContent
+          content={notice.content}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          imageUrls={((notice as any).image_urls ?? []) as string[]}
+        />
       </div>
     </div>
   )

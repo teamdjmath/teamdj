@@ -6,6 +6,8 @@ import { Modal } from '@/components/ui/modal'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InputField, SelectField, TextareaField } from '@/components/ui/form-field'
 import { createNotice, updateNotice, deleteNotice } from '@/lib/actions/notices'
+import { NoticeContent } from '@/components/notice-content'
+import { createClient } from '@/lib/supabase/client'
 
 type ClassOption = { id: string; name: string }
 
@@ -14,6 +16,8 @@ type Notice = {
   title: string
   content: string
   is_pinned: boolean
+  is_public: boolean
+  image_urls: string[]
   class_id: string | null
   created_at: string
   className: string | null
@@ -48,18 +52,53 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
     content: '',
     classId: '',
     isPinned: false,
+    isPublic: false,
+    imageUrls: [] as string[],
   })
+  const [uploading, setUploading] = useState(false)
 
   function openCreate() {
-    setForm({ title: '', content: '', classId: selectedClassId ?? '', isPinned: false })
+    setForm({ title: '', content: '', classId: selectedClassId ?? '', isPinned: false, isPublic: false, imageUrls: [] })
     setErr('')
     setModal({ type: 'create' })
   }
 
   function openEdit(n: Notice) {
-    setForm({ title: n.title, content: n.content, classId: n.class_id ?? '', isPinned: n.is_pinned })
+    setForm({
+      title: n.title, content: n.content, classId: n.class_id ?? '',
+      isPinned: n.is_pinned, isPublic: n.is_public, imageUrls: n.image_urls ?? [],
+    })
     setErr('')
     setModal({ type: 'edit', notice: n })
+  }
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    if (files.length === 0) return
+    e.target.value = ''
+    setUploading(true)
+    setErr('')
+    try {
+      const supabase = createClient()
+      const uploaded: string[] = []
+      for (const file of files) {
+        const ext = file.name.split('.').pop() || 'png'
+        const path = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
+        const { error: upErr } = await supabase.storage.from('notice-images').upload(path, file)
+        if (upErr) throw new Error('이미지 업로드에 실패했습니다.')
+        const { data: { publicUrl } } = supabase.storage.from('notice-images').getPublicUrl(path)
+        uploaded.push(publicUrl)
+      }
+      setForm((f) => ({ ...f, imageUrls: [...f.imageUrls, ...uploaded] }))
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : '이미지 업로드에 실패했습니다.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function removeImage(url: string) {
+    setForm((f) => ({ ...f, imageUrls: f.imageUrls.filter((u) => u !== url) }))
   }
 
   function handleClassFilter(classId: string) {
@@ -78,6 +117,8 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
         content: form.content.trim(),
         classId: form.classId || undefined,
         isPinned: form.isPinned,
+        isPublic: form.isPublic,
+        imageUrls: form.imageUrls,
       }
       const result =
         modal?.type === 'edit'
@@ -187,8 +228,40 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
             rows={8}
             value={form.content}
             onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-            placeholder="공지 내용을 입력하세요 (마크다운 지원)"
+            placeholder="공지 내용을 입력하세요. 이미지 주소나 유튜브 링크를 붙여넣으면 미리보기로 표시됩니다."
           />
+
+          {/* 이미지 첨부 */}
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-zinc-600">이미지 첨부</label>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageUpload}
+              disabled={uploading}
+              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded file:border-0 file:bg-zinc-200 file:px-2 file:py-1 file:text-xs file:text-zinc-700 disabled:opacity-50"
+            />
+            {uploading && <p className="text-xs text-zinc-400">업로드 중…</p>}
+            {form.imageUrls.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {form.imageUrls.map((url) => (
+                  <div key={url} className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="첨부" className="h-20 w-20 rounded-lg border border-zinc-200 object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(url)}
+                      className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-zinc-900 text-[10px] text-white hover:bg-red-500 transition-colors"
+                      aria-label="이미지 삭제"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <SelectField
             label="대상 분반"
@@ -200,6 +273,20 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </SelectField>
+
+          {/* 홈페이지 공개 공지 */}
+          <label className="flex items-start gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={form.isPublic}
+              onChange={(e) => setForm((f) => ({ ...f, isPublic: e.target.checked }))}
+              className="mt-0.5 h-4 w-4 rounded border-zinc-300 accent-zinc-950"
+            />
+            <span className="text-sm text-zinc-700">
+              홈페이지 공개 공지
+              <span className="block text-xs text-zinc-400">로그인 없이 누구나 볼 수 있는 공개 공지 페이지에 게시됩니다 (학부모 안내·홍보용)</span>
+            </span>
+          </label>
 
           <div className="flex items-center gap-3">
             <button
@@ -253,14 +340,17 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400">
               {modal.notice.is_pinned && <span className="text-zinc-900">📌 고정</span>}
+              {modal.notice.is_public && (
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-600">홈페이지 공개</span>
+              )}
               <span>{modal.notice.className ?? '전체'}</span>
               <span>·</span>
               <span>{modal.notice.authorName}</span>
               <span>·</span>
               <span>{formatDate(modal.notice.created_at)}</span>
             </div>
-            <div className="min-h-[120px] rounded-lg bg-zinc-50 px-4 py-3 text-sm text-zinc-800 whitespace-pre-wrap leading-relaxed">
-              {modal.notice.content}
+            <div className="min-h-[120px] rounded-lg bg-zinc-50 px-4 py-3 text-sm text-zinc-800">
+              <NoticeContent content={modal.notice.content} imageUrls={modal.notice.image_urls} />
             </div>
             <div className="flex gap-2 pt-1">
               <button
@@ -312,6 +402,9 @@ function NoticeRow({
           <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-zinc-600">
             {notice.className ?? '전체'}
           </span>
+          {notice.is_public && (
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-600">홈페이지 공개</span>
+          )}
           <span>{notice.authorName}</span>
           <span>·</span>
           <span>{formatDate(notice.created_at)}</span>

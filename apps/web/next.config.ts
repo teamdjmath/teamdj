@@ -11,7 +11,8 @@ const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://img.youtube.com https://i.ytimg.com https://*.supabase.co",
+  // img-src https: — 공지 본문에 외부 이미지 URL을 붙여넣어 미리보기하는 기능 지원 (이미지 로드는 저위험)
+  "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https://*.supabase.co",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://kapi.kakao.com",
   "frame-src https://www.youtube.com https://youtube.com",

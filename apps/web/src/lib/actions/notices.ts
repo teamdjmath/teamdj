@@ -13,6 +13,8 @@ export async function createNotice(data: {
   content: string
   classId?: string
   isPinned: boolean
+  isPublic?: boolean
+  imageUrls?: string[]
 }): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -24,12 +26,15 @@ export async function createNotice(data: {
     if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const adminSupabase = createAdminClient()
-    const { error } = await adminSupabase.from('notices').insert({
-      author_id: user.id,
-      title:     data.title,
-      content:   data.content,
-      class_id:  data.classId || null,
-      is_pinned: data.isPinned,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (adminSupabase as any).from('notices').insert({
+      author_id:  user.id,
+      title:      data.title,
+      content:    data.content,
+      class_id:   data.classId || null,
+      is_pinned:  data.isPinned,
+      is_public:  data.isPublic ?? false,
+      image_urls: data.imageUrls ?? [],
     })
     if (error) throw error
 
@@ -84,6 +89,7 @@ export async function createNotice(data: {
 
     revalidatePath('/admin/notices')
     revalidatePath('/dashboard')
+    revalidatePath('/notices')
     revalidateTag('notices', {})
     return { success: true }
   })
@@ -91,7 +97,7 @@ export async function createNotice(data: {
 
 export async function updateNotice(
   id: string,
-  data: { title: string; content: string; classId?: string; isPinned: boolean },
+  data: { title: string; content: string; classId?: string; isPinned: boolean; isPublic?: boolean; imageUrls?: string[] },
 ): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -103,13 +109,18 @@ export async function updateNotice(
     if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const adminSupabase = createAdminClient()
-    const { error } = await adminSupabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (adminSupabase as any)
       .from('notices')
-      .update({ title: data.title, content: data.content, class_id: data.classId || null, is_pinned: data.isPinned })
+      .update({
+        title: data.title, content: data.content, class_id: data.classId || null,
+        is_pinned: data.isPinned, is_public: data.isPublic ?? false, image_urls: data.imageUrls ?? [],
+      })
       .eq('id', id)
     if (error) throw error
 
     revalidatePath('/admin/notices')
+    revalidatePath('/notices')
     revalidateTag('notices', {})
     return { success: true }
   })
@@ -130,6 +141,7 @@ export async function deleteNotice(id: string): Promise<ActionResult> {
     if (error) throw error
 
     revalidatePath('/admin/notices')
+    revalidatePath('/notices')
     revalidateTag('notices', {})
     return { success: true }
   })

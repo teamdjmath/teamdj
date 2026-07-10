@@ -9,9 +9,10 @@ export default async function NoticesPage({
   const { classId: selectedClassId } = await searchParams
   const supabase = await createClient()
 
-  let noticesQuery = supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let noticesQuery = (supabase as any)
     .from('notices')
-    .select('id, title, content, is_pinned, class_id, created_at, class_groups!class_id(name), users!author_id(name)')
+    .select('id, title, content, is_pinned, is_public, image_urls, class_id, created_at, class_groups!class_id(name), users!author_id(name)')
     .order('is_pinned', { ascending: false })
     .order('created_at', { ascending: false })
 
@@ -28,11 +29,14 @@ export default async function NoticesPage({
     noticesQuery,
   ])
 
-  const notices = (rows ?? []).map((n) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const notices = ((rows ?? []) as any[]).map((n) => ({
     id: n.id as string,
     title: n.title as string,
     content: n.content as string,
     is_pinned: (n.is_pinned ?? false) as boolean,
+    is_public: (n.is_public ?? false) as boolean,
+    image_urls: (n.image_urls ?? []) as string[],
     class_id: (n.class_id ?? null) as string | null,
     created_at: n.created_at as string,
     className: (n.class_groups as { name: string } | null)?.name ?? null,
