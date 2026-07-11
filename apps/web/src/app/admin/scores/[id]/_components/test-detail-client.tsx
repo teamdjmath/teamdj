@@ -13,6 +13,7 @@ interface Props {
   students: Student[]
   scoreMap: Record<string, number>
   absentMap: Record<string, string> // studentId → 미응시 사유 (미응시 학생만)
+  attendanceAbsentMap: Record<string, boolean> // 시험일 출결이 결석(차감/영상)인 학생
   gradeCuts: Record<string, number> | null
   examType: string
   maxScore: number
@@ -32,6 +33,7 @@ export function TestDetailClient({
   students,
   scoreMap,
   absentMap,
+  attendanceAbsentMap,
   gradeCuts,
   examType,
   maxScore,
@@ -104,9 +106,12 @@ export function TestDetailClient({
     setAbsent((prev) => {
       const next = !prev[studentId]
       if (next) {
-        // 미응시로 전환하면 입력돼 있던 점수는 비우고, 사유는 기본값 '결석' (필요시 수정)
+        // 미응시로 전환하면 입력돼 있던 점수는 비운다.
+        // 사유는 시험일 출결이 결석으로 기록된 학생만 '결석'을 기본 입력 (출결 기록과 교차 검증)
         setScores((sc) => ({ ...sc, [studentId]: '' }))
-        setAbsentReasons((r) => (r[studentId]?.trim() ? r : { ...r, [studentId]: '결석' }))
+        if (attendanceAbsentMap[studentId]) {
+          setAbsentReasons((r) => (r[studentId]?.trim() ? r : { ...r, [studentId]: '결석' }))
+        }
       }
       return { ...prev, [studentId]: next }
     })

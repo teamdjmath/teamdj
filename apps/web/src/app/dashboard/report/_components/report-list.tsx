@@ -7,6 +7,7 @@ interface ReportItem {
   id: string
   createdAt: string
   imageUrl: string | null
+  isClinic?: boolean
 }
 
 export function ReportList({ reports }: { reports: ReportItem[] }) {
@@ -34,7 +35,7 @@ export function ReportList({ reports }: { reports: ReportItem[] }) {
                     month: 'long',
                     day: 'numeric',
                   })}{' '}
-                  리포트
+                  리포트{r.isClinic && '(클리닉)'}
                 </p>
                 <p className="text-xs text-zinc-400 mt-0.5">
                   {r.imageUrl ? '탭하여 이미지 보기' : '이미지 없음'}

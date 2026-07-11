@@ -565,6 +565,73 @@ export async function clearSuspension(studentId: string): Promise<ActionResult> 
   })
 }
 
+// 분반 명단 엑셀 다운로드용 — 등록용 샘플과 같은 컬럼 구성으로 반환해
+// 내려받은 파일을 수정 후 일괄 등록에 다시 쓸 수 있게 한다
+export type StudentExportRow = {
+  name: string
+  phone: string
+  school: string
+  grade: string
+  className: string
+  parentPhone: string
+}
+
+export async function getStudentsForExport(
+  classId: string,
+): Promise<{ error?: string; rows?: StudentExportRow[]; className?: string }> {
+  const supabase = await createClient()
+  const { data: { user: caller } } = await supabase.auth.getUser()
+  if (!caller) return { error: '인증이 필요합니다.' }
+
+  const role = caller.user_metadata?.role as string | undefined
+  if (!['teacher', 'ta_desk'].includes(role ?? '')) return { error: '권한이 없습니다.' }
+
+  const adminSupabase = createAdminClient()
+
+  const [{ data: cls }, { data: members }] = await Promise.all([
+    adminSupabase.from('class_groups').select('name').eq('id', classId).maybeSingle(),
+    adminSupabase
+      .from('class_members')
+      .select('student_id, users!student_id(name, phone, school, grade)')
+      .eq('class_id', classId)
+      .eq('is_active', true),
+  ])
+
+  if (!cls) return { error: '분반을 찾을 수 없습니다.' }
+
+  const studentIds = (members ?? []).map((m) => m.student_id as string)
+  const parentByStudent = new Map<string, string>()
+  if (studentIds.length > 0) {
+    const { data: links } = await adminSupabase
+      .from('parent_links')
+      .select('student_id, parent:users!parent_id(phone)')
+      .in('student_id', studentIds)
+    for (const l of links ?? []) {
+      const phone = (l.parent as { phone?: string } | null)?.phone
+      if (phone && !parentByStudent.has(l.student_id as string)) {
+        parentByStudent.set(l.student_id as string, phone)
+      }
+    }
+  }
+
+  const rows: StudentExportRow[] = (members ?? [])
+    .map((m) => {
+      const u = m.users as { name: string; phone: string; school: string | null; grade: string | null } | null
+      return {
+        name:        u?.name ?? '',
+        phone:       u?.phone ?? '',
+        school:      u?.school ?? '',
+        grade:       u?.grade ?? '',
+        className:   cls.name as string,
+        parentPhone: parentByStudent.get(m.student_id as string) ?? '',
+      }
+    })
+    .filter((r) => r.name)
+    .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+
+  return { rows, className: cls.name as string }
+}
+
 export async function resetStudentPassword(studentId: string): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user: caller } } = await supabase.auth.getUser()

@@ -110,6 +110,15 @@ export default async function AdminDashboardPage() {
       .select('ta_id, class_id, is_all_classes'),
   ])
 
+  // 이번 달 휴강 기록 (본인) — 근무 시간 차감용
+  const { data: absenceRows } = await adminDb
+    .from('schedule_absences')
+    .select('id, class_id, absence_date, note')
+    .eq('user_id', user.id)
+    .gte('absence_date', monthStart)
+    .lte('absence_date', monthEnd)
+    .order('absence_date')
+
   const currentUserIsSuperAdmin =
     ((staffUsersRes.data ?? []).find((u) => u.id === user.id)?.is_super_admin ?? false) as boolean
 
@@ -301,6 +310,7 @@ export default async function AdminDashboardPage() {
       <DashboardScheduleClient
         classes={classes}
         extraSchedules={extraSchedulesRes.data ?? []}
+        absences={absenceRows ?? []}
         initialStaff={initialStaff}
         currentUserId={user.id}
         currentUserRole={role ?? ''}

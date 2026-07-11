@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useCallback, useMemo } from 'react'
+import { useRef, useState, useCallback, useMemo, useEffect } from 'react'
 import * as XLSX from 'xlsx'
 import { toBlob } from 'html-to-image'
 import JSZip from 'jszip'
@@ -288,14 +288,38 @@ export function ReportBuilderClient() {
     e.target.value = ''
   }, [processFile])
 
-  // 드래그앤드롭 — 페이지 어디에나 엑셀을 떨어뜨리면 업로드
+  // 드래그앤드롭 — 페이지 어디에나 엑셀을 떨어뜨리면 업로드.
+  // React 트리의 div 핸들러는 자식 요소 위에서 dragover 기본동작이 막히지 않으면
+  // drop이 무시되는 경우가 있어, window 레벨에서 직접 처리한다.
   const [dragOver, setDragOver] = useState(false)
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setDragOver(false)
-    const file = Array.from(e.dataTransfer.files).find((f) => /\.(xlsx?|xls)$/i.test(f.name))
-    if (file) processFile(file)
-    else setError('엑셀 파일(.xlsx, .xls)만 업로드할 수 있습니다.')
+  useEffect(() => {
+    function onDragOver(e: DragEvent) {
+      if (e.dataTransfer?.types.includes('Files')) {
+        e.preventDefault()
+        setDragOver(true)
+      }
+    }
+    function onDrop(e: DragEvent) {
+      e.preventDefault()
+      setDragOver(false)
+      const files = Array.from(e.dataTransfer?.files ?? [])
+      if (files.length === 0) return
+      const file = files.find((f) => /\.(xlsx?|xls)$/i.test(f.name))
+      if (file) processFile(file)
+      else setError('엑셀 파일(.xlsx, .xls)만 업로드할 수 있습니다.')
+    }
+    function onDragLeave(e: DragEvent) {
+      // 창 밖으로 나갈 때만 오버레이 해제
+      if (!e.relatedTarget) setDragOver(false)
+    }
+    window.addEventListener('dragover', onDragOver)
+    window.addEventListener('drop', onDrop)
+    window.addEventListener('dragleave', onDragLeave)
+    return () => {
+      window.removeEventListener('dragover', onDragOver)
+      window.removeEventListener('drop', onDrop)
+      window.removeEventListener('dragleave', onDragLeave)
+    }
   }, [processFile])
 
   const handleDownloadAll = useCallback(async () => {
@@ -341,12 +365,7 @@ export function ReportBuilderClient() {
   const cardSharedProps = { className, dateString, maxScore, classAvg, classStdDev, classNotice }
 
   return (
-    <div
-      className="min-h-screen bg-zinc-50"
-      onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false) }}
-      onDrop={handleDrop}
-    >
+    <div className="min-h-screen bg-zinc-50">
       {/* 드래그 중 오버레이 */}
       {dragOver && (
         <div

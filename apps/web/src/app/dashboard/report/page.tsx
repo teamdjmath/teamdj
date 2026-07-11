@@ -35,7 +35,7 @@ export default async function ReportPage() {
   const [reportsResult, scoresResult, examResultsResult] = await Promise.all([
     supabase
       .from('reports')
-      .select('id, created_at, image_url')
+      .select('id, created_at, image_url, class:class_groups!class_id(name)')
       .eq('student_id', userId)
       .order('created_at', { ascending: false })
       .limit(10),
@@ -74,6 +74,8 @@ export default async function ReportPage() {
     id: r.id as string,
     createdAt: r.created_at as string,
     imageUrl: r.image_url as string | null,
+    // 클리닉 분반 리포트는 "리포트(클리닉)"으로 구분 표기
+    isClinic: ((r.class as { name?: string } | null)?.name ?? '').includes('클리닉'),
   }))
 
   const EXAM_TYPE_LABELS: Record<string, string> = { mock: '모의고사', midterm: '중간고사', final: '기말고사', other: '기타' }

@@ -14,7 +14,9 @@ import { categoryBadgeColor } from '@/lib/category-style'
 // ────── 상수 ──────
 const TODAY = new Date().toISOString().split('T')[0]
 const TODAY_DOW = new Date().getDay() // 0=일,1=월,...,6=토
-const CSAT_DEFAULT = '2026-11-19'
+// 수능일 3년치 — D-Day가 지나면 자동으로 다음 수능일이 기본값이 됨
+const CSAT_DATES = ['2026-11-19', '2027-11-18', '2028-11-16']
+const CSAT_DEFAULT = CSAT_DATES.find((d) => d >= new Date().toISOString().slice(0, 10)) ?? CSAT_DATES[CSAT_DATES.length - 1]
 const LS_DDAY      = 'teamdj_dday_target'
 const LS_DDAY_TITLE = 'teamdj_dday_title'
 

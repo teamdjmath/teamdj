@@ -37,12 +37,28 @@ export default async function TestDetailPage({
     .filter((s) => s.name)
     .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
 
-  // 이 테스트에 기입된 점수 (미응시 포함)
+  // 이 테스트에 기입된 점수 (미응시 포함) + 시험일 출결 (미응시 사유 기본값용)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: scores } = await (adminSupabase as any)
-    .from('test_scores')
-    .select('student_id, score, is_absent, absence_reason')
-    .eq('test_id', id)
+  const [{ data: scores }, { data: attRows }] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (adminSupabase as any)
+      .from('test_scores')
+      .select('student_id, score, is_absent, absence_reason')
+      .eq('test_id', id),
+    adminSupabase
+      .from('attendance_logs')
+      .select('student_id, status')
+      .eq('class_id', classId)
+      .eq('session_date', test.test_date as string),
+  ])
+
+  // 시험일에 결석(차감/영상)으로 기록된 학생 — 미응시 토글 시 사유 '결석' 자동 입력 대상
+  const attendanceAbsentMap: Record<string, boolean> = {}
+  for (const row of attRows ?? []) {
+    if (row.status === 'absent' || row.status === 'absent_video') {
+      attendanceAbsentMap[row.student_id as string] = true
+    }
+  }
 
   const scoreMap: Record<string, number> = {}
   const absentMap: Record<string, string> = {} // studentId → 미응시 사유
@@ -111,6 +127,7 @@ export default async function TestDetailPage({
         students={students}
         scoreMap={scoreMap}
         absentMap={absentMap}
+        attendanceAbsentMap={attendanceAbsentMap}
         gradeCuts={gradeCuts}
         examType={examType}
         maxScore={maxScore}

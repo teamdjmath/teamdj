@@ -68,6 +68,23 @@ export function StudentsClient({
     debounceRef.current = setTimeout(() => pushParams(val, 1), 350)
   }
 
+  // 선택된 분반의 현재 등록 명단을 엑셀로 — 등록용 샘플과 같은 컬럼이라 수정 후 재등록에 사용 가능
+  async function handleRosterDownload() {
+    if (!filterClassId) return
+    const { getStudentsForExport } = await import('@/lib/actions/students')
+    const res = await getStudentsForExport(filterClassId)
+    if (res.error || !res.rows) { alert(res.error ?? '명단 조회에 실패했습니다.'); return }
+    const XLSX = await import('xlsx')
+    const data = res.rows.map((r) => ({
+      이름: r.name, 전화번호: r.phone, 학교명: r.school, 학년: r.grade,
+      분반명: r.className, 학부모전화번호: r.parentPhone,
+    }))
+    const ws = XLSX.utils.json_to_sheet(data)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, '학생목록')
+    XLSX.writeFile(wb, `${res.className}_학생명단.xlsx`)
+  }
+
   // 초기 비밀번호는 시스템이 자동 설정하므로 샘플에 비밀번호 열을 두지 않는다
   async function handleSampleDownload() {
     const XLSX = await import('xlsx')
@@ -97,7 +114,16 @@ export function StudentsClient({
           <h1 className="text-xl font-bold text-zinc-950">학생 관리</h1>
           <p className="mt-0.5 text-sm text-zinc-400">총 {totalCount}명</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {filterClassId && (
+            <button
+              type="button"
+              onClick={handleRosterDownload}
+              className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
+            >
+              명단 엑셀 다운로드
+            </button>
+          )}
           <button
             type="button"
             onClick={handleSampleDownload}

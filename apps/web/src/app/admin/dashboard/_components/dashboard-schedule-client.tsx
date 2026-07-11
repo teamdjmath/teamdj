@@ -4,7 +4,11 @@ import { useState, useEffect, useTransition, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Modal } from '@/components/ui/modal'
 import { InputField } from '@/components/ui/form-field'
-import { createExtraSchedule, deleteExtraSchedule } from '@/lib/actions/schedule'
+import {
+  createExtraSchedule, deleteExtraSchedule,
+  createScheduleAbsence, deleteScheduleAbsence,
+  type ScheduleAbsenceRow,
+} from '@/lib/actions/schedule'
 import { useRouter } from 'next/navigation'
 import {
   updateStaffStatus, deleteTaAccount, deleteTeacherAccount, withdrawOwnTeacherAccount,
@@ -89,6 +93,7 @@ type PopupData =
 export interface DashboardScheduleProps {
   classes: ClassRow[]
   extraSchedules: ExtraSchedule[]
+  absences: ScheduleAbsenceRow[]
   initialStaff: StaffMember[]
   currentUserId: string
   currentUserRole: string
@@ -98,10 +103,10 @@ export interface DashboardScheduleProps {
 
 // ── 분반 카드
 function ClassCard({
-  cls, color, isActive, startHour, onClick,
+  cls, color, isActive, startHour, cancelled, onClick,
 }: {
   cls: ClassRow; color: ReturnType<typeof getClassColor>
-  isActive: boolean; startHour: number; onClick: () => void
+  isActive: boolean; startHour: number; cancelled?: boolean; onClick: () => void
 }) {
   const top    = (timeToMin(cls.start_time!) - startHour * 60) * PX_PER_MIN
   const height = Math.max((timeToMin(cls.end_time!) - timeToMin(cls.start_time!)) * PX_PER_MIN, 20)
@@ -111,13 +116,16 @@ function ClassCard({
       onClick={onClick}
       style={{
         top, height,
-        backgroundColor: color.bg, color: color.text,
-        borderLeft: `3px solid ${color.border}`,
-        boxShadow: isActive ? `0 0 0 2px ${color.ring}` : undefined,
-        zIndex: isActive ? 10 : 1,
+        backgroundColor: cancelled ? '#f4f4f5' : color.bg,
+        color: cancelled ? '#a1a1aa' : color.text,
+        borderLeft: cancelled ? '3px dashed #d4d4d8' : `3px solid ${color.border}`,
+        boxShadow: isActive && !cancelled ? `0 0 0 2px ${color.ring}` : undefined,
+        zIndex: isActive && !cancelled ? 10 : 1,
       }}
     >
-      <p className="text-[9px] font-bold leading-tight truncate">{cls.name}</p>
+      <p className={`text-[9px] font-bold leading-tight truncate ${cancelled ? 'line-through' : ''}`}>
+        {cancelled ? '휴강 · ' : ''}{cls.name}
+      </p>
       {height >= 30 && (
         <p className="text-[8px] opacity-65 mt-0.5 truncate">
           {cls.start_time!.slice(0, 5)}–{cls.end_time!.slice(0, 5)}
@@ -158,7 +166,7 @@ function ExtraCard({
 
 // ── 메인 컴포넌트
 export function DashboardScheduleClient({
-  classes, extraSchedules, initialStaff, currentUserId, currentUserRole, currentUserIsSuperAdmin, myInitialStatus,
+  classes, extraSchedules, absences, initialStaff, currentUserId, currentUserRole, currentUserIsSuperAdmin, myInitialStatus,
 }: DashboardScheduleProps) {
   const router = useRouter()
   const [now, setNow]           = useState(new Date())
@@ -167,6 +175,13 @@ export function DashboardScheduleClient({
   const [localExtras, setLocalExtras] = useState(() => extraSchedules)
   const [addOpen, setAddOpen]   = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  // 휴강 등록
+  const [localAbsences, setLocalAbsences] = useState(() => absences)
+  const [absOpen, setAbsOpen]   = useState(false)
+  const [absDate, setAbsDate]   = useState('')
+  const [absClassId, setAbsClassId] = useState('')
+  const [absNote, setAbsNote]   = useState('')
+  const [absError, setAbsError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteErr, setDeleteErr] = useState<string | null>(null)
@@ -240,7 +255,7 @@ export function DashboardScheduleClient({
   const minToTop = (min: number) => (min - dynStart * 60) * PX_PER_MIN
   const hours    = Array.from({ length: dynEnd - dynStart }, (_, i) => dynStart + i)
 
-  const { regularHours, extraHours } = useMemo(() => {
+  const { regularHours, extraHours, absenceHours } = useMemo(() => {
     const year  = now.getFullYear()
     const month = now.getMonth()
     const regularH = classes.reduce((total, cls) => {
@@ -254,8 +269,14 @@ export function DashboardScheduleClient({
     const extraH = localExtras.reduce((total, es) => {
       return total + (timeToMin(es.end_time) - timeToMin(es.start_time)) / 60
     }, 0)
-    return { regularHours: regularH, extraHours: extraH }
-  }, [classes, localExtras, now])
+    // 휴강 차감 — 등록된 휴강마다 그 분반의 1회 수업 시간을 뺀다
+    const absenceH = localAbsences.reduce((total, ab) => {
+      const cls = classes.find((c) => c.id === ab.class_id)
+      if (!cls?.start_time || !cls?.end_time) return total
+      return total + (timeToMin(cls.end_time) - timeToMin(cls.start_time)) / 60
+    }, 0)
+    return { regularHours: regularH, extraHours: extraH, absenceHours: absenceH }
+  }, [classes, localExtras, localAbsences, now])
 
   const todayDow = now.getDay()
   const nowMin   = now.getHours() * 60 + now.getMinutes()
@@ -330,6 +351,52 @@ export function DashboardScheduleClient({
       }
     })
   }
+
+  // ── 휴강 등록/삭제 ──
+  // 선택한 날짜에 수업이 있는 내 분반 (이미 휴강 등록된 것은 제외)
+  const absDateClasses = useMemo(() => {
+    if (!absDate) return []
+    const dow = new Date(absDate + 'T00:00:00').getDay()
+    return classes.filter(
+      (c) =>
+        c.day_of_week?.includes(dow) && c.start_time && c.end_time &&
+        !localAbsences.some((ab) => ab.class_id === c.id && ab.absence_date === absDate),
+    )
+  }, [absDate, classes, localAbsences])
+
+  function handleAddAbsence(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setAbsError(null)
+    if (!absClassId) { setAbsError('휴강한 수업을 선택해주세요.'); return }
+    startTransition(async () => {
+      const res = await createScheduleAbsence(absClassId, absDate, absNote)
+      if (!res.success) { setAbsError(res.error); return }
+      setLocalAbsences((prev) =>
+        [...prev, res.data!].sort((a, b) => a.absence_date.localeCompare(b.absence_date)),
+      )
+      setAbsOpen(false)
+      setAbsDate(''); setAbsClassId(''); setAbsNote('')
+    })
+  }
+
+  function handleDeleteAbsence(id: string) {
+    const snapshot = localAbsences.find((a) => a.id === id)
+    setLocalAbsences((prev) => prev.filter((a) => a.id !== id))
+    startTransition(async () => {
+      const res = await deleteScheduleAbsence(id)
+      if (!res.success && snapshot) {
+        setLocalAbsences((prev) =>
+          [...prev, snapshot].sort((a, b) => a.absence_date.localeCompare(b.absence_date)),
+        )
+      }
+    })
+  }
+
+  // 주간 시간표에서 휴강 표시용: "분반id|날짜" 집합
+  const absenceKeySet = useMemo(
+    () => new Set(localAbsences.map((a) => `${a.class_id}|${a.absence_date}`)),
+    [localAbsences],
+  )
 
   const dateRange  = `${weekDates[0].getMonth() + 1}/${weekDates[0].getDate()} – ${weekDates[6].getMonth() + 1}/${weekDates[6].getDate()}`
   const monthLabel = now.toLocaleDateString('ko-KR', { month: 'long' })
@@ -435,6 +502,7 @@ export function DashboardScheduleClient({
                               color={colorMap[cls.id]}
                               isActive={isActive(cls)}
                               startHour={dynStart}
+                              cancelled={absenceKeySet.has(`${cls.id}|${colDateStr}`)}
                               onClick={() => setPopup({ kind: 'class', cls, color: colorMap[cls.id] })}
                             />
                           ))}
@@ -524,6 +592,69 @@ export function DashboardScheduleClient({
               )}
             </div>
 
+            {/* 휴강 등록 */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h2 className="text-sm font-bold text-zinc-950">휴강 등록</h2>
+                  <p className="text-xs text-zinc-400 mt-0.5">{monthLabel} · 근무 시간에서 차감</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setAbsError(null); setAbsDate(''); setAbsClassId(''); setAbsNote(''); setAbsOpen(true) }}
+                  className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
+                >
+                  + 등록
+                </button>
+              </div>
+
+              {localAbsences.length === 0 ? (
+                <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-6 text-center text-sm text-zinc-400">
+                  이번 달 등록된 휴강이 없습니다.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {localAbsences.map((ab) => {
+                    const cls = classes.find((c) => c.id === ab.class_id)
+                    const d = new Date(ab.absence_date + 'T00:00:00')
+                    const dateLabel = d.toLocaleDateString('ko-KR', {
+                      month: 'numeric', day: 'numeric', weekday: 'short',
+                    })
+                    return (
+                      <div
+                        key={ab.id}
+                        className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 flex items-center justify-between gap-3"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-zinc-500 line-through truncate">
+                            {cls?.name ?? '삭제된 분반'}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-zinc-400">
+                            <span>{dateLabel}</span>
+                            {cls?.start_time && cls?.end_time && (
+                              <>
+                                <span>·</span>
+                                <span>{cls.start_time.slice(0, 5)}–{cls.end_time.slice(0, 5)}</span>
+                              </>
+                            )}
+                          </div>
+                          {ab.note && <p className="text-xs text-zinc-400 truncate mt-0.5">{ab.note}</p>}
+                        </div>
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => handleDeleteAbsence(ab.id)}
+                          className="shrink-0 text-xs text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
             {/* 근무 시간 요약 */}
             <div className="rounded-2xl border border-zinc-200 bg-white p-4">
               <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
@@ -538,10 +669,16 @@ export function DashboardScheduleClient({
                   <span className="text-xs text-zinc-500">추가 근무</span>
                   <span className="text-sm font-medium text-zinc-700">{extraHours.toFixed(1)}h</span>
                 </div>
+                {absenceHours > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-zinc-500">휴강 차감</span>
+                    <span className="text-sm font-medium text-red-500">-{absenceHours.toFixed(1)}h</span>
+                  </div>
+                )}
                 <div className="border-t border-zinc-100 pt-2 flex justify-between items-center">
                   <span className="text-xs font-semibold text-zinc-700">이번 달 합계</span>
                   <span className="text-sm font-bold text-zinc-900">
-                    {(regularHours + extraHours).toFixed(1)}h
+                    {(regularHours + extraHours - absenceHours).toFixed(1)}h
                   </span>
                 </div>
               </div>
@@ -739,6 +876,78 @@ export function DashboardScheduleClient({
               className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
             >
               {isPending ? '등록 중…' : '등록'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── 휴강 등록 모달 ── */}
+      <Modal open={absOpen} onClose={() => setAbsOpen(false)} title="휴강 등록">
+        <form onSubmit={handleAddAbsence} className="space-y-4">
+          <InputField
+            label="날짜" type="date" required
+            value={absDate}
+            onChange={(e) => { setAbsDate(e.target.value); setAbsClassId(''); setAbsError(null) }}
+          />
+
+          {absDate && (
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-zinc-600">휴강한 수업</label>
+              {absDateClasses.length === 0 ? (
+                <p className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-400">
+                  이 날짜에 예정된 수업이 없습니다.
+                </p>
+              ) : (
+                <div className="space-y-1.5">
+                  {absDateClasses.map((c) => {
+                    const selected = absClassId === c.id
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setAbsClassId(c.id)}
+                        className={[
+                          'w-full flex items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-colors',
+                          selected
+                            ? 'border-zinc-950 bg-zinc-950 text-white'
+                            : 'border-zinc-200 bg-white text-zinc-800 hover:border-zinc-400',
+                        ].join(' ')}
+                      >
+                        <span className="font-medium truncate">{c.name}</span>
+                        <span className={`shrink-0 text-xs ${selected ? 'text-zinc-300' : 'text-zinc-400'}`}>
+                          {c.start_time!.slice(0, 5)}–{c.end_time!.slice(0, 5)}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-zinc-600">사유 (선택)</label>
+            <input
+              value={absNote}
+              onChange={(e) => setAbsNote(e.target.value)}
+              placeholder="예: 학교 시험 기간 휴강"
+              className="w-full rounded-2xl border border-zinc-200 bg-zinc-50/50 px-5 py-3.5 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 placeholder:font-normal focus:border-zinc-900 focus:bg-white focus:outline-none transition-all"
+            />
+          </div>
+
+          {absError && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{absError}</p>
+          )}
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button" onClick={() => setAbsOpen(false)}
+              className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
+            >취소</button>
+            <button
+              type="submit" disabled={isPending || !absDate || !absClassId}
+              className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+            >
+              {isPending ? '등록 중…' : '휴강 등록'}
             </button>
           </div>
         </form>

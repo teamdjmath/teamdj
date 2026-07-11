@@ -6,8 +6,10 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { categoryBadgeStyle } from '@/lib/category-style'
 import { DdayCard } from './_components/dday-card'
 
-const CSAT_DEFAULT = '2026-11-19'
+// 수능일 3년치 (매년 11월 셋째 목요일) — D-Day가 지나면 자동으로 다음 수능일이 기본값이 됨
+const CSAT_DATES = ['2026-11-19', '2027-11-18', '2028-11-16']
 const TODAY = new Date().toISOString().split('T')[0]
+const CSAT_DEFAULT = CSAT_DATES.find((d) => d >= TODAY) ?? CSAT_DATES[CSAT_DATES.length - 1]
 
 // 서울 기준 요일 (0=일 1=월 … 6=토)
 function getTodayDow() {
@@ -206,7 +208,8 @@ export default async function DashboardPage() {
                     href={`/dashboard/notices/${n.id}`}
                     className="flex items-center gap-4 p-4 rounded-2xl hover:bg-zinc-50 transition-colors group"
                   >
-                    <span className="shrink-0 rounded-xl bg-zinc-100 px-3 py-1.5 text-xs font-bold text-zinc-400 group-hover:bg-zinc-200">
+                    {/* 분반 뱃지 — 좁은 화면에서는 숨겨 공지 제목이 보이도록 */}
+                    <span className="hidden sm:inline-block shrink-0 rounded-xl bg-zinc-100 px-3 py-1.5 text-xs font-bold text-zinc-400 group-hover:bg-zinc-200">
                       {noticeName}
                     </span>
                     <div className="flex-1 min-w-0">

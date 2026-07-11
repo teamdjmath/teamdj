@@ -26,12 +26,7 @@ export function LandingNav() {
           >
             상담 신청
           </Link>
-          <Link
-            href="/report-builder"
-            className="hidden sm:inline-block whitespace-nowrap rounded-full border border-zinc-200 px-4 py-1.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors"
-          >
-            학습 리포트
-          </Link>
+          {/* 학습 리포트 생성기 진입 버튼 — 당장 외부 노출 안 함 (페이지 자체는 /report-builder로 접근 가능) */}
           <Link
             href="/login"
             className="whitespace-nowrap rounded-full border border-zinc-200 px-2.5 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors"
