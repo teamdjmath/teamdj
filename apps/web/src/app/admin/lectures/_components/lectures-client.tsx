@@ -20,6 +20,12 @@ import {
   syncYouTubePlaylistToCourse,
   addCourseMaterial,
   deleteCourseMaterial,
+  getCourseAccessSummary,
+  getStudentLectureAccess,
+  setStudentLectureAccess,
+  getClassStudentsForAccess,
+  type StudentAccessMode,
+  type CourseAccessSummary,
 } from '@/lib/actions/lectures'
 import { createTextbook, deleteTextbook } from '@/lib/actions/textbooks'
 
@@ -47,7 +53,7 @@ function fmtDate(iso: string) {
   return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
-type SettingsTab = 'rename' | 'materials' | 'access'
+type SettingsTab = 'rename' | 'materials' | 'access' | 'students'
 
 type ModalType =
   | { kind: 'createCourse' }
@@ -99,6 +105,72 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
   // 강좌 설정 탭
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('rename')
 
+  // 개별 지급 탭 상태 — 학생 한 명을 고르면 강좌의 강의별로 [기본/지급/차단]을 편집 후 일괄 저장
+  const [exClassId, setExClassId] = useState('')
+  const [exStudents, setExStudents] = useState<Array<{ id: string; name: string }>>([])
+  const [exStudentId, setExStudentId] = useState('')
+  const [exModes, setExModes] = useState<Record<string, StudentAccessMode | null>>({}) // lectureId → mode
+  const [exDirty, setExDirty] = useState(false)
+  const [exSummary, setExSummary] = useState<CourseAccessSummary[]>([])
+  const [exLoading, setExLoading] = useState(false)
+  const [exSaved, setExSaved] = useState(false)
+
+  async function loadAccessSummary(courseName: string) {
+    const res = await getCourseAccessSummary(courseName)
+    if (res.error) { setErr(res.error); return }
+    setExSummary(res.rows ?? [])
+  }
+
+  async function loadExClassStudents(classId: string) {
+    setExClassId(classId)
+    setExStudentId('')
+    setExModes({})
+    setExDirty(false)
+    if (!classId) { setExStudents([]); return }
+    setExLoading(true)
+    const res = await getClassStudentsForAccess(classId)
+    setExStudents(res.students ?? [])
+    setExLoading(false)
+  }
+
+  async function loadExStudent(courseName: string, studentId: string) {
+    setExStudentId(studentId)
+    setExModes({})
+    setExDirty(false)
+    setExSaved(false)
+    if (!studentId) return
+    setExLoading(true)
+    const res = await getStudentLectureAccess(courseName, studentId)
+    if (res.error) setErr(res.error)
+    setExModes(res.modes ?? {})
+    setExLoading(false)
+  }
+
+  function setLectureMode(lectureId: string, mode: StudentAccessMode | null) {
+    setExModes((prev) => ({ ...prev, [lectureId]: mode }))
+    setExDirty(true)
+    setExSaved(false)
+  }
+
+  function setAllLectureModes(lectureIds: string[], mode: StudentAccessMode | null) {
+    setExModes(Object.fromEntries(lectureIds.map((id) => [id, mode])))
+    setExDirty(true)
+    setExSaved(false)
+  }
+
+  function handleSaveStudentAccess(courseName: string, lectureIds: string[]) {
+    if (!exStudentId) return
+    setErr('')
+    startTransition(async () => {
+      const entries = lectureIds.map((id) => ({ lectureId: id, mode: exModes[id] ?? null }))
+      const res = await setStudentLectureAccess(exStudentId, entries)
+      if (!res.success) { setErr(res.error); return }
+      setExDirty(false)
+      setExSaved(true)
+      await loadAccessSummary(courseName)
+    })
+  }
+
   function toggleCollapse(cn: string) {
     setCollapsed((prev) => ({ ...prev, [cn]: !prev[cn] }))
   }
@@ -132,6 +204,14 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
     setFileUploadErr('')
     setErr('')
     setSettingsTab(tab)
+    // 개별 지급 탭 초기화 + 예외 요약 로드
+    setExClassId('')
+    setExStudents([])
+    setExStudentId('')
+    setExModes({})
+    setExDirty(false)
+    setExSaved(false)
+    void loadAccessSummary(course.courseName)
     setModal({ kind: 'settings', courseName: course.courseName })
   }
   function handleRenameCourse() {
@@ -661,7 +741,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
 
               {/* 탭 */}
               <div className="flex gap-1 rounded-xl bg-zinc-100 p-1">
-                {([['rename', '이름 수정'], ['materials', '학습 자료'], ['access', '분반 설정']] as const).map(([tab, label]) => (
+                {([['rename', '이름 수정'], ['materials', '학습 자료'], ['access', '분반 설정'], ['students', '개별 지급']] as const).map(([tab, label]) => (
                   <button
                     key={tab}
                     type="button"
@@ -776,6 +856,148 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                   </div>
                 </div>
               )}
+
+              {/* 개별 지급 — 강좌 내 특정 강의를 학생 단위로 지급/차단 */}
+              {settingsTab === 'students' && (() => {
+                const lecs = [...(course?.lectures ?? [])].sort((a, b) => a.orderNum - b.orderNum)
+                const lecIds = lecs.map((l) => l.id)
+                return (
+                  <div className="space-y-4">
+                    <div className="rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-500 space-y-0.5">
+                      <p>· 기본값은 &ldquo;분반 설정&rdquo;을 따릅니다. 특정 강의만 다르게 줄 학생을 선택해 편집하세요.</p>
+                      <p>· <b className="text-red-600">차단</b>: 분반에 지급됐어도 이 강의는 안 보임 (차감) · <b className="text-emerald-600">지급</b>: 분반 미지급이어도 이 강의는 보임</p>
+                    </div>
+
+                    {/* 개별 설정이 있는 학생 요약 */}
+                    {exSummary.length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="text-xs font-semibold text-zinc-600">개별 설정된 학생 ({exSummary.length})</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {exSummary.map((s) => (
+                            <span key={s.studentId} className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
+                              {s.studentName}
+                              {s.grantCount > 0 && <span className="text-emerald-600">지급 {s.grantCount}</span>}
+                              {s.blockCount > 0 && <span className="text-red-500">차단 {s.blockCount}</span>}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 1) 분반 → 2) 학생 선택 */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-medium text-zinc-600">분반</label>
+                        <select
+                          value={exClassId}
+                          onChange={(e) => void loadExClassStudents(e.target.value)}
+                          className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
+                        >
+                          <option value="">선택</option>
+                          {classOptions.map((c) => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-medium text-zinc-600">학생</label>
+                        <select
+                          value={exStudentId}
+                          onChange={(e) => modal?.kind === 'settings' && void loadExStudent(modal.courseName, e.target.value)}
+                          disabled={exStudents.length === 0}
+                          className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none disabled:bg-zinc-50 disabled:text-zinc-400"
+                        >
+                          <option value="">{exStudents.length === 0 ? '분반 먼저 선택' : '선택'}</option>
+                          {exStudents.map((s) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {exLoading && <p className="text-xs text-zinc-400">불러오는 중…</p>}
+
+                    {/* 3) 강의별 토글 */}
+                    {exStudentId && !exLoading && (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold text-zinc-600">강의별 설정 ({lecs.length}강)</p>
+                          <div className="flex gap-1">
+                            <button type="button" onClick={() => setAllLectureModes(lecIds, null)}
+                              className="rounded-full border border-zinc-200 px-2.5 py-1 text-[11px] font-medium text-zinc-500 hover:border-zinc-400">전체 기본</button>
+                            <button type="button" onClick={() => setAllLectureModes(lecIds, 'grant')}
+                              className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100">전체 지급</button>
+                            <button type="button" onClick={() => setAllLectureModes(lecIds, 'block')}
+                              className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-medium text-red-600 hover:bg-red-100">전체 차단</button>
+                          </div>
+                        </div>
+
+                        {lecs.length === 0 ? (
+                          <p className="text-xs text-zinc-400">이 강좌에 등록된 강의가 없습니다.</p>
+                        ) : (
+                          <div className="max-h-64 overflow-y-auto rounded-xl border border-zinc-200 divide-y divide-zinc-100">
+                            {lecs.map((lec) => {
+                              const mode = exModes[lec.id] ?? null
+                              return (
+                                <div key={lec.id} className="flex items-center justify-between gap-3 px-3.5 py-2">
+                                  <span className="text-sm text-zinc-800 truncate">
+                                    <span className="mr-1.5 text-xs font-bold text-zinc-400">{lec.orderNum}강</span>
+                                    {lec.title}
+                                  </span>
+                                  <div className="flex gap-1 shrink-0">
+                                    {([['기본', null], ['지급', 'grant'], ['차단', 'block']] as const).map(([label, m]) => {
+                                      const active = mode === m
+                                      return (
+                                        <button
+                                          key={label}
+                                          type="button"
+                                          onClick={() => setLectureMode(lec.id, m)}
+                                          className={[
+                                            'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
+                                            active && m === null    ? 'bg-zinc-950 text-white' :
+                                            active && m === 'grant' ? 'bg-emerald-500 text-white' :
+                                            active && m === 'block' ? 'bg-red-500 text-white' :
+                                            'border border-zinc-200 text-zinc-400 hover:border-zinc-400 hover:text-zinc-700',
+                                          ].join(' ')}
+                                        >
+                                          {label}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+
+                        {err && <p className="text-sm text-red-500">{err}</p>}
+                        {exSaved && !exDirty && <p className="text-xs text-emerald-600">저장되었습니다.</p>}
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => setModal(null)}
+                            className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50">닫기</button>
+                          <button
+                            type="button"
+                            disabled={pending || !exDirty}
+                            onClick={() => modal?.kind === 'settings' && handleSaveStudentAccess(modal.courseName, lecIds)}
+                            className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+                          >
+                            {pending ? '저장 중…' : '저장'}
+                          </button>
+                        </div>
+                      </>
+                    )}
+
+                    {!exStudentId && (
+                      <>
+                        {err && <p className="text-sm text-red-500">{err}</p>}
+                        <button type="button" onClick={() => setModal(null)}
+                          className="w-full rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50">닫기</button>
+                      </>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           )
         })()}

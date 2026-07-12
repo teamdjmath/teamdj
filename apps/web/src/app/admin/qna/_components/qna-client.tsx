@@ -352,154 +352,163 @@ export function QnaClient({
         ))}
       </div>
 
-      {/* 분반 필터 */}
-      <div className="mb-4">
-        <select
-          value={selectedClassId ?? ''}
-          onChange={(e) => applyFilter({ classId: e.target.value })}
-          className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-700 focus:border-zinc-900 focus:outline-none"
-        >
-          <option value="">전체 분반</option>
-          {classOptions.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* 교재 + 문항번호 + 담당 조교 필터 */}
-      <div className="mb-6 flex flex-wrap gap-2 items-center">
-        <select
-          value={selectedTextbookId ?? ''}
-          onChange={(e) => applyFilter({ textbookId: e.target.value })}
-          className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-700 focus:border-zinc-900 focus:outline-none"
-        >
-          <option value="">교재 전체</option>
-          {textbookOptions.map((t) => (
-            <option key={t.id} value={t.id}>{t.name}</option>
-          ))}
-        </select>
-
-        <div className="flex items-center gap-1.5">
-          <input
-            type="text"
-            value={problemInput}
-            onChange={(e) => setProblemInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && applyFilter({ problemNumber: problemInput })}
-            placeholder="문항번호 검색"
-            className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-700 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none w-36"
-          />
-          <button
-            onClick={() => applyFilter({ problemNumber: problemInput })}
-            className="rounded-xl bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-200 transition-colors"
-          >
-            검색
-          </button>
+      {/* 검색·필터 패널 — 라벨이 붙은 큼직한 입력으로 한눈에 파악 */}
+      <div className="mb-6 rounded-2xl border border-zinc-200 bg-white p-4 md:p-5">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-bold text-zinc-900">검색 · 필터</p>
+          {hasActiveFilter && (
+            <button
+              onClick={() => { setProblemInput(''); applyFilter({ textbookId: '', problemNumber: '', taId: '' }) }}
+              className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-500 hover:border-zinc-400 hover:text-zinc-800 transition-colors"
+            >
+              ✕ 필터 초기화
+            </button>
+          )}
         </div>
 
-        {/* 담당 조교 필터 */}
-        <select
-          value={selectedTaId ?? ''}
-          onChange={(e) => applyFilter({ taId: e.target.value })}
-          className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-700 focus:border-zinc-900 focus:outline-none"
-        >
-          <option value="">담당 조교 전체</option>
-          {taOptions.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name} ({roleLabel(t.role)})
-            </option>
-          ))}
-        </select>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-zinc-500">분반</label>
+            <select
+              value={selectedClassId ?? ''}
+              onChange={(e) => applyFilter({ classId: e.target.value })}
+              className={`w-full rounded-xl border px-3.5 py-2.5 text-sm font-medium focus:border-zinc-900 focus:outline-none ${
+                selectedClassId ? 'border-zinc-900 bg-white text-zinc-900' : 'border-zinc-200 bg-zinc-50 text-zinc-600'
+              }`}
+            >
+              <option value="">전체 분반</option>
+              {classOptions.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
 
-        {hasActiveFilter && (
-          <button
-            onClick={() => { setProblemInput(''); applyFilter({ textbookId: '', problemNumber: '', taId: '' }) }}
-            className="rounded-xl px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-700 transition-colors"
-          >
-            필터 초기화
-          </button>
-        )}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-zinc-500">교재</label>
+            <select
+              value={selectedTextbookId ?? ''}
+              onChange={(e) => applyFilter({ textbookId: e.target.value })}
+              className={`w-full rounded-xl border px-3.5 py-2.5 text-sm font-medium focus:border-zinc-900 focus:outline-none ${
+                selectedTextbookId ? 'border-zinc-900 bg-white text-zinc-900' : 'border-zinc-200 bg-zinc-50 text-zinc-600'
+              }`}
+            >
+              <option value="">교재 전체</option>
+              {textbookOptions.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-zinc-500">문항번호</label>
+            <div className="flex gap-1.5">
+              <input
+                type="text"
+                value={problemInput}
+                onChange={(e) => setProblemInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && applyFilter({ problemNumber: problemInput })}
+                placeholder="예: 21"
+                className="min-w-0 flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:outline-none"
+              />
+              <button
+                onClick={() => applyFilter({ problemNumber: problemInput })}
+                className="shrink-0 rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
+              >
+                검색
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-zinc-500">담당 조교</label>
+            <select
+              value={selectedTaId ?? ''}
+              onChange={(e) => applyFilter({ taId: e.target.value })}
+              className={`w-full rounded-xl border px-3.5 py-2.5 text-sm font-medium focus:border-zinc-900 focus:outline-none ${
+                selectedTaId ? 'border-zinc-900 bg-white text-zinc-900' : 'border-zinc-200 bg-zinc-50 text-zinc-600'
+              }`}
+            >
+              <option value="">담당 조교 전체</option>
+              {taOptions.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} ({roleLabel(t.role)})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
-      {/* 질문 목록 */}
+      {/* 질문 목록 — 제목 중심 카드형. 분반·교재·문항 등 상세 정보는 클릭해서 들어가면 표시 */}
       {questions.length === 0 ? (
         <div className="rounded-xl border border-zinc-200 bg-white">
           <EmptyState message="질문이 없습니다." description="학생들이 질문을 등록하면 여기에 나타납니다." />
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white">
-          <table className="w-full min-w-[780px] text-sm">
-            <thead>
-              <tr className="border-b border-zinc-100 text-left text-xs text-zinc-400">
-                <th className="px-4 py-3 font-medium whitespace-nowrap min-w-[80px]">학생</th>
-                <th className="px-4 py-3 font-medium whitespace-nowrap min-w-[120px] hidden sm:table-cell">분반</th>
-                <th className="px-4 py-3 font-medium min-w-[100px] hidden md:table-cell">교재</th>
-                <th className="px-4 py-3 font-medium whitespace-nowrap min-w-[60px] hidden md:table-cell">문항</th>
-                <th className="px-4 py-3 font-medium">질문 내용</th>
-                <th className="px-4 py-3 font-medium whitespace-nowrap min-w-[80px]">상태</th>
-                <th className="px-4 py-3 font-medium whitespace-nowrap min-w-[90px] hidden md:table-cell">담당 조교</th>
-                <th className="px-4 py-3 font-medium whitespace-nowrap min-w-[100px] hidden lg:table-cell">등록일</th>
-                <th className="px-4 py-3 font-medium whitespace-nowrap min-w-[80px] text-right">상세</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-50">
-              {questions.map((q) => (
-                <tr
-                  key={q.id}
-                  onClick={(e) => {
-                    // 행 내부의 버튼/링크(담당 조교 필터, 답변하기) 클릭은 제외
-                    if ((e.target as HTMLElement).closest('a, button')) return
-                    router.push(`/admin/qna/${q.id}`)
-                  }}
-                  className={[
-                    'cursor-pointer transition-colors',
-                    q.isDuplicate ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-zinc-50',
-                  ].join(' ')}
-                >
-                  <td className="px-4 py-3 font-medium text-zinc-900 whitespace-nowrap">{q.studentName}</td>
-                  <td className="px-4 py-3 text-zinc-500 whitespace-nowrap hidden sm:table-cell">
-                    {q.className ?? <span className="text-zinc-300">-</span>}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-500 max-w-[140px] hidden md:table-cell">
-                    <span className="block truncate">{q.textbookName ?? <span className="text-zinc-300">-</span>}</span>
-                  </td>
-                  <td className="px-4 py-3 text-zinc-500 whitespace-nowrap hidden md:table-cell">
-                    {q.problem_number ?? <span className="text-zinc-300">-</span>}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600 w-full max-w-0">
-                    <p className="font-medium text-zinc-800 truncate">{q.title}</p>
-                    <span className="block truncate text-xs text-zinc-400">{q.content}</span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[q.status]}`}>
+        <div className="space-y-2.5">
+          {questions.map((q) => (
+            <div
+              key={q.id}
+              onClick={(e) => {
+                // 카드 내부 버튼(담당 조교 필터) 클릭은 제외
+                if ((e.target as HTMLElement).closest('a, button')) return
+                router.push(`/admin/qna/${q.id}`)
+              }}
+              className={[
+                'group cursor-pointer rounded-2xl border bg-white px-5 py-4 transition-all',
+                q.isDuplicate
+                  ? 'border-amber-300 bg-amber-50/60 hover:border-amber-400 hover:shadow-sm'
+                  : 'border-zinc-200 hover:border-zinc-400 hover:shadow-sm',
+              ].join(' ')}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_BADGE[q.status]}`}>
                       {STATUS_LABEL[q.status]}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap hidden md:table-cell">
-                    {q.assignedTaName ? (
-                      <button
-                        type="button"
-                        onClick={() => applyFilter({ taId: q.assigned_ta_id ?? '' })}
-                        className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 hover:bg-zinc-200 transition-colors"
-                      >
-                        {q.assignedTaName}
-                      </button>
-                    ) : (
-                      <span className="text-zinc-300">-</span>
+                    {q.isDuplicate && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                        중복 질문
+                      </span>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-400 whitespace-nowrap hidden lg:table-cell">{formatDate(q.created_at)}</td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
-                    <Link
-                      href={`/admin/qna/${q.id}`}
-                      className="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 transition-colors"
+                  </div>
+                  <p className="text-[15px] font-bold text-zinc-900 truncate group-hover:text-zinc-950">
+                    {q.title || '(제목 없음)'}
+                  </p>
+                  <p className="text-sm text-zinc-400 truncate mt-0.5">{q.content}</p>
+                  <p className="text-xs text-zinc-400 mt-2.5">
+                    <span className="font-medium text-zinc-500">{q.studentName}</span>
+                    <span className="mx-1.5 text-zinc-300">·</span>
+                    {formatDate(q.created_at)}
+                  </p>
+                </div>
+
+                <div className="shrink-0 flex flex-col items-end gap-2 pt-0.5">
+                  {q.assignedTaName ? (
+                    <button
+                      type="button"
+                      onClick={() => applyFilter({ taId: q.assigned_ta_id ?? '' })}
+                      title="이 조교의 질문만 보기"
+                      className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-200 transition-colors"
                     >
-                      답변하기
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      {q.assignedTaName}
+                    </button>
+                  ) : (
+                    <span className="rounded-full border border-dashed border-zinc-200 px-2.5 py-1 text-xs text-zinc-300">
+                      담당 없음
+                    </span>
+                  )}
+                  <svg
+                    className="w-4 h-4 text-zinc-200 group-hover:text-zinc-400 transition-colors"
+                    fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { materialDownloadUrl } from '@/lib/download-url'
 
@@ -23,6 +24,9 @@ interface Props {
 }
 
 export function CourseViewer({ courseName, lectures, materials }: Props) {
+  // 인앱 플레이어 — 유튜브로 이동하지 않고 앱 안에서 재생 (링크 비노출)
+  const [playing, setPlaying] = useState<Lecture | null>(null)
+
   return (
     <div className="flex flex-col h-full bg-white">
       {/* 헤더 영역 */}
@@ -80,30 +84,69 @@ export function CourseViewer({ courseName, lectures, materials }: Props) {
       <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-white">
         <h2 className="text-sm font-bold text-zinc-900 mb-4 px-1">강의 목록</h2>
         <div className="space-y-2">
-          {lectures.map((lec) => (
-            <a
-              key={lec.id}
-              href={`https://www.youtube.com/watch?v=${lec.videoId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-4 p-4 rounded-xl border border-zinc-100 bg-white hover:border-zinc-300 hover:shadow-sm transition-all group"
-            >
-              <div className="w-10 h-10 shrink-0 rounded-full bg-zinc-50 border border-zinc-100 flex items-center justify-center text-xs font-bold text-zinc-400 group-hover:bg-zinc-950 group-hover:text-white group-hover:border-zinc-950 transition-colors">
-                {lec.orderNum}
+          {lectures.map((lec) => {
+            const isPlaying = playing?.id === lec.id
+            return (
+              <div key={lec.id}>
+                <button
+                  type="button"
+                  onClick={() => setPlaying(isPlaying ? null : lec)}
+                  className={[
+                    'w-full flex items-center gap-4 p-4 rounded-xl border bg-white transition-all group text-left',
+                    isPlaying
+                      ? 'border-zinc-950 shadow-sm'
+                      : 'border-zinc-100 hover:border-zinc-300 hover:shadow-sm',
+                  ].join(' ')}
+                >
+                  <div className={[
+                    'w-10 h-10 shrink-0 rounded-full border flex items-center justify-center text-xs font-bold transition-colors',
+                    isPlaying
+                      ? 'bg-zinc-950 text-white border-zinc-950'
+                      : 'bg-zinc-50 border-zinc-100 text-zinc-400 group-hover:bg-zinc-950 group-hover:text-white group-hover:border-zinc-950',
+                  ].join(' ')}>
+                    {lec.orderNum}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-zinc-900 truncate">
+                      {lec.title}
+                    </p>
+                    <p className="text-[11px] text-zinc-400 mt-0.5">
+                      {isPlaying ? '재생 중 — 다시 누르면 닫힙니다' : '눌러서 시청하기'}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-zinc-300 group-hover:text-zinc-500">
+                    {isPlaying ? (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    )}
+                  </div>
+                </button>
+
+                {/* 인앱 플레이어 — 앱 안에서만 재생, 유튜브 링크 비노출 */}
+                {isPlaying && lec.videoId && (
+                  <div className="mt-2 rounded-xl overflow-hidden border border-zinc-200 bg-black">
+                    <iframe
+                      src={`https://www.youtube-nocookie.com/embed/${lec.videoId}?rel=0&modestbranding=1`}
+                      title={lec.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="aspect-video w-full"
+                    />
+                  </div>
+                )}
+                {isPlaying && !lec.videoId && (
+                  <p className="mt-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-xs text-zinc-400">
+                    영상이 아직 등록되지 않았습니다.
+                  </p>
+                )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-zinc-900 truncate group-hover:text-zinc-950">
-                  {lec.title}
-                </p>
-                <p className="text-[11px] text-zinc-400 mt-0.5">YouTube에서 시청하기 &rarr;</p>
-              </div>
-              <div className="shrink-0 text-zinc-300 group-hover:text-zinc-400">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </div>
-            </a>
-          ))}
+            )
+          })}
           {lectures.length === 0 && (
             <div className="py-20 text-center">
               <p className="text-sm text-zinc-400">등록된 강의가 없습니다.</p>

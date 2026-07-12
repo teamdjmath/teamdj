@@ -15,7 +15,7 @@ const CSP = [
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https://*.supabase.co",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://kapi.kakao.com",
-  "frame-src https://www.youtube.com https://youtube.com",
+  "frame-src https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com",
   "font-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",

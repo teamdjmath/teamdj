@@ -15,10 +15,11 @@ export default async function QnaDetailPage({
   const user = await getVerifiedUser()
   if (!user) notFound()
 
-  const { data: q } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: q } = await (supabase as any)
     .from('qna_questions')
     .select(
-      'id, title, content, image_urls, status, assigned_ta_id, created_at, student:users!student_id(name), class:class_groups!class_id(name), assigned_ta:users!assigned_ta_id(name)',
+      'id, title, content, image_urls, status, assigned_ta_id, created_at, problem_number, student:users!student_id(name), class:class_groups!class_id(name), assigned_ta:users!assigned_ta_id(name), textbook:textbooks!textbook_id(name)',
     )
     .eq('id', id)
     .single()
@@ -37,6 +38,8 @@ export default async function QnaDetailPage({
     studentName: ((r.student as { name?: string } | null)?.name ?? '') as string,
     className: ((r.class as { name?: string } | null)?.name ?? null) as string | null,
     assignedTaName: ((r.assigned_ta as { name?: string } | null)?.name ?? null) as string | null,
+    textbookName: ((r.textbook as { name?: string } | null)?.name ?? null) as string | null,
+    problemNumber: (r.problem_number ?? null) as string | null,
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -78,6 +81,14 @@ export default async function QnaDetailPage({
           <span className="text-sm text-zinc-400">·</span>
           <span className="text-sm text-zinc-500">{question.studentName}</span>
           {question.className && <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">{question.className}</span>}
+          {question.textbookName && (
+            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">
+              {question.textbookName}{question.problemNumber ? ` · ${question.problemNumber}번` : ''}
+            </span>
+          )}
+          {!question.textbookName && question.problemNumber && (
+            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">{question.problemNumber}번</span>
+          )}
         </div>
       </div>
 

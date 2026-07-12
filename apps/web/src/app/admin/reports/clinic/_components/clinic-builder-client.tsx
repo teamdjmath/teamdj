@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import * as XLSX from 'xlsx'
@@ -145,14 +145,13 @@ export function ClinicBuilderClient() {
   const matchedCount   = students.filter((_, i) => matchMap[i]).length
   const unmatchedCount = students.length - matchedCount
 
-  const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  // 파일 처리 공통 로직 — 버튼 업로드와 드래그앤드롭 양쪽에서 사용
+  const processFile = useCallback((file: File) => {
     setError('')
     setStudents([])
     setPreviewIndices([])
     setMatchMap({})
     setSavedCount(null)
-    const file = e.target.files?.[0]
-    if (!file) return
 
     const reader = new FileReader()
     reader.onload = async (ev) => {
@@ -174,8 +173,50 @@ export function ClinicBuilderClient() {
       }
     }
     reader.readAsArrayBuffer(file)
-    e.target.value = ''
   }, [])
+
+  const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) processFile(file)
+    e.target.value = ''
+  }, [processFile])
+
+  // 드래그앤드롭 — 페이지 어디에나 엑셀을 떨어뜨리면 업로드 (report-builder와 동일 패턴)
+  const [dragOver, setDragOver] = useState(false)
+  useEffect(() => {
+    function hasFiles(e: DragEvent) {
+      const types = e.dataTransfer?.types
+      return !!types && Array.from(types).includes('Files')
+    }
+    function onDragEnterOver(e: DragEvent) {
+      if (!hasFiles(e)) return
+      e.preventDefault()
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+      setDragOver(true)
+    }
+    function onDrop(e: DragEvent) {
+      e.preventDefault()
+      setDragOver(false)
+      const files = Array.from(e.dataTransfer?.files ?? [])
+      if (files.length === 0) return
+      const file = files.find((f) => /\.(xlsx?|xls)$/i.test(f.name))
+      if (file) processFile(file)
+      else setError(`엑셀 파일(.xlsx, .xls)만 업로드할 수 있습니다. (받은 파일: ${files[0]?.name ?? '알 수 없음'})`)
+    }
+    function onDragLeave(e: DragEvent) {
+      if (!e.relatedTarget) setDragOver(false)
+    }
+    window.addEventListener('dragenter', onDragEnterOver, true)
+    window.addEventListener('dragover', onDragEnterOver, true)
+    window.addEventListener('drop', onDrop, true)
+    window.addEventListener('dragleave', onDragLeave, true)
+    return () => {
+      window.removeEventListener('dragenter', onDragEnterOver, true)
+      window.removeEventListener('dragover', onDragEnterOver, true)
+      window.removeEventListener('drop', onDrop, true)
+      window.removeEventListener('dragleave', onDragLeave, true)
+    }
+  }, [processFile])
 
   // DB 저장 — 매칭된 학생만, 같은 날짜 기존 클리닉 리포트는 덮어씀(수정)
   const handleSave = useCallback(async () => {
@@ -292,6 +333,19 @@ export function ClinicBuilderClient() {
 
   return (
     <div>
+      {/* 드래그 중 오버레이 */}
+      {dragOver && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/60 pointer-events-none"
+          aria-hidden
+        >
+          <div className="rounded-2xl border-2 border-dashed border-white bg-white/10 px-10 py-8 text-center">
+            <p className="text-lg font-bold text-white">엑셀 파일을 여기에 놓으세요</p>
+            <p className="mt-1 text-sm text-zinc-300">클리닉 리포트 엑셀 (.xlsx)</p>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6">
         <Link
           href="/admin/reports"
@@ -479,6 +533,7 @@ export function ClinicBuilderClient() {
           <div>
             <h2 className="text-lg font-bold text-zinc-800 mb-1">엑셀 파일을 업로드하세요</h2>
             <p className="text-sm text-zinc-500 max-w-sm leading-relaxed">
+              파일을 이 화면에 <strong>드래그해서 놓거나</strong>, 위의 &ldquo;엑셀 업로드&rdquo; 버튼을 사용하세요.
               구글 스프레드시트에서 <strong>xlsx로 다운로드</strong>한 파일도 그대로 사용할 수 있습니다.
             </p>
           </div>

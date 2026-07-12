@@ -21,7 +21,8 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
 
   const classIds = (memberships ?? []).map((m) => m.class_id as string)
 
-  let hasAccess = false
+  // 분반 단위 기본 지급 여부
+  let hasClassAccess = false
   if (classIds.length > 0) {
     const { data: accessRows } = await admin
       .from('lecture_class_access')
@@ -29,7 +30,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
       .eq('course_name', decodedCourseName)
       .or(`class_id.in.(${classIds.join(',')}),class_id.is.null`)
       .limit(1)
-    if (accessRows && accessRows.length > 0) hasAccess = true
+    if (accessRows && accessRows.length > 0) hasClassAccess = true
   } else {
     const { data: accessRows } = await admin
       .from('lecture_class_access')
@@ -37,24 +38,46 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
       .eq('course_name', decodedCourseName)
       .is('class_id', null)
       .limit(1)
-    if (accessRows && accessRows.length > 0) hasAccess = true
+    if (accessRows && accessRows.length > 0) hasClassAccess = true
   }
 
-  if (!hasAccess) redirect('/dashboard/learning')
-
-  // 2. Fetch lectures
+  // 2. Fetch lectures + 학생 개별 지급(강의 단위) 적용
   const { data: lectureRows } = await admin
     .from('lectures')
     .select('id, title, youtube_video_id, order_num')
     .eq('course_name', decodedCourseName)
     .order('order_num', { ascending: true })
 
-  const lectures = (lectureRows ?? []).map((row) => ({
+  const allLectures = (lectureRows ?? []).map((row) => ({
     id: row.id as string,
     title: row.title as string,
     videoId: (row.youtube_video_id ?? '') as string,
     orderNum: (row.order_num ?? 0) as number,
   }))
+
+  const lectureIds = allLectures.map((l) => l.id)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: overrideRows } = lectureIds.length > 0
+    ? await (admin as any)
+        .from('lecture_student_access')
+        .select('lecture_id, mode')
+        .eq('student_id', user.id)
+        .in('lecture_id', lectureIds)
+    : { data: [] }
+
+  const modeByLecture: Record<string, 'grant' | 'block'> = {}
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const r of (overrideRows ?? []) as any[]) modeByLecture[r.lecture_id as string] = r.mode
+
+  // 강의별 시청 가능: 개별 지급이면 무조건 허용, 차단이면 제외, 그 외엔 분반 지급 따름
+  const lectures = allLectures.filter((l) => {
+    const m = modeByLecture[l.id]
+    if (m === 'grant') return true
+    if (m === 'block') return false
+    return hasClassAccess
+  })
+
+  if (lectures.length === 0) redirect('/dashboard/learning')
 
   // 3. Fetch course materials
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

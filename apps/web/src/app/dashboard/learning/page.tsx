@@ -66,9 +66,16 @@ export default async function LearningPage() {
 
   type AssignmentRow = { id: unknown; title: unknown; due_date: unknown; category: unknown; week_num: unknown }
 
-  // 강좌(캐시) / 과제 / 투두 — 서로 독립이라 병렬 실행
-  const [courses, assignmentsResult, { data: todos }] = await Promise.all([
+  // 강좌(캐시) / 학생 개별 지급(강의 단위) / 과제 / 투두 — 서로 독립이라 병렬 실행
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const accessPromise = (admin as any)
+    .from('lecture_student_access')
+    .select('lecture_id, mode')
+    .eq('student_id', userId) as Promise<{ data: Array<{ lecture_id: string; mode: 'grant' | 'block' }> | null }>
+
+  const [classCourses, { data: overrides }, assignmentsResult, { data: todos }] = await Promise.all([
     getCachedCourses(classIds),
+    accessPromise,
     classIds.length > 0
       ? admin
           .from('assignments')
@@ -83,6 +90,51 @@ export default async function LearningPage() {
       .eq('student_id', userId)
       .order('created_at', { ascending: false }),
   ])
+
+  // 학생 개별 지급 적용 (강의 단위) — block(차감)된 강의 제거, grant(개별 지급)된 강의 추가
+  const blockedLecs = new Set((overrides ?? []).filter((o) => o.mode === 'block').map((o) => o.lecture_id))
+  const grantedLecs = (overrides ?? []).filter((o) => o.mode === 'grant').map((o) => o.lecture_id)
+
+  // 1) 분반 지급 강좌에서 차단된 강의 제거 (강의가 하나도 안 남으면 강좌 자체 숨김)
+  const filteredClassCourses = classCourses
+    .map((c) => ({ ...c, lectures: c.lectures.filter((l) => !blockedLecs.has(l.id)) }))
+    .filter((c) => c.lectures.length > 0)
+
+  // 2) 분반 지급 밖에서 개별 지급된 강의를 강좌 단위로 묶어 추가
+  const visibleLecIds = new Set(filteredClassCourses.flatMap((c) => c.lectures.map((l) => l.id)))
+  const extraGrantIds = grantedLecs.filter((id) => !visibleLecIds.has(id))
+
+  let grantCourses: Course[] = []
+  if (extraGrantIds.length > 0) {
+    const { data: grantLectures } = await admin
+      .from('lectures')
+      .select('id, title, youtube_video_id, order_num, course_name')
+      .in('id', extraGrantIds)
+      .order('order_num', { ascending: true })
+    const byCourse: Record<string, Lecture[]> = {}
+    for (const row of grantLectures ?? []) {
+      const cn = (row.course_name ?? '기타') as string
+      ;(byCourse[cn] ??= []).push({
+        id: row.id as string,
+        title: row.title as string,
+        videoId: (row.youtube_video_id ?? '') as string,
+        orderNum: (row.order_num ?? 0) as number,
+      })
+    }
+    const classCourseNames = new Set(filteredClassCourses.map((c) => c.courseName))
+    for (const [cn, lecs] of Object.entries(byCourse)) {
+      const existing = filteredClassCourses.find((c) => c.courseName === cn)
+      if (existing) {
+        // 같은 강좌가 이미 보이면 개별 지급 강의를 합쳐서 순서대로
+        existing.lectures = [...existing.lectures, ...lecs].sort((a, b) => a.orderNum - b.orderNum)
+      } else if (!classCourseNames.has(cn)) {
+        grantCourses.push({ courseName: cn, lectures: lecs })
+      }
+    }
+  }
+
+  const courses = [...filteredClassCourses, ...grantCourses]
+    .sort((a, b) => a.courseName.localeCompare(b.courseName, 'ko'))
 
   const assignments = (assignmentsResult.data ?? []) as AssignmentRow[]
   const assignmentIds = assignments.map((a) => a.id as string)

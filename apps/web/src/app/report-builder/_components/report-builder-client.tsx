@@ -289,15 +289,23 @@ export function ReportBuilderClient() {
   }, [processFile])
 
   // 드래그앤드롭 — 페이지 어디에나 엑셀을 떨어뜨리면 업로드.
-  // React 트리의 div 핸들러는 자식 요소 위에서 dragover 기본동작이 막히지 않으면
-  // drop이 무시되는 경우가 있어, window 레벨에서 직접 처리한다.
+  // dragenter/dragover 모두 preventDefault해야 브라우저가 drop을 허용한다.
+  // capture 단계에 걸어 다른 요소가 이벤트를 가로채도 항상 동작하게 한다.
   const [dragOver, setDragOver] = useState(false)
   useEffect(() => {
-    function onDragOver(e: DragEvent) {
-      if (e.dataTransfer?.types.includes('Files')) {
-        e.preventDefault()
-        setDragOver(true)
-      }
+    // 진단용 마커 — F12 콘솔에 이 로그가 없으면 브라우저가 옛 코드를 실행 중인 것
+    console.info('[report-builder] 드래그앤드롭 준비 완료 (v2)')
+    function hasFiles(e: DragEvent) {
+      const types = e.dataTransfer?.types
+      if (!types) return false
+      // 일부 브라우저는 DOMStringList라 includes가 없을 수 있음
+      return Array.from(types).includes('Files')
+    }
+    function onDragEnterOver(e: DragEvent) {
+      if (!hasFiles(e)) return
+      e.preventDefault()
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+      setDragOver(true)
     }
     function onDrop(e: DragEvent) {
       e.preventDefault()
@@ -306,19 +314,21 @@ export function ReportBuilderClient() {
       if (files.length === 0) return
       const file = files.find((f) => /\.(xlsx?|xls)$/i.test(f.name))
       if (file) processFile(file)
-      else setError('엑셀 파일(.xlsx, .xls)만 업로드할 수 있습니다.')
+      else setError(`엑셀 파일(.xlsx, .xls)만 업로드할 수 있습니다. (받은 파일: ${files[0]?.name ?? '알 수 없음'})`)
     }
     function onDragLeave(e: DragEvent) {
       // 창 밖으로 나갈 때만 오버레이 해제
       if (!e.relatedTarget) setDragOver(false)
     }
-    window.addEventListener('dragover', onDragOver)
-    window.addEventListener('drop', onDrop)
-    window.addEventListener('dragleave', onDragLeave)
+    window.addEventListener('dragenter', onDragEnterOver, true)
+    window.addEventListener('dragover', onDragEnterOver, true)
+    window.addEventListener('drop', onDrop, true)
+    window.addEventListener('dragleave', onDragLeave, true)
     return () => {
-      window.removeEventListener('dragover', onDragOver)
-      window.removeEventListener('drop', onDrop)
-      window.removeEventListener('dragleave', onDragLeave)
+      window.removeEventListener('dragenter', onDragEnterOver, true)
+      window.removeEventListener('dragover', onDragEnterOver, true)
+      window.removeEventListener('drop', onDrop, true)
+      window.removeEventListener('dragleave', onDragLeave, true)
     }
   }, [processFile])
 
