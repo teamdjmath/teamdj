@@ -40,6 +40,9 @@ export async function submitAnswer(data: {
   const role = user.user_metadata?.role as string | undefined
   if (!['teacher', 'ta_desk', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
 
+  // 난이도는 필수 — 답변 통계·추천 난이도의 기반 데이터라 누락을 허용하지 않는다
+  if (data.difficulty == null) return { error: '난이도를 설정해야 답변을 등록할 수 있습니다.' }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: answerError } = await (supabase as any).from('qna_answers').insert({
     question_id: data.questionId,
@@ -47,7 +50,7 @@ export async function submitAnswer(data: {
     content: data.content,
     media_urls: data.mediaUrls,
     is_ai_draft: data.isAiDraft,
-    difficulty: data.difficulty ?? null,
+    difficulty: data.difficulty,
   })
 
   if (answerError) return { error: '답변 등록에 실패했습니다.' }
@@ -102,10 +105,12 @@ export async function updateAnswer(data: {
   const role = user.user_metadata?.role as string | undefined
   if (!['teacher', 'ta_desk', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
 
+  if (data.difficulty == null) return { error: '난이도를 설정해야 답변을 저장할 수 있습니다.' }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let updateQuery = (supabase as any)
     .from('qna_answers')
-    .update({ content: data.content, media_urls: data.mediaUrls, difficulty: data.difficulty ?? null })
+    .update({ content: data.content, media_urls: data.mediaUrls, difficulty: data.difficulty })
     .eq('id', data.answerId)
   if (role !== 'teacher') {
     updateQuery = updateQuery.eq('ta_id', user.id)

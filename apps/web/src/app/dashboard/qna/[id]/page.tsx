@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { findRelatedAnswers } from '@/lib/data/qna-related'
 import { StudentQnaDetail } from './_components/student-qna-detail'
 
 export const metadata = {
@@ -61,6 +62,20 @@ export default async function QnaDetailPage({ params }: { params: Promise<{ id: 
     isAiDraft: (a.is_ai_draft as boolean | null) ?? false,
   }))
 
+  // 같은 교재+문항으로 이미 답변된 질문이 있으면 그 답변을 자동 연결 (아직 미답변일 때 특히 유용)
+  // textbook_id/problem_number는 생성 타입에 아직 없는 컬럼(026 추가)이라 캐스팅으로 접근
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const qAny = qData as any
+  // 학생 화면은 가장 관련성 높은 답변 1건만 보여준다 (채택 워크플로는 조교 화면 전용)
+  const relatedAnswers = await findRelatedAnswers({
+    excludeQuestionId: id,
+    textbookId: (qAny.textbook_id ?? null) as string | null,
+    problemNumber: (qAny.problem_number ?? null) as string | null,
+    title: qData.title,
+    content: qData.content,
+  })
+  const relatedAnswer = relatedAnswers[0] ?? null
+
   return (
     <div className="pb-10">
       <div className="mb-4">
@@ -72,6 +87,7 @@ export default async function QnaDetailPage({ params }: { params: Promise<{ id: 
         question={question}
         answers={answers}
         studentName={(user.user_metadata?.name as string | undefined) ?? ''}
+        relatedAnswer={relatedAnswer}
       />
     </div>
   )

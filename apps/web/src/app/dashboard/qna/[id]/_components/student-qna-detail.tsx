@@ -41,52 +41,65 @@ function StarRating({
   const [rating, setRating] = useState<number | null>(initial)
   const [hover, setHover] = useState(0)
   const [saving, startSave] = useTransition()
-  const [done, setDone] = useState(!!initial)
 
+  // 이미 평가했어도 다시 눌러서 수정 가능
   function handleRate(star: number) {
-    if (done || saving || disabled) return
+    if (saving || disabled) return
     startSave(async () => {
       const res = await rateAnswer(answerId, star)
-      if (!res.error) { setRating(star); setDone(true) }
+      if (!res.error) setRating(star)
     })
   }
 
-  const display = done ? (rating ?? 0) : (hover || rating || 0)
+  const display = hover || rating || 0
 
   return (
     <div className="flex flex-col gap-1.5 mt-4 pt-4 border-t border-zinc-100">
       <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-        {done ? '내 평가' : '이 답변이 도움이 되셨나요?'}
+        {rating ? '내 평가' : '이 답변이 도움이 되셨나요?'}
       </p>
       <div className="flex items-center gap-1">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
             type="button"
-            disabled={done || saving || disabled}
+            disabled={saving || disabled}
             onClick={() => handleRate(star)}
-            onMouseEnter={() => !done && setHover(star)}
-            onMouseLeave={() => !done && setHover(0)}
-            className={`text-2xl leading-none transition-transform ${
-              done ? 'cursor-default' : 'cursor-pointer hover:scale-110 active:scale-95'
-            } ${saving ? 'opacity-50' : ''}`}
+            onMouseEnter={() => setHover(star)}
+            onMouseLeave={() => setHover(0)}
+            className={`text-2xl leading-none transition-transform cursor-pointer hover:scale-110 active:scale-95 ${saving ? 'opacity-50' : ''}`}
             aria-label={`${star}점`}
           >
             <span className={star <= display ? 'text-yellow-400' : 'text-zinc-200'}>★</span>
           </button>
         ))}
-        {done && rating && (
+        {rating && (
           <span className="ml-1 text-sm font-bold text-zinc-500">{rating}점</span>
+        )}
+        {rating && !saving && (
+          <span className="ml-1 text-[11px] text-zinc-300">별을 눌러 수정할 수 있어요</span>
         )}
       </div>
     </div>
   )
 }
 
+type RelatedAnswer = {
+  questionId: string
+  questionTitle: string
+  content: string
+  mediaUrls: string[]
+  taName: string
+  difficulty: number | null
+  answeredAt: string
+  matchType: 'same_problem' | 'similar'
+}
+
 interface Props {
   question: Question
   answers: Answer[]
   studentName: string
+  relatedAnswer?: RelatedAnswer | null
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -127,7 +140,7 @@ function buildStudentContent(content: string, studentName: string, taName: strin
   return `안녕하세요 ${name} 학생, **${taName}** 조교입니다.\n\n${body}\n\n---\n감사합니다. 더 궁금하신 내용이 있다면 언제든 질문해주시기 바랍니다.${aiNotice}`
 }
 
-export function StudentQnaDetail({ question, answers, studentName }: Props) {
+export function StudentQnaDetail({ question, answers, studentName, relatedAnswer }: Props) {
   const [pending, startTransition] = useTransition()
   const [errMsg, setErrMsg] = useState('')
 
@@ -210,6 +223,37 @@ export function StudentQnaDetail({ question, answers, studentName }: Props) {
           <h2 className="text-xl font-semibold text-zinc-900 tracking-tight">답변</h2>
           <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-400">{answers.length}</span>
         </div>
+
+        {/* 유사 문항 자동 연결 — 같은 교재·문항에 대해 이미 등록된 답변 */}
+        {relatedAnswer && (
+          <Card>
+            <CardHeader
+              title={relatedAnswer.matchType === 'same_problem' ? '같은 문항의 이전 답변' : '비슷한 질문의 이전 답변'}
+              subtitle={`${relatedAnswer.taName} · ${formatDatetime(relatedAnswer.answeredAt)} · ${
+                relatedAnswer.matchType === 'same_problem'
+                  ? '같은 교재·문항에 대해 자동으로 연결된 답변입니다'
+                  : '제목·내용이 비슷해 자동으로 연결된 답변입니다 (다른 문항일 수 있어요)'
+              }`}
+            />
+            <CardContent>
+              <div className="prose prose-zinc prose-sm max-w-none text-zinc-700 max-h-72 overflow-y-auto">
+                <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
+                  {relatedAnswer.content}
+                </ReactMarkdown>
+              </div>
+              {relatedAnswer.mediaUrls.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {relatedAnswer.mediaUrls.map((url, i) => (
+                    <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt={`첨부 ${i + 1}`} className="h-24 w-auto rounded-xl border border-zinc-100 object-cover" />
+                    </a>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {answers.length > 0 ? (
           <div className="space-y-4">

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { findRelatedAnswers, getDifficultyHint } from '@/lib/data/qna-related'
 import { QnaDetailClient } from './_components/qna-detail-client'
 
 export default async function QnaDetailPage({
@@ -19,7 +20,7 @@ export default async function QnaDetailPage({
   const { data: q } = await (supabase as any)
     .from('qna_questions')
     .select(
-      'id, title, content, image_urls, status, assigned_ta_id, created_at, problem_number, student:users!student_id(name), class:class_groups!class_id(name), assigned_ta:users!assigned_ta_id(name), textbook:textbooks!textbook_id(name)',
+      'id, title, content, image_urls, status, assigned_ta_id, created_at, problem_number, textbook_id, student:users!student_id(name), class:class_groups!class_id(name), assigned_ta:users!assigned_ta_id(name), textbook:textbooks!textbook_id(name)',
     )
     .eq('id', id)
     .single()
@@ -64,6 +65,19 @@ export default async function QnaDetailPage({
   const currentUserName = (user.user_metadata?.name as string | undefined) ?? ''
   const currentUserRole = (user.user_metadata?.role as string | undefined) ?? ''
 
+  // 유사 문항(같은 교재+문항)의 기존 답변 자동 연결 + 추천 난이도 근거
+  const textbookId = (r.textbook_id ?? null) as string | null
+  const [relatedAnswers, difficultyHint] = await Promise.all([
+    findRelatedAnswers({
+      excludeQuestionId: id,
+      textbookId,
+      problemNumber: question.problemNumber,
+      title: question.title,
+      content: question.content,
+    }),
+    getDifficultyHint(textbookId),
+  ])
+
   return (
     <div>
       <div className="mb-6">
@@ -98,6 +112,8 @@ export default async function QnaDetailPage({
         currentUserId={user.id}
         currentUserName={currentUserName}
         currentUserRole={currentUserRole}
+        relatedAnswers={relatedAnswers}
+        difficultyHint={difficultyHint}
       />
     </div>
   )

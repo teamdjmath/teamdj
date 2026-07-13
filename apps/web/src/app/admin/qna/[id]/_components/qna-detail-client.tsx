@@ -33,12 +33,30 @@ type Answer = {
   studentRating?: number | null
 }
 
+type RelatedAnswer = {
+  questionId: string
+  questionTitle: string
+  content: string
+  mediaUrls: string[]
+  taName: string
+  difficulty: number | null
+  answeredAt: string
+  matchType: 'same_problem' | 'similar'
+}
+
+type DifficultyHint = {
+  textbookAvg: number | null
+  count: number
+}
+
 interface Props {
   question: Question
   answers: Answer[]
   currentUserId: string
   currentUserName: string
   currentUserRole: string
+  relatedAnswers?: RelatedAnswer[]
+  difficultyHint?: DifficultyHint
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -66,6 +84,7 @@ function AnswerEditor({
   tab, onTabChange,
   aiLoading, aiErr, onAiDraft, aiFullAnswer, onAiFullAnswerChange,
   difficulty, onDifficultyChange,
+  relatedDifficulty, difficultyHint,
   errMsg, onSubmit, submitLabel, isPending, onCancel,
 }: {
   content: string
@@ -84,6 +103,8 @@ function AnswerEditor({
   onAiFullAnswerChange?: (v: boolean) => void
   difficulty: number | null
   onDifficultyChange: (v: number | null) => void
+  relatedDifficulty?: number | null
+  difficultyHint?: DifficultyHint
   errMsg: string
   onSubmit: () => void
   submitLabel: string
@@ -240,12 +261,12 @@ function AnswerEditor({
         )}
       </div>
 
-      {/* 난이도 */}
+      {/* 난이도 — 필수 (답변 통계·추천 난이도의 기반 데이터) */}
       <div className="space-y-1.5">
         <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400">
-          난이도 (1–8, 선택) · 하 1–4 / 중 5–6 / 상 7–8
+          난이도 (1–8, <span className="text-red-500">필수</span>) · 하 1–4 / 중 5–6 / 상 7–8
         </label>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <input
             type="range"
             min={1}
@@ -277,6 +298,23 @@ function AnswerEditor({
               설정
             </button>
           )}
+          {/* 추천 난이도 — 주관 편차를 줄이기 위한 참고 근거 */}
+          {(relatedDifficulty != null || (difficultyHint?.textbookAvg != null)) && (
+            <span className="flex items-center gap-2 rounded-lg bg-zinc-50 px-2.5 py-1 text-[11px] text-zinc-500">
+              추천:
+              {relatedDifficulty != null && <span>같은 문항 이전 <b className="text-zinc-800">{relatedDifficulty}</b></span>}
+              {difficultyHint?.textbookAvg != null && (
+                <span>교재 평균 <b className="text-zinc-800">{difficultyHint.textbookAvg}</b> ({difficultyHint.count}건)</span>
+              )}
+              <button
+                type="button"
+                onClick={() => onDifficultyChange(relatedDifficulty ?? Math.round(difficultyHint!.textbookAvg!))}
+                className="rounded-md bg-zinc-950 px-2 py-0.5 text-[10px] font-medium text-white hover:bg-zinc-700"
+              >
+                적용
+              </button>
+            </span>
+          )}
         </div>
       </div>
 
@@ -306,7 +344,7 @@ function AnswerEditor({
   )
 }
 
-export function QnaDetailClient({ question, answers, currentUserId, currentUserRole }: Props) {
+export function QnaDetailClient({ question, answers, currentUserId, currentUserRole, relatedAnswers, difficultyHint }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -332,6 +370,20 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
 
   const isAssigned = question.assigned_ta_id === currentUserId
   const canAnswer = question.status !== 'answered'
+
+  // 유사 답변 후보 목록 — 첫 항목만 펼친 채로 시작, 조교가 확인 후 채택
+  const related = relatedAnswers ?? []
+  const [expandedRelatedId, setExpandedRelatedId] = useState<string | null>(related[0]?.questionId ?? null)
+  // 추천 난이도는 확실한 매칭(같은 교재·문항)에서만 가져온다
+  const primaryDifficulty = related.find((r) => r.matchType === 'same_problem')?.difficulty ?? null
+
+  function loadRelatedIntoEditor(ra: RelatedAnswer) {
+    setContent(ra.content)
+    // 다른 문항일 수 있는 유사도 매칭에서는 난이도까지 가져오지 않음
+    if (ra.matchType === 'same_problem' && ra.difficulty != null) setDifficulty(ra.difficulty)
+    setUsedAiDraft(false)
+    setTab('write')
+  }
 
   function handleAssign() {
     setErrMsg('')
@@ -360,6 +412,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
 
   function handleSubmit() {
     if (!content.trim()) { setErrMsg('답변 내용을 입력하세요.'); return }
+    if (difficulty === null) { setErrMsg('난이도를 설정해야 답변을 등록할 수 있습니다.'); return }
     setErrMsg('')
     startTransition(async () => {
       try {
@@ -407,6 +460,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
   function handleUpdateAnswer() {
     if (!editingAnswerId) return
     if (!editContent.trim()) { setEditErr('답변 내용을 입력하세요.'); return }
+    if (editDifficulty === null) { setEditErr('난이도를 설정해야 답변을 저장할 수 있습니다.'); return }
     setEditErr('')
     startTransition(async () => {
       try {
@@ -487,6 +541,89 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
         )}
       </div>
 
+      {/* 유사 문항 자동 연결 — 1순위: 같은 교재+문항, 2순위: 제목·내용 유사도.
+          여러 건이면 목록으로 보여주고 조교가 확인 후 하나를 채택한다. */}
+      {related.length > 0 && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-5">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-emerald-800">연결된 기존 답변 {related.length}건</span>
+            <span className="text-[11px] text-zinc-400">
+              같은 교재·문항 또는 제목·내용이 비슷한 질문의 답변입니다. 내용을 확인한 뒤 채택하세요.
+            </span>
+          </div>
+          <div className="space-y-2">
+            {related.map((ra) => {
+              const expanded = expandedRelatedId === ra.questionId
+              return (
+                <div key={ra.questionId} className="rounded-lg border border-emerald-100 bg-white">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedRelatedId(expanded ? null : ra.questionId)}
+                    className="flex w-full items-center gap-2 px-4 py-2.5 text-left"
+                  >
+                    <span
+                      className={[
+                        'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                        ra.matchType === 'same_problem' ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-100 text-zinc-500',
+                      ].join(' ')}
+                    >
+                      {ra.matchType === 'same_problem' ? '같은 문항' : '유사'}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-zinc-800">
+                      {ra.questionTitle || '(제목 없음)'}
+                    </span>
+                    <span className="hidden shrink-0 text-xs text-zinc-400 sm:block">
+                      {ra.taName}
+                      {ra.difficulty != null && ` · 난이도 ${ra.difficulty}`}
+                      {` · ${formatDatetime(ra.answeredAt)}`}
+                    </span>
+                    <svg
+                      className={`h-4 w-4 shrink-0 text-zinc-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+                      fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {expanded && (
+                    <div className="border-t border-zinc-100 px-4 py-3">
+                      {ra.matchType === 'similar' && (
+                        <p className="mb-2 text-[11px] text-zinc-400">
+                          제목·내용 기반 자동 추천 — 다른 문항일 수 있으니 확인 후 사용하세요
+                        </p>
+                      )}
+                      <div className="prose prose-sm max-w-none rounded-lg bg-zinc-50 p-4 text-zinc-800 max-h-64 overflow-y-auto">
+                        <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
+                          {ra.content}
+                        </ReactMarkdown>
+                      </div>
+                      <div className="mt-3 flex items-center gap-3">
+                        <a
+                          href={`/admin/qna/${ra.questionId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-zinc-500 underline hover:text-zinc-800"
+                        >
+                          원 질문 열기
+                        </a>
+                        {canAnswer && (
+                          <button
+                            type="button"
+                            onClick={() => loadRelatedIntoEditor(ra)}
+                            className="rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-medium text-white hover:bg-emerald-700 transition-colors"
+                          >
+                            이 답변을 에디터로 불러오기
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* 답변 목록 */}
       {answers.length > 0 && (
         <div className="space-y-3">
@@ -511,6 +648,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
                   onRemoveFile={(i) => setEditFiles(p => p.filter((_, idx) => idx !== i))}
                   tab={editTab} onTabChange={setEditTab}
                   difficulty={editDifficulty} onDifficultyChange={setEditDifficulty}
+                  relatedDifficulty={primaryDifficulty} difficultyHint={difficultyHint}
                   errMsg={editErr} onSubmit={handleUpdateAnswer}
                   submitLabel="수정 완료" isPending={pending}
                   onCancel={() => setEditingAnswerId(null)}
@@ -565,7 +703,8 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
         </div>
       )}
 
-      {errMsg && <p className="text-sm text-red-500 font-medium">{errMsg}</p>}
+      {/* 에디터가 보일 때는 에디터 내부에서 같은 메시지를 표시하므로 중복 렌더 방지 */}
+      {errMsg && !canAnswer && <p className="text-sm text-red-500 font-medium">{errMsg}</p>}
 
       {/* 답변 작성 */}
       {canAnswer && (
@@ -588,6 +727,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
             aiLoading={aiLoading} aiErr={aiErr} onAiDraft={handleAiDraft}
             aiFullAnswer={aiFullAnswer} onAiFullAnswerChange={setAiFullAnswer}
             difficulty={difficulty} onDifficultyChange={setDifficulty}
+            relatedDifficulty={primaryDifficulty} difficultyHint={difficultyHint}
             errMsg={errMsg} onSubmit={handleSubmit}
             submitLabel="답변 제출하기" isPending={pending}
           />
