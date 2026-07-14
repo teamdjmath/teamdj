@@ -39,7 +39,7 @@ export interface ReportContent {
   absenceReason?:        string
   lastAssignmentTitle?:  string
   classStdDev?:          number
-  assignmentsDetail?:    Array<{ title: string; completionPct: number | null; issueDate?: string; submitDate?: string; weekNum?: number }>
+  assignmentsDetail?:    Array<{ title: string; completionPct: number | null; issueDate?: string; submitDate?: string; weekNum?: number; beforeEnrollment?: boolean }>
 }
 
 /** exam_results.grade_cuts 컬럼 구조  예: { "A": 90, "B": 80 } */

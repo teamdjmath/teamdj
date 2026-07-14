@@ -10,6 +10,7 @@ export type ProgressEntry = {
   studentId: string
   completionPct: number | null
   submitDate?: string
+  beforeEnrollment?: boolean
 }
 
 export async function createAssignment(data: {
@@ -116,16 +117,28 @@ export async function saveProgress(
     const rows = entries.map((e) => ({
       assignment_id:  assignmentId,
       student_id:     e.studentId,
-      completion_pct: e.completionPct,
-      is_overdue:     dueDate ? dueDate < today && (e.completionPct === null || e.completionPct < 100) : false,
+      // 첫 등원 이전이면 애초에 과제 대상이 아니었으므로 완료율은 항상 NULL, 마감 지남 표시도 하지 않는다
+      completion_pct: e.beforeEnrollment ? null : e.completionPct,
+      before_enrollment: e.beforeEnrollment ?? false,
+      is_overdue:     !e.beforeEnrollment && dueDate ? dueDate < today && (e.completionPct === null || e.completionPct < 100) : false,
       ...(e.submitDate ? { submit_date: e.submitDate } : {}),
     }))
 
     const adminSupabase = createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error, count } = await (adminSupabase as any)
+    let { error, count } = await (adminSupabase as any)
       .from('assignment_progress')
       .upsert(rows, { onConflict: 'assignment_id,student_id', count: 'exact' })
+
+    // 067 마이그레이션(before_enrollment 컬럼) 미적용 환경 대비 —
+    // 없는 컬럼 때문에 기존 진행률 저장 자체가 막히지 않도록 그 필드만 빼고 재시도
+    if (error?.code === 'PGRST204' && error.message?.includes('before_enrollment')) {
+      const legacyRows = rows.map(({ before_enrollment: _drop, ...rest }) => rest)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;({ error, count } = await (adminSupabase as any)
+        .from('assignment_progress')
+        .upsert(legacyRows, { onConflict: 'assignment_id,student_id', count: 'exact' }))
+    }
     if (error) throw error
 
     revalidatePath('/admin/assignments')

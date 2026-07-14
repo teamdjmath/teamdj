@@ -42,7 +42,7 @@ export default async function NewReportPage({
       difficulty?: string
       classAverage?: number
     }>
-    assignments: Array<{ title: string; completionPct: number | null; issueDate?: string; submitDate?: string; weekNum?: number }>
+    assignments: Array<{ title: string; completionPct: number | null; issueDate?: string; submitDate?: string; weekNum?: number; beforeEnrollment?: boolean }>
     avgAssignmentPct: number
     initialNotes?: string
   }
@@ -167,12 +167,24 @@ export default async function NewReportPage({
     const assignmentPctMap: Record<string, number> = {}
     if (studentIds.length > 0 && assignments && assignments.length > 0) {
       const aIds = assignments.map((a) => a.id)
-      type ProgressRow = { student_id: string; assignment_id: string; completion_pct: number | null; submit_date: string | null }
-      const { data: progress } = (await admin
+      // before_enrollment은 생성 타입에 아직 없는 컬럼(067 추가)이라 캐스팅으로 접근.
+      // 마이그레이션 미적용 환경에서도 리포트 생성 자체가 막히지 않도록 실패 시 폴백 조회.
+      type ProgressRow = { student_id: string; assignment_id: string; completion_pct: number | null; submit_date: string | null; before_enrollment?: boolean | null }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let { data: progress, error: progressError } = (await (admin as any)
         .from('assignment_progress')
-        .select('student_id, assignment_id, completion_pct, submit_date')
+        .select('student_id, assignment_id, completion_pct, submit_date, before_enrollment')
         .in('assignment_id', aIds)
-        .in('student_id', studentIds)) as unknown as { data: ProgressRow[] | null }
+        .in('student_id', studentIds)) as unknown as { data: ProgressRow[] | null; error: { code?: string } | null }
+
+      if (progressError?.code === 'PGRST204' || progressError?.code === '42703') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;({ data: progress } = (await (admin as any)
+          .from('assignment_progress')
+          .select('student_id, assignment_id, completion_pct, submit_date')
+          .in('assignment_id', aIds)
+          .in('student_id', studentIds)) as unknown as { data: ProgressRow[] | null })
+      }
 
       for (const row of progress ?? []) {
         const sid = row.student_id
@@ -180,20 +192,22 @@ export default async function NewReportPage({
         const asgn = assignments.find((a) => a.id === aid)
         if (!studentAssignments[sid]) studentAssignments[sid] = []
         studentAssignments[sid].push({
-          title:         asgn?.title ?? '',
-          completionPct: row.completion_pct,  // null = 미지참 (카드에서 '미지참'으로 표시)
-          issueDate:     asgn?.issue_date ?? asgn?.created_at?.slice(0, 10) ?? undefined,
-          submitDate:    row.submit_date ?? asgn?.due_date ?? undefined,
-          weekNum:       asgn?.week_num ?? undefined,
+          title:            asgn?.title ?? '',
+          completionPct:    row.completion_pct,  // null = 미지참 (카드에서 '미지참'으로 표시)
+          issueDate:        asgn?.issue_date ?? asgn?.created_at?.slice(0, 10) ?? undefined,
+          submitDate:       row.submit_date ?? asgn?.due_date ?? undefined,
+          weekNum:          asgn?.week_num ?? undefined,
+          beforeEnrollment: row.before_enrollment ?? false,
         })
       }
       for (const sid of studentIds) {
         const items = studentAssignments[sid] ?? []
         // weekNum 기준 오름차순 정렬 — 강별 순서가 정확히 매핑되도록
         items.sort((a, b) => (a.weekNum ?? 999) - (b.weekNum ?? 999))
-        if (items.length > 0) {
-          // 평균에서 미지참(null)은 0으로 계산
-          assignmentPctMap[sid] = Math.round(items.reduce((a, b) => a + (b.completionPct ?? 0), 0) / items.length)
+        // 평균에서 첫 등원 이전 항목은 애초에 대상이 아니므로 제외, 미지참(null)은 0으로 계산
+        const gradable = items.filter((i) => !i.beforeEnrollment)
+        if (gradable.length > 0) {
+          assignmentPctMap[sid] = Math.round(gradable.reduce((a, b) => a + (b.completionPct ?? 0), 0) / gradable.length)
         }
       }
     }

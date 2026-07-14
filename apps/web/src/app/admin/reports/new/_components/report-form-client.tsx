@@ -32,7 +32,7 @@ type StudentData = {
     difficulty?: string
     classAverage?: number
   }>
-  assignments: Array<{ title: string; completionPct: number | null; issueDate?: string; submitDate?: string; weekNum?: number }>
+  assignments: Array<{ title: string; completionPct: number | null; issueDate?: string; submitDate?: string; weekNum?: number; beforeEnrollment?: boolean }>
   avgAssignmentPct: number
   initialNotes?: string
 }
@@ -107,7 +107,7 @@ export function ReportFormClient({
     const sd = perStudent[s.id] ?? { att: (s.attendance ?? '') as Attendance, notes: '' }
     const testScore = selectedTestId ? s.scores[selectedTestId] : null
     const assignmentDetails = s.assignments
-      .map(a => `${a.title}(${a.completionPct === null ? '미지참' : `${a.completionPct}%`})`)
+      .map(a => `${a.title}(${a.beforeEnrollment ? '첫 등원 이전' : a.completionPct === null ? '미지참' : `${a.completionPct}%`})`)
       .join(', ')
 
     return {

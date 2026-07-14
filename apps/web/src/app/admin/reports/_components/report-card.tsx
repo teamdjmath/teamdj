@@ -74,7 +74,8 @@ type DisplayAssignment = {
   lectureNum: number
   issueDate: string
   submitDate: string
-  completion: number | null   // null = 미지참
+  completion: number | null   // null = 미지참 (beforeEnrollment=true면 '첫 등원 이전')
+  beforeEnrollment: boolean
 }
 
 function AssignmentTable({ assignments }: { assignments: DisplayAssignment[] }) {
@@ -114,9 +115,11 @@ function AssignmentTable({ assignments }: { assignments: DisplayAssignment[] }) 
         <td style={{ ...td, borderRight: 'none', padding: '3px 4px' }}>
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             {item
-              ? item.completion === null
-                ? <span style={{ fontSize: 10, fontWeight: 700, color: '#c0392b' }}>미지참</span>
-                : <Circles count={item.completion} />
+              ? item.beforeEnrollment
+                ? <span style={{ fontSize: 10, fontWeight: 700, color: '#2c6fbb' }}>첫 등원 이전</span>
+                : item.completion === null
+                  ? <span style={{ fontSize: 10, fontWeight: 700, color: '#c0392b' }}>미지참</span>
+                  : <Circles count={item.completion} />
               : null}
           </div>
         </td>
@@ -201,6 +204,7 @@ export function ReportCard({ data, cardRef }: Props) {
         issueDate:  a.issueDate ? formatAdminDate(a.issueDate) : '',
         submitDate: a.completionPct === null ? '' : a.submitDate ? formatAdminDate(a.submitDate) : '',
         completion: a.completionPct === null ? null : Math.min(5, Math.round(a.completionPct / 20)),
+        beforeEnrollment: a.beforeEnrollment ?? false,
       }
     })
 

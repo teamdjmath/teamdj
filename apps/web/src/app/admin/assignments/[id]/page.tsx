@@ -32,17 +32,30 @@ export default async function AssignmentProgressPage({
     name: (m.users as { name: string } | null)?.name ?? '',
   })).sort((a, b) => a.name.localeCompare(b.name, 'ko'))
 
-  type ProgressRow = { student_id: string; completion_pct: number | null; submit_date: string | null }
-  const { data: progressRows } = (await supabase
+  // before_enrollment은 생성 타입에 아직 없는 컬럼(067 추가)이라 캐스팅으로 접근.
+  // 마이그레이션 미적용 환경에서도 기존 진행률이 안 보이는 회귀가 없도록 실패 시 폴백 조회.
+  type ProgressRow = { student_id: string; completion_pct: number | null; submit_date: string | null; before_enrollment?: boolean | null }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let { data: progressRows, error: progressError } = (await (supabase as any)
     .from('assignment_progress')
-    .select('student_id, completion_pct, submit_date')
-    .eq('assignment_id', id)) as unknown as { data: ProgressRow[] | null }
+    .select('student_id, completion_pct, submit_date, before_enrollment')
+    .eq('assignment_id', id)) as unknown as { data: ProgressRow[] | null; error: { code?: string } | null }
+
+  if (progressError?.code === 'PGRST204' || progressError?.code === '42703') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;({ data: progressRows } = (await (supabase as any)
+      .from('assignment_progress')
+      .select('student_id, completion_pct, submit_date')
+      .eq('assignment_id', id)) as unknown as { data: ProgressRow[] | null })
+  }
 
   const existingProgress: Record<string, number | null> = {}
   const existingSubmitDates: Record<string, string> = {}
+  const existingBeforeEnrollment: Record<string, boolean> = {}
   for (const p of progressRows ?? []) {
     existingProgress[p.student_id] = p.completion_pct ?? null
     if (p.submit_date) existingSubmitDates[p.student_id] = p.submit_date
+    if (p.before_enrollment) existingBeforeEnrollment[p.student_id] = true
   }
 
   return (
@@ -74,6 +87,7 @@ export default async function AssignmentProgressPage({
         students={students}
         existingProgress={existingProgress}
         existingSubmitDates={existingSubmitDates}
+        existingBeforeEnrollment={existingBeforeEnrollment}
       />
     </div>
   )

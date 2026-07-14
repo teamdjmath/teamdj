@@ -12,6 +12,7 @@ interface Props {
   students: Student[]
   existingProgress: Record<string, number | null>
   existingSubmitDates?: Record<string, string>
+  existingBeforeEnrollment?: Record<string, boolean>
 }
 
 const TODAY = new Date().toISOString().split('T')[0]
@@ -26,7 +27,7 @@ const PROGRESS_OPTIONS: { label: string; value: number | null }[] = [
   { label: '100%',  value: 100 },
 ]
 
-export function ProgressClient({ assignmentId, dueDate, students, existingProgress, existingSubmitDates = {} }: Props) {
+export function ProgressClient({ assignmentId, dueDate, students, existingProgress, existingSubmitDates = {}, existingBeforeEnrollment = {} }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [resultMsg, setResultMsg] = useState('')
@@ -48,10 +49,32 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
     return init
   })
 
+  // 중간 참여 학생 — 과제 부여 시점에 아직 등원하지 않아 미지참과 구분해야 하는 경우
+  const [beforeMap, setBeforeMap] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {}
+    for (const s of students) {
+      if (existingBeforeEnrollment[s.id]) init[s.id] = true
+    }
+    return init
+  })
+
   const isOverdueDate = dueDate ? dueDate < TODAY : false
 
   function setPct(studentId: string, value: number | null) {
     setPctMap((m) => ({ ...m, [studentId]: value }))
+    setBeforeMap((m) => ({ ...m, [studentId]: false }))
+    setResultMsg('')
+  }
+
+  function setBeforeEnrollment(studentId: string) {
+    setPctMap((m) => ({ ...m, [studentId]: null }))
+    setBeforeMap((m) => ({ ...m, [studentId]: true }))
+    // 등원 전이므로 제출일도 의미가 없다
+    setSubmitDateMap((m) => {
+      const next = { ...m }
+      delete next[studentId]
+      return next
+    })
     setResultMsg('')
   }
 
@@ -65,6 +88,7 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
     setSubmitDateMap((m) => {
       const next: Record<string, string> = {}
       for (const s of students) {
+        if (beforeMap[s.id]) continue // 등원 전 학생은 제출일 대상이 아님
         const done = pctMap[s.id] === 100 && !!m[s.id]
         next[s.id] = done ? m[s.id] : TODAY
       }
@@ -77,6 +101,7 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
     const updated: Record<string, number | null> = {}
     for (const s of students) updated[s.id] = value
     setPctMap(updated)
+    setBeforeMap({})
     if (value === 100) {
       setSubmitDateMap((m) => {
         const next = { ...m }
@@ -92,9 +117,10 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
   function handleSave() {
     setResultMsg('')
     const entries = students.map((s) => ({
-      studentId:     s.id,
-      completionPct: pctMap[s.id] ?? null,
-      submitDate:    submitDateMap[s.id] || undefined,
+      studentId:        s.id,
+      completionPct:    pctMap[s.id] ?? null,
+      submitDate:       submitDateMap[s.id] || undefined,
+      beforeEnrollment: beforeMap[s.id] ?? false,
     }))
     startTransition(async () => {
       const result = await saveProgress(assignmentId, dueDate, entries)
@@ -109,9 +135,10 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
     })
   }
 
-  const notSubmitted = students.filter((s) => pctMap[s.id] === null).length
+  const beforeEnrollmentCount = students.filter((s) => beforeMap[s.id]).length
+  const notSubmitted = students.filter((s) => pctMap[s.id] === null && !beforeMap[s.id]).length
   const complete     = students.filter((s) => pctMap[s.id] === 100).length
-  const incomplete   = students.length - notSubmitted - complete
+  const incomplete   = students.length - notSubmitted - complete - beforeEnrollmentCount
 
   if (students.length === 0) {
     return (
@@ -132,6 +159,8 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
         <span className="text-zinc-500">미완료 <span className="font-semibold text-red-500">{incomplete}</span>명</span>
         <span className="text-zinc-300">|</span>
         <span className="text-zinc-500">미지참 <span className="font-semibold text-amber-500">{notSubmitted}</span>명</span>
+        <span className="text-zinc-300">|</span>
+        <span className="text-zinc-500">첫 등원 이전 <span className="font-semibold text-blue-500">{beforeEnrollmentCount}</span>명</span>
         {isOverdueDate && (
           <>
             <span className="text-zinc-300">|</span>
@@ -166,7 +195,9 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
             <tbody className="divide-y divide-zinc-50">
               {students.map((s) => {
                 const pct = pctMap[s.id]
+                const before = beforeMap[s.id] ?? false
                 const rowBg =
+                  before         ? 'bg-blue-50/60' :
                   pct === null   ? 'bg-amber-50/60' :
                   pct === 100    ? '' :
                   'bg-red-50/50'
@@ -176,7 +207,7 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
                         {PROGRESS_OPTIONS.map((opt) => {
-                          const isActive = pct === opt.value
+                          const isActive = !before && pct === opt.value
                           let activeClass = 'bg-zinc-900 text-white'
                           if (opt.value === null)  activeClass = 'bg-amber-100 text-amber-800'
                           if (opt.value === 100)   activeClass = 'bg-zinc-900 text-white'
@@ -195,15 +226,31 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
                             </button>
                           )
                         })}
+                        <button
+                          type="button"
+                          onClick={() => setBeforeEnrollment(s.id)}
+                          title="이 과제가 나가기 전에 아직 등원하지 않은 학생"
+                          className={`rounded-full px-2.5 py-1 text-xs font-medium transition-all ${
+                            before
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'border border-zinc-200 text-zinc-400 hover:border-zinc-400 hover:text-zinc-700'
+                          }`}
+                        >
+                          첫 등원 이전
+                        </button>
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <input
-                        type="date"
-                        value={submitDateMap[s.id] ?? ''}
-                        onChange={(e) => setSubmitDate(s.id, e.target.value)}
-                        className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:border-zinc-950 focus:outline-none focus:ring-0 transition-all"
-                      />
+                      {before ? (
+                        <span className="text-xs text-blue-500">해당 없음</span>
+                      ) : (
+                        <input
+                          type="date"
+                          value={submitDateMap[s.id] ?? ''}
+                          onChange={(e) => setSubmitDate(s.id, e.target.value)}
+                          className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:border-zinc-950 focus:outline-none focus:ring-0 transition-all"
+                        />
+                      )}
                     </td>
                   </tr>
                 )
