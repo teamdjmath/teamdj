@@ -219,6 +219,73 @@ export async function setStudentLectureAccess(
   })
 }
 
+// 출석체크에서 결석(차감)으로 표시된 학생 목록 — 개별 지급 화면에서 이 목록을
+// 그대로 불러와 해당 수업 영상을 일괄 차단하는 용도 (한 명씩 지정할 필요 없이 연동).
+// 분반 학생은 기본적으로 강의가 전부 지급되어 있으므로, 결석(차감)만 예외로 차단한다.
+// 결석(영상)은 애초에 영상 시청을 전제로 한 결석이라 이 목록에서 제외된다.
+export async function getDeductedAbsentStudents(
+  classId: string,
+  sessionDate: string,
+): Promise<{ error?: string; students?: Array<{ id: string; name: string }> }> {
+  const user = await getStaffUser()
+  if (!user) return { error: '인증이 필요합니다.' }
+  const role = user.user_metadata?.role as string | undefined
+  if (!['teacher', 'ta_desk', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
+
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('attendance_logs')
+    .select('student_id, users!student_id(name)')
+    .eq('class_id', classId)
+    .eq('session_date', sessionDate)
+    .eq('status', 'absent')
+  if (error) return { error: '결석(차감) 학생 조회에 실패했습니다.' }
+
+  const students = (data ?? [])
+    .map((r) => ({
+      id: r.student_id as string,
+      name: ((r.users as { name?: string } | null)?.name ?? '') as string,
+    }))
+    .filter((s) => s.name)
+    .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+  return { students }
+}
+
+// 특정 강의 하나를 여러 학생에게 한 번에 지급/차단/기본복귀 —
+// 출석체크의 결석(영상) 학생처럼 "같은 강의를 여러 명에게" 줄 때 한 명씩 반복하지 않도록.
+export async function bulkSetLectureAccess(
+  lectureId: string,
+  studentIds: string[],
+  mode: StudentAccessMode | null,
+): Promise<ActionResult> {
+  const user = await getStaffUser()
+
+  return withAction('bulkSetLectureAccess', user?.id, async () => {
+    if (!user) return { success: false, error: '인증이 필요합니다.' }
+    const role = user.user_metadata?.role as string | undefined
+    if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+    if (studentIds.length === 0) return { success: false, error: '학생을 선택하세요.' }
+
+    const admin = createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const table = () => (admin as any).from('lecture_student_access')
+
+    if (mode === null) {
+      const { error } = await table().delete().eq('lecture_id', lectureId).in('student_id', studentIds)
+      if (error) throw error
+    } else {
+      const rows = studentIds.map((studentId) => ({ lecture_id: lectureId, student_id: studentId, mode }))
+      const { error } = await table().upsert(rows, { onConflict: 'lecture_id,student_id' })
+      if (error) throw error
+    }
+
+    revalidatePath('/admin/lectures')
+    revalidatePath('/dashboard/learning')
+    revalidateTag('lectures', {})
+    return { success: true }
+  })
+}
+
 // 예외 설정 모달용 — 분반 학생 목록 (예외 지정 대상 선택)
 export async function getClassStudentsForAccess(
   classId: string,

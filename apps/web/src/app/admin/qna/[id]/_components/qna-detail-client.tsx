@@ -7,7 +7,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import { createClient } from '@/lib/supabase/client'
-import { assignQuestion, submitAnswer, generateAiDraft, updateAnswer, cancelAnswer } from '@/lib/actions/qna'
+import { assignQuestion, submitAnswer, generateAiDraft, updateAnswer, cancelAnswer, adoptRelatedAnswer } from '@/lib/actions/qna'
 
 type Question = {
   id: string
@@ -385,6 +385,22 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
     setTab('write')
   }
 
+  const [adoptingId, setAdoptingId] = useState<string | null>(null)
+  const [adoptErr, setAdoptErr] = useState('')
+
+  // 이 답변이 맞다고 확인만 하면 그대로 채택 — 조교가 다시 타이핑할 필요 없음.
+  // 채택 후에도 이 질문은 답변완료 상태의 다른 질문과 동일하게 계속 수정·재답변할 수 있다.
+  function handleAdopt(ra: RelatedAnswer) {
+    setAdoptErr('')
+    setAdoptingId(ra.questionId)
+    startTransition(async () => {
+      const res = await adoptRelatedAnswer({ questionId: question.id, sourceQuestionId: ra.questionId })
+      setAdoptingId(null)
+      if (res.error) setAdoptErr(res.error)
+      else router.refresh()
+    })
+  }
+
   function handleAssign() {
     setErrMsg('')
     startTransition(async () => {
@@ -542,15 +558,17 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
       </div>
 
       {/* 유사 문항 자동 연결 — 1순위: 같은 교재+문항, 2순위: 제목·내용 유사도.
-          여러 건이면 목록으로 보여주고 조교가 확인 후 하나를 채택한다. */}
-      {related.length > 0 && (
+          여러 건이면 목록으로 보여주고 조교가 확인 후 하나를 채택한다.
+          이미 답변된 질문에서는 채택된 답변이 곧 아래 답변 기록이므로 중복 표시하지 않는다. */}
+      {canAnswer && related.length > 0 && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-5">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold text-emerald-800">연결된 기존 답변 {related.length}건</span>
             <span className="text-[11px] text-zinc-400">
-              같은 교재·문항 또는 제목·내용이 비슷한 질문의 답변입니다. 내용을 확인한 뒤 채택하세요.
+              같은 교재·문항 또는 제목·내용이 비슷한 질문의 답변입니다. 내용을 확인한 뒤 채택하거나 참고해서 답변하세요.
             </span>
           </div>
+          {adoptErr && <p className="mb-2 text-sm font-medium text-red-500">{adoptErr}</p>}
           <div className="space-y-2">
             {related.map((ra) => {
               const expanded = expandedRelatedId === ra.questionId
@@ -596,7 +614,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
                           {ra.content}
                         </ReactMarkdown>
                       </div>
-                      <div className="mt-3 flex items-center gap-3">
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
                         <a
                           href={`/admin/qna/${ra.questionId}`}
                           target="_blank"
@@ -606,13 +624,24 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
                           원 질문 열기
                         </a>
                         {canAnswer && (
-                          <button
-                            type="button"
-                            onClick={() => loadRelatedIntoEditor(ra)}
-                            className="rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-medium text-white hover:bg-emerald-700 transition-colors"
-                          >
-                            이 답변을 에디터로 불러오기
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleAdopt(ra)}
+                              disabled={adoptingId !== null || pending}
+                              className="rounded-lg bg-emerald-700 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-50 transition-colors"
+                            >
+                              {adoptingId === ra.questionId ? '연결 중...' : '해당 답변 연결하기(동일)'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => loadRelatedIntoEditor(ra)}
+                              disabled={adoptingId !== null}
+                              className="rounded-lg border border-emerald-600 px-3.5 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 transition-colors"
+                            >
+                              내용 불러오기
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>

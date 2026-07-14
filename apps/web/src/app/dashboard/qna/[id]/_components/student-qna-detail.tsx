@@ -224,8 +224,9 @@ export function StudentQnaDetail({ question, answers, studentName, relatedAnswer
           <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-400">{answers.length}</span>
         </div>
 
-        {/* 유사 문항 자동 연결 — 같은 교재·문항에 대해 이미 등록된 답변 */}
-        {relatedAnswer && (
+        {/* 유사 문항 자동 연결 — 아직 내 질문에 답변이 없을 때만 참고용으로 보여준다.
+            답변이 이미 있으면(채택 포함) 그 답변이 곧 이 내용이므로 중복 표시하지 않는다. */}
+        {answers.length === 0 && relatedAnswer && (
           <Card>
             <CardHeader
               title={relatedAnswer.matchType === 'same_problem' ? '같은 문항의 이전 답변' : '비슷한 질문의 이전 답변'}

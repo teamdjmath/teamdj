@@ -26,6 +26,50 @@ export async function assignQuestion(questionId: string): Promise<{ error?: stri
   return {}
 }
 
+// 답변 저장(insert) 이후 공통 처리 — 질문 상태 변경 + 학생 알림.
+// submitAnswer(직접 작성)와 adoptRelatedAnswer(유사 답변 채택) 둘 다 사용.
+async function finalizeAnsweredQuestion(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  questionId: string,
+  taId: string,
+  notificationBody: string,
+): Promise<{ error?: string }> {
+  const { error: qError, data: qData } = await supabase
+    .from('qna_questions')
+    .update({ status: 'answered', assigned_ta_id: taId })
+    .eq('id', questionId)
+    .select('student_id, title')
+    .single()
+
+  if (qError) return { error: '질문 상태 업데이트에 실패했습니다.' }
+
+  if (qData?.student_id) {
+    await supabase.from('push_messages').insert({
+      sender_id: taId,
+      student_id: qData.student_id,
+      content: notificationBody,
+      is_system: true,
+    })
+    try {
+      await createNotification(
+        qData.student_id,
+        'qna_answered',
+        '질문에 답변이 등록되었습니다',
+        `${qData.title}에 답변이 달렸습니다`,
+        `/dashboard/qna/${questionId}`,
+      )
+    } catch (err) {
+      logger.warn('finalizeAnsweredQuestion:notification-failed', { action: 'finalizeAnsweredQuestion', userId: taId, error: err })
+    }
+  }
+
+  revalidatePath('/admin/qna')
+  revalidatePath(`/admin/qna/${questionId}`)
+  revalidatePath('/dashboard/qna')
+  revalidatePath(`/dashboard/qna/${questionId}`)
+  return {}
+}
+
 export async function submitAnswer(data: {
   questionId: string
   content: string
@@ -55,40 +99,48 @@ export async function submitAnswer(data: {
 
   if (answerError) return { error: '답변 등록에 실패했습니다.' }
 
-  const { error: qError, data: qData } = await supabase
-    .from('qna_questions')
-    .update({ status: 'answered', assigned_ta_id: user.id })
-    .eq('id', data.questionId)
-    .select('student_id, title')
-    .single()
+  return finalizeAnsweredQuestion(supabase, data.questionId, user.id, '질문에 대한 답변이 등록되었습니다.')
+}
 
-  if (qError) return { error: '질문 상태 업데이트에 실패했습니다.' }
+// 유사 문항 답변을 조교가 확인만으로 채택 — 원본 답변 내용·난이도를 그대로 복사해
+// 새 답변으로 등록한다. 채택 후에도 이 질문은 여느 답변과 동일하게 수정·재답변 가능.
+export async function adoptRelatedAnswer(data: {
+  questionId: string
+  sourceQuestionId: string
+}): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '인증이 필요합니다.' }
 
-  if (qData?.student_id) {
-    await supabase.from('push_messages').insert({
-      sender_id: user.id,
-      student_id: qData.student_id,
-      content: '질문에 대한 답변이 등록되었습니다.',
-      is_system: true,
-    })
-    try {
-      await createNotification(
-        qData.student_id,
-        'qna_answered',
-        '질문에 답변이 등록되었습니다',
-        `${qData.title}에 답변이 달렸습니다`,
-        `/dashboard/qna/${data.questionId}`,
-      )
-    } catch (err) {
-      logger.warn('submitAnswer:notification-failed', { action: 'submitAnswer', userId: user.id, error: err })
-    }
-  }
+  const role = user.user_metadata?.role as string | undefined
+  if (!['teacher', 'ta_desk', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
 
-  revalidatePath('/admin/qna')
-  revalidatePath(`/admin/qna/${data.questionId}`)
-  revalidatePath('/dashboard/qna')
-  revalidatePath(`/dashboard/qna/${data.questionId}`)
-  return {}
+  const admin = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: source, error: sourceError } = await (admin as any)
+    .from('qna_answers')
+    .select('content, media_urls, difficulty')
+    .eq('question_id', data.sourceQuestionId)
+    .order('answered_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (sourceError || !source) return { error: '원본 답변을 찾을 수 없습니다.' }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: answerError } = await (supabase as any).from('qna_answers').insert({
+    question_id: data.questionId,
+    ta_id: user.id,
+    content: source.content,
+    media_urls: source.media_urls ?? [],
+    is_ai_draft: false,
+    difficulty: source.difficulty ?? null,
+    adopted_from_question_id: data.sourceQuestionId,
+  })
+
+  if (answerError) return { error: '답변 채택에 실패했습니다.' }
+
+  return finalizeAnsweredQuestion(supabase, data.questionId, user.id, '비슷한 문항의 기존 답변으로 질문이 해결되었습니다.')
 }
 
 export async function updateAnswer(data: {

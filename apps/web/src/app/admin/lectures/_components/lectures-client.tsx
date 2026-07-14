@@ -24,6 +24,8 @@ import {
   getStudentLectureAccess,
   setStudentLectureAccess,
   getClassStudentsForAccess,
+  getDeductedAbsentStudents,
+  bulkSetLectureAccess,
   type StudentAccessMode,
   type CourseAccessSummary,
 } from '@/lib/actions/lectures'
@@ -115,6 +117,17 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
   const [exLoading, setExLoading] = useState(false)
   const [exSaved, setExSaved] = useState(false)
 
+  // 개별 지급 — 일괄 모드: 여러 학생에게 강의 하나를 한 번에 지급/차단 (결석(차감) 학생 연동용)
+  const [exMode, setExMode] = useState<'single' | 'bulk'>('single')
+  const [bulkClassId, setBulkClassId] = useState('')
+  const [bulkStudents, setBulkStudents] = useState<Array<{ id: string; name: string }>>([])
+  const [bulkSelectedIds, setBulkSelectedIds] = useState<string[]>([])
+  const [bulkLectureId, setBulkLectureId] = useState('')
+  const [bulkDate, setBulkDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [bulkLoading, setBulkLoading] = useState(false)
+  const [bulkSaved, setBulkSaved] = useState(false)
+  const [bulkAbsentErr, setBulkAbsentErr] = useState('')
+
   async function loadAccessSummary(courseName: string) {
     const res = await getCourseAccessSummary(courseName)
     if (res.error) { setErr(res.error); return }
@@ -171,6 +184,53 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
     })
   }
 
+  async function loadBulkClassStudents(classId: string) {
+    setBulkClassId(classId)
+    setBulkSelectedIds([])
+    setBulkSaved(false)
+    setBulkAbsentErr('')
+    if (!classId) { setBulkStudents([]); return }
+    setBulkLoading(true)
+    const res = await getClassStudentsForAccess(classId)
+    setBulkStudents(res.students ?? [])
+    setBulkLoading(false)
+  }
+
+  function toggleBulkStudent(id: string) {
+    setBulkSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+    setBulkSaved(false)
+  }
+
+  // 출석체크에서 결석(차감)으로 표시된 학생을 그대로 불러와 선택 목록에 채운다
+  async function loadDeductedAbsentStudents() {
+    if (!bulkClassId || !bulkDate) return
+    setBulkAbsentErr('')
+    setBulkLoading(true)
+    const res = await getDeductedAbsentStudents(bulkClassId, bulkDate)
+    setBulkLoading(false)
+    if (res.error) { setBulkAbsentErr(res.error); return }
+    const found = res.students ?? []
+    if (found.length === 0) { setBulkAbsentErr('해당 날짜에 결석(차감)으로 표시된 학생이 없습니다.'); return }
+    // 분반 학생 목록에 없는 경우(다른 분반 소속 등)를 대비해 이름 정보를 합쳐 목록을 보강
+    setBulkStudents((prev) => {
+      const known = new Set(prev.map((s) => s.id))
+      const merged = [...prev, ...found.filter((s) => !known.has(s.id))]
+      return merged.sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+    })
+    setBulkSelectedIds(found.map((s) => s.id))
+  }
+
+  function handleBulkSave(mode: StudentAccessMode | null) {
+    if (!bulkLectureId || bulkSelectedIds.length === 0) return
+    setErr('')
+    startTransition(async () => {
+      const res = await bulkSetLectureAccess(bulkLectureId, bulkSelectedIds, mode)
+      if (!res.success) { setErr(res.error); return }
+      setBulkSaved(true)
+      if (modal?.kind === 'settings') await loadAccessSummary(modal.courseName)
+    })
+  }
+
   function toggleCollapse(cn: string) {
     setCollapsed((prev) => ({ ...prev, [cn]: !prev[cn] }))
   }
@@ -205,12 +265,19 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
     setErr('')
     setSettingsTab(tab)
     // 개별 지급 탭 초기화 + 예외 요약 로드
+    setExMode('single')
     setExClassId('')
     setExStudents([])
     setExStudentId('')
     setExModes({})
     setExDirty(false)
     setExSaved(false)
+    setBulkClassId('')
+    setBulkStudents([])
+    setBulkSelectedIds([])
+    setBulkLectureId('')
+    setBulkSaved(false)
+    setBulkAbsentErr('')
     void loadAccessSummary(course.courseName)
     setModal({ kind: 'settings', courseName: course.courseName })
   }
@@ -884,6 +951,131 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                       </div>
                     )}
 
+                    {/* 학생 1명 편집 ↔ 여러 학생 일괄 지급(결석(차감) 연동) 전환 */}
+                    <div className="flex rounded-lg border border-zinc-200 p-0.5 text-xs">
+                      <button type="button" onClick={() => setExMode('single')}
+                        className={`flex-1 rounded-md py-1.5 font-medium transition-colors ${exMode === 'single' ? 'bg-zinc-950 text-white' : 'text-zinc-500 hover:text-zinc-800'}`}>
+                        학생별 설정
+                      </button>
+                      <button type="button" onClick={() => setExMode('bulk')}
+                        className={`flex-1 rounded-md py-1.5 font-medium transition-colors ${exMode === 'bulk' ? 'bg-zinc-950 text-white' : 'text-zinc-500 hover:text-zinc-800'}`}>
+                        여러 학생 일괄 지급
+                      </button>
+                    </div>
+
+                    {exMode === 'bulk' ? (
+                      <div className="space-y-3">
+                        <div className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700 space-y-0.5">
+                          <p>· 분반 학생은 기본적으로 모든 강의가 지급되어 있습니다. 결석(차감) 학생만 출석체크에서 바로 불러와 강의를 차단하세요.</p>
+                          <p>· 결석(영상)은 애초에 영상 시청이 전제된 결석이라 이 목록에 포함되지 않습니다.</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1.5">
+                            <label className="block text-xs font-medium text-zinc-600">분반</label>
+                            <select
+                              value={bulkClassId}
+                              onChange={(e) => void loadBulkClassStudents(e.target.value)}
+                              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
+                            >
+                              <option value="">선택</option>
+                              {classOptions.map((c) => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="block text-xs font-medium text-zinc-600">결석(차감) 조회 날짜</label>
+                            <input
+                              type="date"
+                              value={bulkDate}
+                              onChange={(e) => { setBulkDate(e.target.value); setBulkAbsentErr('') }}
+                              disabled={!bulkClassId}
+                              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none disabled:bg-zinc-50 disabled:text-zinc-400"
+                            />
+                          </div>
+                        </div>
+
+                        {bulkClassId && (
+                          <button
+                            type="button"
+                            onClick={loadDeductedAbsentStudents}
+                            disabled={bulkLoading}
+                            className="w-full rounded-lg border border-blue-200 bg-blue-50 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                          >
+                            {bulkLoading ? '불러오는 중…' : '이 날짜의 결석(차감) 학생 불러오기'}
+                          </button>
+                        )}
+                        {bulkAbsentErr && <p className="text-xs text-amber-600">{bulkAbsentErr}</p>}
+
+                        {bulkStudents.length > 0 && (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <label className="block text-xs font-medium text-zinc-600">학생 선택 ({bulkSelectedIds.length}명)</label>
+                              <div className="flex gap-1">
+                                <button type="button" onClick={() => setBulkSelectedIds(bulkStudents.map((s) => s.id))}
+                                  className="text-[11px] text-zinc-400 hover:text-zinc-700">전체 선택</button>
+                                <span className="text-[11px] text-zinc-300">·</span>
+                                <button type="button" onClick={() => setBulkSelectedIds([])}
+                                  className="text-[11px] text-zinc-400 hover:text-zinc-700">선택 해제</button>
+                              </div>
+                            </div>
+                            <div className="max-h-40 overflow-y-auto rounded-xl border border-zinc-200 divide-y divide-zinc-100">
+                              {bulkStudents.map((s) => (
+                                <label key={s.id} className="flex items-center gap-2 px-3.5 py-2 text-sm text-zinc-800 cursor-pointer hover:bg-zinc-50">
+                                  <input
+                                    type="checkbox"
+                                    checked={bulkSelectedIds.includes(s.id)}
+                                    onChange={() => toggleBulkStudent(s.id)}
+                                    className="h-3.5 w-3.5 rounded border-zinc-300 accent-zinc-950"
+                                  />
+                                  {s.name}
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-medium text-zinc-600">지급할 강의</label>
+                          <select
+                            value={bulkLectureId}
+                            onChange={(e) => { setBulkLectureId(e.target.value); setBulkSaved(false) }}
+                            disabled={lecs.length === 0}
+                            className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none disabled:bg-zinc-50 disabled:text-zinc-400"
+                          >
+                            <option value="">선택</option>
+                            {lecs.map((l) => (
+                              <option key={l.id} value={l.id}>{l.orderNum}강 · {l.title}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {err && <p className="text-sm text-red-500">{err}</p>}
+                        {bulkSaved && <p className="text-xs text-emerald-600">저장되었습니다.</p>}
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => setModal(null)}
+                            className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50">닫기</button>
+                          <button
+                            type="button"
+                            disabled={pending || !bulkLectureId || bulkSelectedIds.length === 0}
+                            onClick={() => handleBulkSave('block')}
+                            className="flex-1 rounded-lg bg-red-600 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
+                          >
+                            {pending ? '저장 중…' : '선택 학생 강의 차단'}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={pending || !bulkLectureId || bulkSelectedIds.length === 0}
+                            onClick={() => handleBulkSave('grant')}
+                            className="flex-1 rounded-lg border border-emerald-200 bg-emerald-50 py-2.5 text-sm font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                          >
+                            지급으로 되돌리기
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
                     {/* 1) 분반 → 2) 학생 선택 */}
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1.5">
@@ -993,6 +1185,8 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                         {err && <p className="text-sm text-red-500">{err}</p>}
                         <button type="button" onClick={() => setModal(null)}
                           className="w-full rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50">닫기</button>
+                      </>
+                    )}
                       </>
                     )}
                   </div>

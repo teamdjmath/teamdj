@@ -65,18 +65,21 @@ export default async function QnaDetailPage({
   const currentUserName = (user.user_metadata?.name as string | undefined) ?? ''
   const currentUserRole = (user.user_metadata?.role as string | undefined) ?? ''
 
-  // 유사 문항(같은 교재+문항)의 기존 답변 자동 연결 + 추천 난이도 근거
+  // 유사 문항(같은 교재+문항)의 기존 답변 자동 연결 + 추천 난이도 근거 —
+  // 이미 답변된 질문은 답변 작성 UI 자체가 숨겨지므로 조회할 필요가 없다
   const textbookId = (r.textbook_id ?? null) as string | null
-  const [relatedAnswers, difficultyHint] = await Promise.all([
-    findRelatedAnswers({
-      excludeQuestionId: id,
-      textbookId,
-      problemNumber: question.problemNumber,
-      title: question.title,
-      content: question.content,
-    }),
-    getDifficultyHint(textbookId),
-  ])
+  const [relatedAnswers, difficultyHint] = question.status === 'answered'
+    ? [[], { textbookAvg: null, count: 0 }]
+    : await Promise.all([
+        findRelatedAnswers({
+          excludeQuestionId: id,
+          textbookId,
+          problemNumber: question.problemNumber,
+          title: question.title,
+          content: question.content,
+        }),
+        getDifficultyHint(textbookId),
+      ])
 
   return (
     <div>
