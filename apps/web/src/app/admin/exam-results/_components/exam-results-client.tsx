@@ -36,12 +36,19 @@ function examTypeLabel(t: string) {
   return EXAM_TYPES.find((e) => e.value === t)?.label ?? t
 }
 
+// 등급 체계는 저장된 컷 개수로 판별: 5등급컷(1~4등급) vs 9등급컷(1~8등급)
+// 고1·2(22개정)=5등급제, 현재 고3(15개정)=9등급제 — 내년부터 전면 5등급제
+function gradeSystemOf(gradeCuts: Record<string, number>): 5 | 9 {
+  return Object.keys(gradeCuts).some((k) => Number(k) >= 5) ? 9 : 5
+}
+
 function gradeFromScore(score: number, gradeCuts: Record<string, number>): string {
-  for (let g = 1; g <= 9; g++) {
+  const maxGrade = gradeSystemOf(gradeCuts)
+  for (let g = 1; g < maxGrade; g++) {
     const cut = gradeCuts[String(g)]
     if (cut !== undefined && score >= cut) return `${g}등급`
   }
-  return '9등급'
+  return `${maxGrade}등급`
 }
 
 import { InputField, SelectField, TextareaField } from '@/components/ui/form-field'
@@ -59,6 +66,8 @@ export function ExamResultsClient({
   const [detailResult, setDetailResult] = useState<ExamResult | null>(null)
   const [filterClassId, setFilterClassId] = useState('')
   const [filterExamType, setFilterExamType] = useState('')
+  // 시험 그룹 접기/펼치기 — 기본은 전부 접힘 (리스트 형태)
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -72,6 +81,7 @@ export function ExamResultsClient({
     score: '',
     maxScore: '100',
     studySuggestion: '',
+    gradeSystem: '5' as '5' | '9',   // 5등급제(22개정) 기본 — 현 고3만 9등급제(15개정)
     gradeCuts: {} as Record<string, string>,
     rankInExam: '',
     totalInExam: '',
@@ -92,6 +102,7 @@ export function ExamResultsClient({
       score: '',
       maxScore: '100',
       studySuggestion: '',
+      gradeSystem: '5',
       gradeCuts: {},
       rankInExam: '',
       totalInExam: '',
@@ -111,8 +122,10 @@ export function ExamResultsClient({
     if (isNaN(score) || score < 0) { setError('점수를 올바르게 입력하세요'); return }
     if (isNaN(maxScore) || maxScore <= 0) { setError('만점을 올바르게 입력하세요'); return }
 
+    // 선택한 등급제 범위의 컷만 저장 (5등급제: 1~4, 9등급제: 1~8)
+    const maxCut = form.gradeSystem === '5' ? 4 : 8
     const gradeCuts: Record<string, number> = {}
-    for (let g = 1; g <= 9; g++) {
+    for (let g = 1; g <= maxCut; g++) {
       const val = Number(form.gradeCuts[String(g)])
       if (!isNaN(val) && form.gradeCuts[String(g)] !== '') {
         gradeCuts[String(g)] = val
@@ -230,17 +243,27 @@ export function ExamResultsClient({
           }
         }
 
+        const isOpen = expanded[key] ?? false
         return (
           <div key={key} className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
-            {/* 시험 헤더 */}
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-100">
+            {/* 시험 헤더 — 클릭으로 접기/펼치기 */}
+            <div
+              className={`flex items-center gap-3 px-5 py-4 cursor-pointer hover:bg-zinc-50/60 transition-colors ${isOpen ? 'border-b border-zinc-100' : ''}`}
+              onClick={() => setExpanded((m) => ({ ...m, [key]: !isOpen }))}
+            >
+              <svg
+                className={`w-4 h-4 shrink-0 text-zinc-400 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+                fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-zinc-900">{first.examName}</p>
                 <p className="text-xs text-zinc-400 mt-0.5">
                   {examTypeLabel(first.examType)} · {first.examDate} · {rows.length}명
                 </p>
               </div>
-              {/* 통계 요약 */}
+              {/* 통계 요약 — 접힌 상태에서도 항상 표시 */}
               <div className="hidden sm:flex gap-4 text-xs text-zinc-500">
                 <span>평균 <strong className="text-zinc-900">{avg}</strong></span>
                 <span>최고 <strong className="text-zinc-900">{max}</strong></span>
@@ -249,7 +272,7 @@ export function ExamResultsClient({
               <button
                 type="button"
                 disabled={isPending}
-                onClick={() => handleAutoRank(first.examName, first.examDate)}
+                onClick={(e) => { e.stopPropagation(); handleAutoRank(first.examName, first.examDate) }}
                 className="shrink-0 rounded-lg border border-zinc-200 px-2.5 py-1 text-xs text-zinc-600 hover:bg-zinc-50 disabled:opacity-50 transition-colors"
               >
                 등수 자동 산정
@@ -257,7 +280,7 @@ export function ExamResultsClient({
             </div>
 
             {/* 등급 분포 (등급컷 있는 경우) */}
-            {Object.keys(gradeDist).length > 0 && (
+            {isOpen && Object.keys(gradeDist).length > 0 && (
               <div className="flex gap-1.5 flex-wrap px-5 py-3 border-b border-zinc-50">
                 {Object.entries(gradeDist)
                   .sort((a, b) => Number(a[0].replace('등급', '')) - Number(b[0].replace('등급', '')))
@@ -273,6 +296,7 @@ export function ExamResultsClient({
             )}
 
             {/* 학생별 결과 목록 */}
+            {isOpen && (
             <ul className="divide-y divide-zinc-50">
               {rows
                 .sort((a, b) => b.score - a.score)
@@ -303,6 +327,7 @@ export function ExamResultsClient({
                   </li>
                 ))}
             </ul>
+            )}
           </div>
         )
       })}
@@ -411,11 +436,30 @@ export function ExamResultsClient({
 
               {/* 등급컷 */}
               <div className="space-y-3">
-                <label className="block text-xs font-bold text-zinc-900 uppercase tracking-widest">
-                  등급컷 설정 (선택)
-                </label>
+                <div className="flex items-center gap-3">
+                  <label className="block text-xs font-bold text-zinc-900 uppercase tracking-widest">
+                    등급컷 설정 (선택)
+                  </label>
+                  {/* 등급제 선택 — 고1·2: 5등급제(22개정) / 현 고3: 9등급제(15개정) */}
+                  <div className="ml-auto flex rounded-lg bg-zinc-100 p-0.5">
+                    {([['5', '5등급제'], ['9', '9등급제']] as const).map(([val, label]) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, gradeSystem: val }))}
+                        className={`rounded-md px-3 py-1 text-[11px] font-semibold transition-colors ${
+                          form.gradeSystem === val
+                            ? 'bg-white text-zinc-900 shadow-sm'
+                            : 'text-zinc-400 hover:text-zinc-600'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="grid grid-cols-3 gap-3 p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
-                  {GRADE_LABELS.map((label, idx) => (
+                  {GRADE_LABELS.slice(0, form.gradeSystem === '5' ? 4 : 8).map((label, idx) => (
                     <div key={idx} className="space-y-1">
                       <span className="text-[10px] font-bold text-zinc-400 block ml-1">{label}</span>
                       <input
@@ -434,7 +478,12 @@ export function ExamResultsClient({
                     </div>
                   ))}
                 </div>
-                <p className="text-[10px] text-zinc-400 ml-1">각 등급의 최저 기준 점수를 입력하면 등급이 자동 계산됩니다.</p>
+                <p className="text-[10px] text-zinc-400 ml-1">
+                  각 등급의 최저 기준 점수를 입력하면 등급이 자동 계산됩니다.
+                  {form.gradeSystem === '5'
+                    ? ' 4등급 컷까지 입력 — 미만은 5등급. (고1·2 / 22개정)'
+                    : ' 8등급 컷까지 입력 — 미만은 9등급. (현 고3 / 15개정)'}
+                </p>
               </div>
 
               {/* 등수 입력 */}

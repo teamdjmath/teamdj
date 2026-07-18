@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { isTestName } from '@/lib/test-data'
 import { DashboardScheduleClient } from './_components/dashboard-schedule-client'
+import { expandClassSlots } from '@/lib/class-slots'
 import type { StaffStatus } from '@/lib/actions/staff'
 
 function getMonthRange() {
@@ -26,6 +27,7 @@ function formatDate(iso: string) {
 type ClassRow = {
   id: string; name: string; subject: string; grade: string
   start_time: string | null; end_time: string | null; day_of_week: number[] | null
+  time_slots?: unknown
 }
 
 export default async function AdminDashboardPage() {
@@ -46,13 +48,16 @@ export default async function AdminDashboardPage() {
   const { start: monthStart, end: monthEnd } = getMonthRange()
 
   // ── 역할별 담당 분반 fetch (아래 병렬 배치와 동시에 실행) ──
+  // expandClassSlots: 요일별 시간이 다른 분반(time_slots)을 슬롯별 행으로 펼쳐
+  // 시간표·오늘 수업이 요일에 맞는 시간을 표시하게 한다
+  const CLASS_COLS = 'id, name, subject, grade, start_time, end_time, day_of_week, time_slots'
   const classesPromise = (async (): Promise<ClassRow[]> => {
     if (role === 'teacher') {
-      const { data } = await admin
+      const { data } = await adminDb
         .from('class_groups')
-        .select('id, name, subject, grade, start_time, end_time, day_of_week')
+        .select(CLASS_COLS)
         .eq('is_active', true).not('day_of_week', 'is', null).order('name')
-      return data ?? []
+      return expandClassSlots((data ?? []) as ClassRow[])
     }
     if (role === 'ta_desk' || role === 'ta_assistant') {
       const { data: allAccess } = await adminDb
@@ -60,22 +65,22 @@ export default async function AdminDashboardPage() {
         .eq('ta_id', user.id).eq('is_all_classes', true).limit(1)
 
       if (allAccess && allAccess.length > 0) {
-        const { data } = await admin
+        const { data } = await adminDb
           .from('class_groups')
-          .select('id, name, subject, grade, start_time, end_time, day_of_week')
+          .select(CLASS_COLS)
           .eq('is_active', true).not('day_of_week', 'is', null).order('name')
-        return data ?? []
+        return expandClassSlots((data ?? []) as ClassRow[])
       }
       const { data: access } = await adminDb
         .from('ta_class_access').select('class_id')
         .eq('ta_id', user.id).not('class_id', 'is', null)
       const ids = (access ?? []).map((a: { class_id: string }) => a.class_id)
       if (ids.length > 0) {
-        const { data } = await admin
+        const { data } = await adminDb
           .from('class_groups')
-          .select('id, name, subject, grade, start_time, end_time, day_of_week')
+          .select(CLASS_COLS)
           .in('id', ids).eq('is_active', true).not('day_of_week', 'is', null).order('name')
-        return data ?? []
+        return expandClassSlots((data ?? []) as ClassRow[])
       }
     }
     return []
@@ -107,7 +112,7 @@ export default async function AdminDashboardPage() {
       .order('scheduled_date').order('start_time'),
     adminDb
       .from('ta_class_access')
-      .select('ta_id, class_id, is_all_classes'),
+      .select('ta_id, class_id, is_all_classes, days'),
   ])
 
   // 이번 달 휴강 기록 (본인) — 근무 시간 차감용
@@ -143,17 +148,18 @@ export default async function AdminDashboardPage() {
 
   const openQnaCount = openQnaRes.count ?? 0
 
-  // ── TA 수 계산 ──
+  // ── TA 수 계산 (오늘 기준 — 담당 요일이 지정된 조교는 오늘이 담당 요일일 때만 집계) ──
   const taAccessRows = (taAccessRes.data ?? []) as {
-    ta_id: string; class_id: string | null; is_all_classes: boolean
+    ta_id: string; class_id: string | null; is_all_classes: boolean; days: number[] | null
   }[]
+  const worksToday = (days: number[] | null) => !days || days.length === 0 || days.includes(todayDow)
   const allClassesTaIds = new Set(
-    taAccessRows.filter((r) => r.is_all_classes).map((r) => r.ta_id),
+    taAccessRows.filter((r) => r.is_all_classes && worksToday(r.days)).map((r) => r.ta_id),
   )
   const allClassesTaCount = allClassesTaIds.size
   const taCountByClass = new Map<string, number>()
   for (const row of taAccessRows) {
-    if (row.class_id && !row.is_all_classes) {
+    if (row.class_id && !row.is_all_classes && worksToday(row.days)) {
       taCountByClass.set(row.class_id, (taCountByClass.get(row.class_id) ?? 0) + 1)
     }
   }

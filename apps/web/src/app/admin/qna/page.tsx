@@ -63,7 +63,30 @@ export default async function QnaPage({
     query = query.eq('assigned_ta_id', selectedTaId)
   }
 
-  const { data: rows } = await query
+  // 상태별 카운트 — status 필터와 무관하게 별도 집계 (다른 필터는 동일 적용)
+  // 미답변 토글 중에도 답변중/답변완료 개수가 유지되도록 head-count 쿼리로 계산
+  function countQuery(status: string) {
+    let q = db.from('qna_questions').select('id', { count: 'exact', head: true }).eq('status', status)
+    if (selectedClassId)      q = q.eq('class_id', selectedClassId)
+    if (selectedTextbookId)   q = q.eq('textbook_id', selectedTextbookId)
+    if (selectedProblemNumber) q = q.ilike('problem_number', `%${selectedProblemNumber}%`)
+    if (selectedTaId)         q = q.eq('assigned_ta_id', selectedTaId)
+    return q
+  }
+
+  const [{ data: rows }, openCnt, progressCnt, answeredCnt] = await Promise.all([
+    query,
+    countQuery('open'),
+    countQuery('in_progress'),
+    countQuery('answered'),
+  ])
+
+  const statusCounts = {
+    open:        openCnt.count ?? 0,
+    in_progress: progressCnt.count ?? 0,
+    answered:    answeredCnt.count ?? 0,
+    all:         (openCnt.count ?? 0) + (progressCnt.count ?? 0) + (answeredCnt.count ?? 0),
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const questions = (rows ?? []).map((q: any) => {
@@ -148,6 +171,7 @@ export default async function QnaPage({
       selectedProblemNumber={selectedProblemNumber ?? ''}
       selectedTaId={selectedTaId ?? null}
       questions={questionsWithDup}
+      statusCounts={statusCounts}
       myStats={myStats}
       currentUserId={user?.id ?? null}
     />

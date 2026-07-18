@@ -4,6 +4,7 @@ import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { categoryBadgeStyle } from '@/lib/category-style'
+import { expandClassSlots } from '@/lib/class-slots'
 import { DdayCard } from './_components/dday-card'
 
 // 수능일 3년치 (매년 11월 셋째 목요일) — D-Day가 지나면 자동으로 다음 수능일이 기본값이 됨
@@ -71,9 +72,10 @@ export default async function DashboardPage() {
             .limit(5),
       // 오늘 수업 (day_of_week 배열에 오늘 요일 포함된 분반)
       classIds.length
-        ? supabase
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (supabase as any)
             .from('class_groups')
-            .select('id, name, subject, grade, start_time, end_time')
+            .select('id, name, subject, grade, start_time, end_time, day_of_week, time_slots')
             .in('id', classIds)
             .contains('day_of_week', [todayDow])
             .not('start_time', 'is', null)
@@ -103,17 +105,23 @@ export default async function DashboardPage() {
     progressMap[p.assignment_id as string] = (p.completion_pct ?? 0) as number
   }
 
+  // 요일별 시간 분리(time_slots) 분반: 오늘 요일 슬롯의 시간으로 표시
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const todayClassesResolved = expandClassSlots(((todayClasses ?? []) as any[]))
+    .filter((c) => c.day_of_week?.includes(todayDow))
+    .sort((a, b) => (a.start_time ?? '').localeCompare(b.start_time ?? ''))
+
   return (
     <div className="space-y-4">
       <DdayCard defaultDate={CSAT_DEFAULT} />
 
       {/* 오늘 수업 */}
-      {todayClasses && todayClasses.length > 0 && (
+      {todayClassesResolved.length > 0 && (
         <Card>
           <CardHeader title="오늘 수업" />
           <CardContent>
             <ul className="space-y-2">
-              {todayClasses.map((cls) => (
+              {todayClassesResolved.map((cls) => (
                 <li key={cls.id as string} className="flex items-center gap-3 py-1">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-zinc-100">
                     <svg className="h-4 w-4 text-zinc-500" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">

@@ -6,22 +6,34 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
 
-const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
+import { scheduleTextFromSlots, type TimeSlot } from '@/lib/class-slots'
 
-function buildScheduleText(days: number[], startTime: string, endTime: string): string | null {
-  if (!days.length || !startTime || !endTime) return null
-  const dayStr = [...days].sort((a, b) => a - b).map((d) => DAY_NAMES[d]).join('')
-  return `${dayStr} ${startTime.slice(0, 5)}~${endTime.slice(0, 5)}`
+// 요일별 시간대 슬롯 파싱 (slot_days_{i} 체크박스 + slot_start_{i}/slot_end_{i})
+// legacy 컬럼 동기화: day_of_week = 슬롯 요일 합집합, start/end_time = 첫 슬롯 시간
+function parseScheduleFields(formData: FormData) {
+  const slots: TimeSlot[] = []
+  const count = Number(formData.get('slot_count') ?? 0)
+  for (let i = 0; i < count; i++) {
+    const days  = formData.getAll(`slot_days_${i}`).map(Number).filter((n) => !isNaN(n))
+    const start = (formData.get(`slot_start_${i}`) as string | null)?.trim() || ''
+    const end   = (formData.get(`slot_end_${i}`)   as string | null)?.trim() || ''
+    if (days.length > 0 && start && end) slots.push({ days, start, end })
+  }
+
+  const allDays = [...new Set(slots.flatMap((s) => s.days))]
+  return {
+    time_slots:  slots.length > 0 ? slots : null,
+    day_of_week: allDays.length ? allDays : null,
+    start_time:  slots[0]?.start ?? null,
+    end_time:    slots[0]?.end ?? null,
+    schedule:    scheduleTextFromSlots(slots),
+  }
 }
 
-function parseScheduleFields(formData: FormData) {
-  const day_of_week = formData.getAll('day_of_week').map(Number).filter((n) => !isNaN(n))
-  const start_time  = (formData.get('start_time') as string | null)?.trim() || null
-  const end_time    = (formData.get('end_time')   as string | null)?.trim() || null
-  const schedule    = (start_time && end_time && day_of_week.length)
-    ? buildScheduleText(day_of_week, start_time, end_time)
-    : null
-  return { day_of_week: day_of_week.length ? day_of_week : null, start_time, end_time, schedule }
+// 조교별 담당 요일 (taDays_{taId} 체크박스) — 미선택이면 null = 모든 수업 요일 담당
+function parseTaDays(formData: FormData, taId: string): number[] | null {
+  const days = formData.getAll(`taDays_${taId}`).map(Number).filter((n) => !isNaN(n))
+  return days.length > 0 ? days : null
 }
 
 export async function createClass(formData: FormData): Promise<ActionResult> {
@@ -40,11 +52,12 @@ export async function createClass(formData: FormData): Promise<ActionResult> {
 
     if (!name || !subject || !grade) return { success: false, error: '필수 항목을 입력해주세요.' }
 
-    const { day_of_week, start_time, end_time, schedule } = parseScheduleFields(formData)
+    const { time_slots, day_of_week, start_time, end_time, schedule } = parseScheduleFields(formData)
     const adminSupabase = createAdminClient()
 
-    const { data, error } = await adminSupabase.from('class_groups').insert({
-      name, subject, grade, schedule, day_of_week, start_time, end_time, teacher_id: user.id,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (adminSupabase as any).from('class_groups').insert({
+      name, subject, grade, schedule, day_of_week, start_time, end_time, time_slots, teacher_id: user.id,
     }).select('id').single()
     if (error) throw error
 
@@ -52,7 +65,10 @@ export async function createClass(formData: FormData): Promise<ActionResult> {
     if (taIds.length > 0 && data?.id) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (adminSupabase as any).from('ta_class_access').insert(
-        taIds.map((taId) => ({ ta_id: taId, class_id: data.id, is_all_classes: false })),
+        taIds.map((taId) => ({
+          ta_id: taId, class_id: data.id, is_all_classes: false,
+          days: parseTaDays(formData, taId),
+        })),
       )
     }
 
@@ -78,12 +94,13 @@ export async function updateClass(formData: FormData): Promise<ActionResult> {
 
     if (!classId || !name || !subject || !grade) return { success: false, error: '필수 항목을 입력해주세요.' }
 
-    const { day_of_week, start_time, end_time, schedule } = parseScheduleFields(formData)
+    const { time_slots, day_of_week, start_time, end_time, schedule } = parseScheduleFields(formData)
     const adminSupabase = createAdminClient()
 
-    const { error } = await adminSupabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (adminSupabase as any)
       .from('class_groups')
-      .update({ name, subject, grade, schedule, day_of_week, start_time, end_time, is_active: isActive })
+      .update({ name, subject, grade, schedule, day_of_week, start_time, end_time, time_slots, is_active: isActive })
       .eq('id', classId)
     if (error) throw error
 
@@ -94,7 +111,10 @@ export async function updateClass(formData: FormData): Promise<ActionResult> {
     const taIds = (formData.getAll('taIds') as string[]).filter(Boolean)
     if (taIds.length > 0) {
       await db.from('ta_class_access').insert(
-        taIds.map((taId) => ({ ta_id: taId, class_id: classId, is_all_classes: false })),
+        taIds.map((taId) => ({
+          ta_id: taId, class_id: classId, is_all_classes: false,
+          days: parseTaDays(formData, taId),
+        })),
       )
     }
 

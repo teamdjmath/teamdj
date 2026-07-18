@@ -18,7 +18,16 @@ const DAYS = [
   { label: '일', value: 0 },
 ]
 
-type TaInfo = { id: string; name: string; role: string }
+type TaInfo = { id: string; name: string; role: string; days?: number[] | null }
+
+const DAY_LABEL: Record<number, string> = { 0: '일', 1: '월', 2: '화', 3: '수', 4: '목', 5: '금', 6: '토' }
+
+function formatTaDays(days?: number[] | null): string {
+  if (!days || days.length === 0) return ''
+  // 월화수…토일 순으로 정렬해서 표시
+  const order = [1, 2, 3, 4, 5, 6, 0]
+  return order.filter((d) => days.includes(d)).map((d) => DAY_LABEL[d]).join('')
+}
 
 type ClassRow = {
   id: string
@@ -29,6 +38,7 @@ type ClassRow = {
   start_time: string | null
   end_time: string | null
   day_of_week: number[] | null
+  time_slots: TimeSlot[] | null
   is_active: boolean
   studentCount: number
   tas: TaInfo[]
@@ -40,71 +50,141 @@ function roleLabel(role: string) {
   return role
 }
 
-function DayCheckboxes({ defaultDays }: { defaultDays?: number[] | null }) {
+type TimeSlot = { days: number[]; start: string; end: string }
+
+// 요일별 시간대 편집기 — 슬롯마다 요일 + 시작/종료 시간 (예: 월목 16:00 / 토일 13:00)
+function SlotEditor({ defaultSlots }: { defaultSlots?: TimeSlot[] }) {
+  const [slots, setSlots] = useState<TimeSlot[]>(() =>
+    defaultSlots && defaultSlots.length > 0 ? defaultSlots : [{ days: [], start: '', end: '' }],
+  )
+
+  function updateSlot(i: number, patch: Partial<TimeSlot>) {
+    setSlots((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)))
+  }
+  function toggleDay(i: number, day: number) {
+    setSlots((prev) => prev.map((s, idx) => {
+      if (idx !== i) return s
+      const days = s.days.includes(day) ? s.days.filter((d) => d !== day) : [...s.days, day]
+      return { ...s, days }
+    }))
+  }
+
   return (
-    <div className="space-y-1.5">
-      <label className="block text-xs font-medium text-zinc-600">수업 요일</label>
-      <div className="flex gap-3 flex-wrap">
-        {DAYS.map(({ label, value }) => (
-          <label key={value} className="flex items-center gap-1.5 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              name="day_of_week"
-              value={value}
-              defaultChecked={defaultDays?.includes(value) ?? false}
-              className="h-4 w-4 rounded border-zinc-300 accent-zinc-900"
-            />
-            <span className="text-sm text-zinc-700">{label}</span>
-          </label>
-        ))}
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <label className="block text-xs font-medium text-zinc-600">수업 요일·시간</label>
+        <span className="text-[11px] text-zinc-400">요일마다 시간이 다르면 시간대를 추가하세요</span>
       </div>
+      <input type="hidden" name="slot_count" value={slots.length} />
+      {slots.map((slot, i) => (
+        <div key={i} className="rounded-xl border border-zinc-200 p-3 space-y-2.5">
+          <div className="flex items-center gap-3 flex-wrap">
+            {DAYS.map(({ label, value }) => (
+              <label key={value} className="flex items-center gap-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  name={`slot_days_${i}`}
+                  value={value}
+                  checked={slot.days.includes(value)}
+                  onChange={() => toggleDay(i, value)}
+                  className="h-4 w-4 rounded border-zinc-300 accent-zinc-900"
+                />
+                <span className="text-sm text-zinc-700">{label}</span>
+              </label>
+            ))}
+            {slots.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setSlots((prev) => prev.filter((_, idx) => idx !== i))}
+                className="ml-auto text-xs text-red-400 hover:text-red-600 transition-colors"
+              >
+                삭제
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <InputField
+              label="시작 시간"
+              name={`slot_start_${i}`}
+              type="time"
+              value={slot.start}
+              onChange={(e) => updateSlot(i, { start: e.target.value })}
+            />
+            <InputField
+              label="종료 시간"
+              name={`slot_end_${i}`}
+              type="time"
+              value={slot.end}
+              onChange={(e) => updateSlot(i, { end: e.target.value })}
+            />
+          </div>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => setSlots((prev) => [...prev, { days: [], start: '', end: '' }])}
+        className="w-full rounded-xl border border-dashed border-zinc-300 py-2 text-xs font-medium text-zinc-500 hover:border-zinc-500 hover:text-zinc-800 transition-colors"
+      >
+        + 시간대 추가 (요일별 시간이 다를 때)
+      </button>
     </div>
   )
 }
 
-function TimeFields({ defaultStart, defaultEnd }: { defaultStart?: string | null; defaultEnd?: string | null }) {
-  return (
-    <div className="grid grid-cols-2 gap-3">
-      <InputField
-        label="시작 시간"
-        name="start_time"
-        type="time"
-        defaultValue={defaultStart?.slice(0, 5) ?? ''}
-      />
-      <InputField
-        label="종료 시간"
-        name="end_time"
-        type="time"
-        defaultValue={defaultEnd?.slice(0, 5) ?? ''}
-      />
-    </div>
-  )
-}
+function TaCheckboxes({ allTas, assigned }: { allTas: TaInfo[]; assigned?: TaInfo[] }) {
+  // 배정 여부/요일을 상태로 관리 — 체크된 조교만 요일 칩 노출
+  const [checked, setChecked] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {}
+    for (const ta of assigned ?? []) init[ta.id] = true
+    return init
+  })
 
-function TaCheckboxes({ allTas, assignedIds }: { allTas: TaInfo[]; assignedIds?: string[] }) {
   if (allTas.length === 0) return null
+
   return (
     <div className="space-y-2">
       <label className="block text-xs font-medium text-zinc-600">담당 조교</label>
-      <div className="max-h-40 overflow-y-auto rounded-xl border border-zinc-200 divide-y divide-zinc-100">
-        {allTas.map((ta) => (
-          <label
-            key={ta.id}
-            className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-zinc-50 transition-colors"
-          >
-            <input
-              type="checkbox"
-              name="taIds"
-              value={ta.id}
-              defaultChecked={assignedIds?.includes(ta.id) ?? false}
-              className="h-4 w-4 rounded border-zinc-300 accent-zinc-900"
-            />
-            <span className="flex-1 text-sm text-zinc-800">{ta.name}</span>
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500">
-              {roleLabel(ta.role)}
-            </span>
-          </label>
-        ))}
+      <p className="text-[11px] text-zinc-400 -mt-1">요일을 선택하지 않으면 모든 수업 요일 담당으로 처리됩니다.</p>
+      <div className="max-h-56 overflow-y-auto rounded-xl border border-zinc-200 divide-y divide-zinc-100">
+        {allTas.map((ta) => {
+          const assignedTa = (assigned ?? []).find((a) => a.id === ta.id)
+          const isChecked = checked[ta.id] ?? false
+          return (
+            <div key={ta.id} className="px-3 py-2.5 hover:bg-zinc-50 transition-colors">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="taIds"
+                  value={ta.id}
+                  checked={isChecked}
+                  onChange={(e) => setChecked((m) => ({ ...m, [ta.id]: e.target.checked }))}
+                  className="h-4 w-4 rounded border-zinc-300 accent-zinc-900"
+                />
+                <span className="flex-1 text-sm text-zinc-800">{ta.name}</span>
+                <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500">
+                  {roleLabel(ta.role)}
+                </span>
+              </label>
+              {/* 담당 요일 칩 — 배정된 조교만 표시 */}
+              {isChecked && (
+                <div className="mt-2 ml-7 flex flex-wrap gap-2.5">
+                  {DAYS.map(({ label, value }) => (
+                    <label key={value} className="flex items-center gap-1 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        name={`taDays_${ta.id}`}
+                        value={value}
+                        defaultChecked={assignedTa?.days?.includes(value) ?? false}
+                        className="h-3.5 w-3.5 rounded border-zinc-300 accent-zinc-900"
+                      />
+                      <span className="text-xs text-zinc-600">{label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -116,11 +196,15 @@ function TaTags({ tas }: { tas: TaInfo[] }) {
   const rest = tas.length - 2
   return (
     <div className="flex flex-wrap gap-1">
-      {visible.map((ta) => (
-        <span key={ta.id} className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600">
-          {ta.name}
-        </span>
-      ))}
+      {visible.map((ta) => {
+        const dayStr = formatTaDays(ta.days)
+        return (
+          <span key={ta.id} className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600">
+            {ta.name}
+            {dayStr && <span className="ml-0.5 text-zinc-400">({dayStr})</span>}
+          </span>
+        )
+      })}
       {rest > 0 && (
         <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-400">+{rest}</span>
       )}
@@ -274,8 +358,7 @@ export function ClassesClient({ classes, allTas }: { classes: ClassRow[]; allTas
           <InputField label="반 이름" name="name" placeholder="예: 고1 수학 목반" required />
           <InputField label="과목"   name="subject" placeholder="예: 공통수학1" required />
           <InputField label="학년"   name="grade"   placeholder="예: 고1" required />
-          <DayCheckboxes />
-          <TimeFields />
+          <SlotEditor />
           <TaCheckboxes allTas={allTas} />
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>}
           <div className="flex justify-end gap-2 pt-1">
@@ -298,9 +381,16 @@ export function ClassesClient({ classes, allTas }: { classes: ClassRow[]; allTas
             <InputField label="반 이름" name="name"    defaultValue={editTarget.name}    required />
             <InputField label="과목"   name="subject" defaultValue={editTarget.subject} required />
             <InputField label="학년"   name="grade"   defaultValue={editTarget.grade}   required />
-            <DayCheckboxes defaultDays={editTarget.day_of_week} />
-            <TimeFields defaultStart={editTarget.start_time} defaultEnd={editTarget.end_time} />
-            <TaCheckboxes allTas={allTas} assignedIds={editTarget.tas.map((t) => t.id)} />
+            <SlotEditor
+              defaultSlots={
+                editTarget.time_slots && editTarget.time_slots.length > 0
+                  ? editTarget.time_slots
+                  : editTarget.day_of_week?.length && editTarget.start_time && editTarget.end_time
+                  ? [{ days: editTarget.day_of_week, start: editTarget.start_time.slice(0, 5), end: editTarget.end_time.slice(0, 5) }]
+                  : undefined
+              }
+            />
+            <TaCheckboxes allTas={allTas} assigned={editTarget.tas} />
             <div className="flex items-center gap-2">
               <input
                 id="is_active_toggle"

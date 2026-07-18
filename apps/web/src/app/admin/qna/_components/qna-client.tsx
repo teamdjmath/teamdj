@@ -76,6 +76,7 @@ interface Props {
   selectedProblemNumber: string
   selectedTaId: string | null
   questions: Question[]
+  statusCounts?: { all: number; open: number; in_progress: number; answered: number }
   myStats: MyStats | null
   currentUserId: string | null
 }
@@ -212,6 +213,7 @@ export function QnaClient({
   selectedProblemNumber,
   selectedTaId,
   questions,
+  statusCounts,
   myStats,
   currentUserId,
 }: Props) {
@@ -254,7 +256,8 @@ export function QnaClient({
     return () => { clearTimeout(timeout); supabase.removeChannel(channel) }
   }, [router])
 
-  const counts = {
+  // 서버 집계(status 필터 무관)를 우선 사용 — 미답변 토글 중에도 다른 탭 개수 유지
+  const counts = statusCounts ?? {
     all: questions.length,
     open: questions.filter((q) => q.status === 'open').length,
     in_progress: questions.filter((q) => q.status === 'in_progress').length,

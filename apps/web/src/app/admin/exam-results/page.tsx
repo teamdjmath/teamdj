@@ -22,22 +22,32 @@ export default async function ExamResultsPage() {
   ])
 
   const classes = classOptions.map((c) => ({ id: c.id, name: c.name }))
+  const visibleClassNames = new Set(classes.map((c) => c.name))
 
+  // (학생, 분반) 쌍 단위로 구성 — 여러 분반 소속 학생도 각 분반에서 검색되도록
   const students: { id: string; name: string; classId: string }[] = []
-  const seen = new Set<string>()
+  const seenPair = new Set<string>()
   for (const m of membersResult.data ?? []) {
     const sid = m.student_id as string
-    if (seen.has(sid)) continue
-    seen.add(sid)
+    const cid = m.class_id as string
+    const key = `${sid}__${cid}`
+    if (seenPair.has(key)) continue
+    seenPair.add(key)
     const u = m.users as { name: string } | null
     if (u?.name) {
-      students.push({ id: sid, name: u.name, classId: m.class_id as string })
+      students.push({ id: sid, name: u.name, classId: cid })
     }
   }
   students.sort((a, b) => a.name.localeCompare(b.name, 'ko'))
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const results = ((resultsResult.data ?? []) as any[]).map((r) => ({
+  const results = ((resultsResult.data ?? []) as any[])
+    // 드롭다운과 일관성: 보이지 않는 분반(테스트 분반 등)의 결과는 목록에서도 제외
+    .filter((r) => {
+      const cn = (r.class_groups as { name: string } | null)?.name
+      return !cn || visibleClassNames.has(cn)
+    })
+    .map((r) => ({
     id: r.id as string,
     studentName: (r.users as { name: string } | null)?.name ?? '',
     className: (r.class_groups as { name: string } | null)?.name ?? '',
