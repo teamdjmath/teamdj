@@ -25,15 +25,16 @@ export function slotsFromRow(row: LegacyScheduleRow): TimeSlot[] {
   return []
 }
 
-// "월목 16:00~19:00 · 토일 13:00~16:00"
+// 슬롯 1개 → "월목 16:00~19:00"
+export function slotLabel(s: TimeSlot): string {
+  const days = DAY_ORDER.filter((d) => s.days.includes(d)).map((d) => DAY_LABEL[d]).join('')
+  return `${days} ${s.start}~${s.end}`
+}
+
+// "월목 16:00~19:00 · 토일 13:00~16:00" — 한 줄 텍스트가 필요한 곳(DB 저장 등)에서 사용
 export function scheduleTextFromSlots(slots: TimeSlot[]): string | null {
   if (slots.length === 0) return null
-  return slots
-    .map((s) => {
-      const days = DAY_ORDER.filter((d) => s.days.includes(d)).map((d) => DAY_LABEL[d]).join('')
-      return `${days} ${s.start}~${s.end}`
-    })
-    .join(' · ')
+  return slots.map(slotLabel).join(' · ')
 }
 
 // 다중 슬롯 분반을 슬롯별 가상 행으로 펼친다.

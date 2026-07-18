@@ -2,8 +2,10 @@ import { createClient } from '@/lib/supabase/server'
 import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { Card, CardHeader } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
+import { gradeFromScore } from '@/lib/grade'
 import { ScoreChart } from './_components/score-chart'
 import { ReportList } from './_components/report-list'
+import { ExamResultsList } from './_components/exam-results-list'
 
 export default async function ReportPage() {
   const supabase = await createClient()
@@ -49,7 +51,7 @@ export default async function ReportPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any)
       .from('exam_results')
-      .select('id, exam_name, exam_type, exam_date, score, max_score, grade_cuts, rank_in_exam, total_in_exam, auto_rank')
+      .select('id, exam_name, exam_type, exam_date, score, max_score, grade_cuts, rank_in_exam, total_in_exam, auto_rank, study_suggestion')
       .eq('student_id', userId)
       .order('exam_date', { ascending: false })
       .limit(20),
@@ -66,7 +68,7 @@ export default async function ReportPage() {
         date:     t?.test_date ?? '',
         score:    s.score ?? 0,
         maxScore: t?.max_score ?? 100,
-        subject:  t?.title ?? '',
+        label:    t?.title ?? '',
       }
     })
 
@@ -80,75 +82,48 @@ export default async function ReportPage() {
 
   const EXAM_TYPE_LABELS: Record<string, string> = { mock: '모의고사', midterm: '중간고사', final: '기말고사', other: '기타' }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const examItems = ((examResultsResult.data ?? []) as any[]).map((r) => ({
-    id: r.id as string,
-    examName: r.exam_name as string,
-    examType: (EXAM_TYPE_LABELS[r.exam_type] ?? r.exam_type) as string,
-    examDate: r.exam_date as string,
-    score: r.score as number,
-    maxScore: r.max_score as number,
-    gradeCuts: (r.grade_cuts ?? {}) as Record<string, number>,
-    rankInExam: r.rank_in_exam as number | null,
-    totalInExam: r.total_in_exam as number | null,
-  }))
+  const examItems = ((examResultsResult.data ?? []) as any[])
+    .filter((r) => r.score !== null)
+    .map((r) => ({
+      id: r.id as string,
+      examName: r.exam_name as string,
+      examType: (EXAM_TYPE_LABELS[r.exam_type] ?? r.exam_type) as string,
+      examDate: r.exam_date as string,
+      score: r.score as number,
+      maxScore: r.max_score as number,
+      grade: gradeFromScore(r.score as number, (r.grade_cuts ?? {}) as Record<string, number>),
+      rankInExam: r.rank_in_exam as number | null,
+      totalInExam: r.total_in_exam as number | null,
+      studySuggestion: (r.study_suggestion ?? null) as string | null,
+    }))
+
+  // 성적 히스토리 차트용 — 특별시험도 정기 테스트와 함께 추이로 표시
+  const examChartData = examItems
+    .map((e) => ({ date: e.examDate, score: e.score, maxScore: e.maxScore, label: e.examName }))
+    .sort((a, b) => a.date.localeCompare(b.date))
 
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold text-zinc-950">리포트</h1>
 
-      {/* 성적 히스토리 차트 */}
+      {/* 성적 히스토리 차트 — 정기 테스트 + 특별시험 함께 표시 */}
       <Card>
         <CardHeader title="성적 히스토리" />
         <div className="px-6 pb-6">
-          {scoreData.length > 0 ? (
-            <ScoreChart scores={scoreData} />
+          {scoreData.length > 0 || examChartData.length > 0 ? (
+            <ScoreChart tests={scoreData} exams={examChartData} />
           ) : (
             <EmptyState message="등록된 점수가 없습니다." />
           )}
         </div>
       </Card>
 
-      {/* 특별 시험 결과 */}
+      {/* 특별 시험 결과 — 탭하면 선생님 분석·학습 제안 펼침 */}
       {examItems.length > 0 && (
         <Card>
           <CardHeader title="특별 시험 결과" />
           <div className="px-5 pb-5">
-            <ul className="divide-y divide-zinc-100">
-              {examItems.map((e) => {
-                // 등급 계산
-                let grade: string | null = null
-                if (Object.keys(e.gradeCuts).length > 0) {
-                  for (let g = 1; g <= 9; g++) {
-                    const cut = e.gradeCuts[String(g)]
-                    if (cut !== undefined && e.score >= cut) { grade = `${g}등급`; break }
-                  }
-                  if (!grade) grade = '9등급'
-                }
-                return (
-                  <li key={e.id} className="py-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-medium text-zinc-900">{e.examName}</p>
-                        <p className="text-xs text-zinc-400 mt-0.5">{e.examType} · {e.examDate}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-zinc-900">{e.score} / {e.maxScore}점</p>
-                        <div className="flex gap-1.5 justify-end mt-0.5">
-                          {grade && (
-                            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-600">{grade}</span>
-                          )}
-                          {e.rankInExam != null && (
-                            <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-[11px] text-white">
-                              {e.rankInExam}/{e.totalInExam ?? '?'}등
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
+            <ExamResultsList items={examItems} />
           </div>
         </Card>
       )}

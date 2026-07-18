@@ -36,20 +36,7 @@ function examTypeLabel(t: string) {
   return EXAM_TYPES.find((e) => e.value === t)?.label ?? t
 }
 
-// 등급 체계는 저장된 컷 개수로 판별: 5등급컷(1~4등급) vs 9등급컷(1~8등급)
-// 고1·2(22개정)=5등급제, 현재 고3(15개정)=9등급제 — 내년부터 전면 5등급제
-function gradeSystemOf(gradeCuts: Record<string, number>): 5 | 9 {
-  return Object.keys(gradeCuts).some((k) => Number(k) >= 5) ? 9 : 5
-}
-
-function gradeFromScore(score: number, gradeCuts: Record<string, number>): string {
-  const maxGrade = gradeSystemOf(gradeCuts)
-  for (let g = 1; g < maxGrade; g++) {
-    const cut = gradeCuts[String(g)]
-    if (cut !== undefined && score >= cut) return `${g}등급`
-  }
-  return `${maxGrade}등급`
-}
+import { gradeFromScore } from '@/lib/grade'
 
 import { InputField, SelectField, TextareaField } from '@/components/ui/form-field'
 
@@ -237,10 +224,8 @@ export function ExamResultsClient({
         // 등급 분포
         const gradeDist: Record<string, number> = {}
         for (const r of rows) {
-          if (Object.keys(r.gradeCuts).length > 0) {
-            const g = gradeFromScore(r.score, r.gradeCuts)
-            gradeDist[g] = (gradeDist[g] ?? 0) + 1
-          }
+          const g = gradeFromScore(r.score, r.gradeCuts)
+          if (g) gradeDist[g] = (gradeDist[g] ?? 0) + 1
         }
 
         const isOpen = expanded[key] ?? false
@@ -590,7 +575,7 @@ export function ExamResultsClient({
               {Object.keys(detailResult.gradeCuts).length > 0 && (
                 <Row
                   label="등급"
-                  value={gradeFromScore(detailResult.score, detailResult.gradeCuts)}
+                  value={gradeFromScore(detailResult.score, detailResult.gradeCuts) ?? '—'}
                 />
               )}
               {Object.keys(detailResult.gradeCuts).length > 0 && (

@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { Modal } from '@/components/ui/modal'
 import { InputField } from '@/components/ui/form-field'
 import { createClass, updateClass, deleteClass, hardDeleteClass } from '@/lib/actions/classes'
+import { slotsFromRow, slotLabel } from '@/lib/class-slots'
 
 const DAYS = [
   { label: '월', value: 1 },
@@ -190,24 +191,35 @@ function TaCheckboxes({ allTas, assigned }: { allTas: TaInfo[]; assigned?: TaInf
   )
 }
 
+// 요일별 시간이 다른 분반은 슬롯마다 한 줄씩 — " · " 인라인 연결 대신 줄바꿈으로 가독성 확보
+function ScheduleLines({ row }: { row: ClassRow }) {
+  const slots = slotsFromRow(row)
+  if (slots.length === 0) return <span className="text-zinc-300">—</span>
+  return (
+    <div className="space-y-0.5">
+      {slots.map((s, i) => (
+        <p key={i} className="whitespace-nowrap tabular-nums">{slotLabel(s)}</p>
+      ))}
+    </div>
+  )
+}
+
 function TaTags({ tas }: { tas: TaInfo[] }) {
   if (tas.length === 0) return <span className="text-zinc-300">—</span>
-  const visible = tas.slice(0, 2)
-  const rest = tas.length - 2
   return (
-    <div className="flex flex-wrap gap-1">
-      {visible.map((ta) => {
+    <div className="flex flex-col items-start gap-1">
+      {tas.map((ta) => {
         const dayStr = formatTaDays(ta.days)
         return (
-          <span key={ta.id} className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600">
+          <span
+            key={ta.id}
+            className="inline-flex items-center whitespace-nowrap rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600"
+          >
             {ta.name}
-            {dayStr && <span className="ml-0.5 text-zinc-400">({dayStr})</span>}
+            {dayStr && <span className="ml-1 text-zinc-400">{dayStr}</span>}
           </span>
         )
       })}
-      {rest > 0 && (
-        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-400">+{rest}</span>
-      )}
     </div>
   )
 }
@@ -282,8 +294,8 @@ export function ClassesClient({ classes, allTas }: { classes: ClassRow[]; allTas
       </div>
 
       {/* 테이블 */}
-      <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="rounded-2xl border border-zinc-200 bg-white overflow-x-auto">
+        <table className="w-full min-w-[860px] text-sm">
           <thead>
             <tr className="border-b border-zinc-100 bg-zinc-50">
               <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500">반 이름</th>
@@ -313,24 +325,26 @@ export function ClassesClient({ classes, allTas }: { classes: ClassRow[]; allTas
                   </td>
                   <td className="px-5 py-3.5 text-zinc-600">{c.subject}</td>
                   <td className="hidden sm:table-cell px-5 py-3.5 text-zinc-600">{c.grade}</td>
-                  <td className="hidden md:table-cell px-5 py-3.5 text-zinc-500">{c.schedule ?? '—'}</td>
+                  <td className="hidden md:table-cell px-5 py-3.5 text-xs text-zinc-500">
+                    <ScheduleLines row={c} />
+                  </td>
                   <td className="hidden lg:table-cell px-5 py-3.5">
                     <TaTags tas={c.tas} />
                   </td>
-                  <td className="px-5 py-3.5 text-center text-zinc-700">{c.studentCount}명</td>
+                  <td className="px-5 py-3.5 text-center text-zinc-700 whitespace-nowrap">{c.studentCount}명</td>
                   <td className="px-5 py-3.5 text-center">
-                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                    <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ${
                       c.is_active ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-400'
                     }`}>
                       {c.is_active ? '활성' : '비활성'}
                     </span>
                   </td>
-                  <td className="px-5 py-3.5 text-right">
+                  <td className="px-5 py-3.5 text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-2">
                       <button
                         type="button"
                         onClick={() => { setError(null); setEditTarget(c) }}
-                        className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors"
+                        className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors whitespace-nowrap"
                       >
                         수정
                       </button>
@@ -339,7 +353,7 @@ export function ClassesClient({ classes, allTas }: { classes: ClassRow[]; allTas
                         type="button"
                         onClick={() => setDeleteTarget(c)}
                         disabled={isPending}
-                        className="text-xs text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                        className="text-xs text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50 whitespace-nowrap"
                       >
                         삭제
                       </button>
