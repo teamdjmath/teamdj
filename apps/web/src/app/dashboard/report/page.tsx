@@ -51,7 +51,7 @@ export default async function ReportPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any)
       .from('exam_results')
-      .select('id, exam_name, exam_type, exam_date, score, max_score, grade_cuts, rank_in_exam, total_in_exam, auto_rank, study_suggestion')
+      .select('id, exam_name, exam_type, exam_date, score, max_score, grade_cuts, rank_in_exam, total_in_exam, auto_rank, study_suggestion, estimated_grade, estimated_percentile')
       .eq('student_id', userId)
       .order('exam_date', { ascending: false })
       .limit(20),
@@ -95,6 +95,8 @@ export default async function ReportPage() {
       rankInExam: r.rank_in_exam as number | null,
       totalInExam: r.total_in_exam as number | null,
       studySuggestion: (r.study_suggestion ?? null) as string | null,
+      estimatedGrade: (r.estimated_grade ?? null) as string | null,
+      estimatedPercentile: (r.estimated_percentile ?? null) as number | null,
     }))
 
   // 성적 히스토리 차트용 — 특별시험도 정기 테스트와 함께 추이로 표시

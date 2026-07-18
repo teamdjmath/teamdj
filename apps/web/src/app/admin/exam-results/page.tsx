@@ -15,7 +15,7 @@ export default async function ExamResultsPage() {
     (supabase as any)
       .from('exam_results')
       .select(
-        'id, exam_name, exam_type, exam_date, score, max_score, grade_cuts, study_suggestion, student_id, class_id, rank_in_exam, total_in_exam, auto_rank, users!student_id(name), class_groups!class_id(name)',
+        'id, exam_name, exam_type, exam_date, score, max_score, grade_cuts, study_suggestion, student_id, class_id, rank_in_exam, total_in_exam, auto_rank, estimated_grade, estimated_percentile, users!student_id(name), class_groups!class_id(name)',
       )
       .order('exam_date', { ascending: false })
       .order('created_at', { ascending: false }),
@@ -61,6 +61,8 @@ export default async function ExamResultsPage() {
     rankInExam: r.rank_in_exam as number | null,
     totalInExam: r.total_in_exam as number | null,
     autoRank: r.auto_rank as boolean,
+    estimatedGrade: r.estimated_grade as string | null,
+    estimatedPercentile: r.estimated_percentile as number | null,
   }))
 
   return (

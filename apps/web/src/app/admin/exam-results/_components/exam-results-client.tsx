@@ -21,6 +21,8 @@ interface ExamResult {
   rankInExam: number | null
   totalInExam: number | null
   autoRank: boolean
+  estimatedGrade: string | null
+  estimatedPercentile: number | null
 }
 
 const EXAM_TYPES = [
@@ -306,6 +308,14 @@ export function ExamResultsClient({
                         {gradeFromScore(r.score, r.gradeCuts)}
                       </p>
                     )}
+                    {r.estimatedGrade && (
+                      <span
+                        title="정규분포 근사 기반 추정치 — 실제 등급과 다를 수 있습니다"
+                        className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700 w-16 text-center"
+                      >
+                        예상 {r.estimatedGrade}
+                      </span>
+                    )}
                     <svg className="h-4 w-4 text-zinc-300 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
                     </svg>
@@ -590,6 +600,26 @@ export function ExamResultsClient({
                         </span>
                       ))}
                   </div>
+                </div>
+              )}
+              {detailResult.estimatedGrade && (
+                <div className="rounded-xl border border-amber-100 bg-amber-50/60 px-3.5 py-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-amber-800">예상 등급 (추정치)</p>
+                    <p className="text-sm font-bold text-amber-800">
+                      {detailResult.estimatedGrade}
+                      {detailResult.estimatedPercentile != null && (
+                        <span className="ml-1 text-xs font-normal text-amber-600">
+                          상위 {detailResult.estimatedPercentile}%
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-amber-700">
+                    학원 내 등수는 실제 등급의 기준인 전국·학교 단위 모집단과 다릅니다. 이 값은
+                    응시자 집단의 점수 분포(평균·표준편차)를 정규분포로 근사해 추정한 것으로,
+                    실제 등급과 다를 수 있습니다.
+                  </p>
                 </div>
               )}
               {detailResult.studySuggestion && (

@@ -13,12 +13,16 @@ export interface ExamResultItem {
   rankInExam: number | null
   totalInExam: number | null
   studySuggestion: string | null
+  estimatedGrade: string | null
+  estimatedPercentile: number | null
 }
 
 export function ExamResultsList({ items }: { items: ExamResultItem[] }) {
   const [openId, setOpenId] = useState<string | null>(null)
+  const hasEstimate = items.some((e) => e.estimatedGrade)
 
   return (
+    <div>
     <ul className="divide-y divide-zinc-100">
       {items.map((e) => {
         const hasSuggestion = !!e.studySuggestion?.trim()
@@ -51,13 +55,18 @@ export function ExamResultsList({ items }: { items: ExamResultItem[] }) {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-semibold text-zinc-900">{e.score} / {e.maxScore}점</p>
-                  <div className="flex gap-1.5 justify-end mt-0.5">
+                  <div className="flex gap-1.5 justify-end mt-0.5 flex-wrap">
                     {e.grade && (
                       <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-600">{e.grade}</span>
                     )}
                     {e.rankInExam != null && (
                       <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-[11px] text-white">
                         {e.rankInExam}/{e.totalInExam ?? '?'}등
+                      </span>
+                    )}
+                    {e.estimatedGrade && (
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
+                        예상 {e.estimatedGrade}
                       </span>
                     )}
                   </div>
@@ -77,5 +86,12 @@ export function ExamResultsList({ items }: { items: ExamResultItem[] }) {
         )
       })}
     </ul>
+    {hasEstimate && (
+      <p className="mt-3 px-1 text-[11px] leading-relaxed text-zinc-400">
+        * 예상 등급은 학원 내 응시자 성적 분포를 바탕으로 통계적으로 추정한 값으로, 실제 전국·학교 등급과
+        다를 수 있습니다. (학원 내 등수·등급은 별도 표기)
+      </p>
+    )}
+    </div>
   )
 }

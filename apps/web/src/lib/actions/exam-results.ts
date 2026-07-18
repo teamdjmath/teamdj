@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
 import { asJson } from '@/types/db'
+import { estimateGrade, gradeSystemOf } from '@/lib/grade'
 
 export async function createExamResult(data: {
   studentId: string
@@ -65,23 +66,39 @@ export async function autoRankExam(examName: string, examDate: string): Promise<
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: rows, error: fetchErr } = await (supabase as any)
       .from('exam_results')
-      .select('id, score')
+      .select('id, score, grade_cuts')
       .eq('exam_name', examName)
       .eq('exam_date', examDate)
 
     if (fetchErr) throw fetchErr
     if (!rows || rows.length === 0) return { success: false, error: '해당 시험 결과가 없습니다.' }
 
-    const sorted = [...rows].sort((a: { score: number }, b: { score: number }) => b.score - a.score)
+    type Row = { id: string; score: number; grade_cuts: Record<string, number> | null }
+    const typedRows = rows as Row[]
+    const sorted = [...typedRows].sort((a, b) => b.score - a.score)
     const total = sorted.length
+    const allScores = typedRows.map((r) => r.score)
 
+    // 예상 등급: 이 시험 응시자 전체의 평균·표준편차로 정규분포 근사 —
+    // 학원 등급컷(grade_cuts)과 무관한 별도 통계 추정치이므로 항상 함께 저장하되
+    // UI에서 "추정치" 고지를 반드시 붙인다.
     for (let i = 0; i < sorted.length; i++) {
+      const row = sorted[i]
       const rank = i + 1
+      const system = gradeSystemOf(row.grade_cuts ?? {})
+      const estimate = estimateGrade(row.score, allScores, system)
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: upErr } = await (supabase as any)
         .from('exam_results')
-        .update({ rank_in_exam: rank, total_in_exam: total, auto_rank: true })
-        .eq('id', sorted[i].id)
+        .update({
+          rank_in_exam:         rank,
+          total_in_exam:        total,
+          auto_rank:            true,
+          estimated_grade:      estimate?.grade ?? null,
+          estimated_percentile: estimate?.percentile ?? null,
+        })
+        .eq('id', row.id)
       if (upErr) throw upErr
     }
 
