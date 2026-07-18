@@ -290,35 +290,42 @@ export function ExamResultsClient({
                 .map((r) => (
                   <li
                     key={r.id}
-                    className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-50 cursor-pointer transition-colors"
+                    className="flex flex-col gap-2 px-5 py-3.5 hover:bg-zinc-50 cursor-pointer transition-colors sm:flex-row sm:items-center sm:justify-between"
                     onClick={() => setDetailResult(r)}
                   >
-                    <p className="flex-1 text-sm text-zinc-800">{r.studentName}</p>
-                    <p className="text-xs text-zinc-400">{r.className}</p>
-                    {r.rankInExam != null && (
-                      <p className="text-xs text-zinc-500 w-16 text-right">
-                        {r.rankInExam}/{r.totalInExam ?? '?'}등{r.autoRank && <span className="text-zinc-300 ml-0.5">A</span>}
-                      </p>
-                    )}
-                    <p className="text-sm font-semibold text-zinc-900 w-16 text-right">
-                      {r.score} / {r.maxScore}
-                    </p>
-                    {Object.keys(r.gradeCuts).length > 0 && (
-                      <p className="text-xs text-zinc-500 w-12 text-right">
-                        {gradeFromScore(r.score, r.gradeCuts)}
-                      </p>
-                    )}
-                    {r.estimatedGrade && (
-                      <span
-                        title="정규분포 근사 기반 추정치 — 실제 등급과 다를 수 있습니다"
-                        className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700 w-16 text-center"
-                      >
-                        예상 {r.estimatedGrade}
+                    {/* 학생 정보 — 항상 한 줄 유지, 넘치면 말줄임 */}
+                    <div className="min-w-0 flex items-baseline gap-2">
+                      <p className="text-sm font-medium text-zinc-900 truncate">{r.studentName}</p>
+                      <p className="text-xs text-zinc-400 truncate shrink-0">{r.className}</p>
+                    </div>
+
+                    {/* 지표 — 각각 완결된 pill이라 좁아지면 pill 단위로 줄바꿈될 뿐 글자가 쪼개지지 않음 */}
+                    <div className="flex items-center gap-1.5 flex-wrap sm:justify-end sm:shrink-0">
+                      {r.rankInExam != null && (
+                        <span className="whitespace-nowrap rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-600">
+                          {r.rankInExam}/{r.totalInExam ?? '?'}등{r.autoRank && ' · 자동'}
+                        </span>
+                      )}
+                      <span className="whitespace-nowrap text-sm font-semibold text-zinc-900">
+                        {r.score} / {r.maxScore}점
                       </span>
-                    )}
-                    <svg className="h-4 w-4 text-zinc-300 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
-                    </svg>
+                      {Object.keys(r.gradeCuts).length > 0 && (
+                        <span className="whitespace-nowrap rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-600">
+                          {gradeFromScore(r.score, r.gradeCuts)}
+                        </span>
+                      )}
+                      {r.estimatedGrade && (
+                        <span
+                          title="정규분포 근사 기반 추정치 — 실제 등급과 다를 수 있습니다"
+                          className="whitespace-nowrap rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700"
+                        >
+                          예상 {r.estimatedGrade}
+                        </span>
+                      )}
+                      <svg className="h-4 w-4 text-zinc-300 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
+                      </svg>
+                    </div>
                   </li>
                 ))}
             </ul>
