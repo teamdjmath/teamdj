@@ -711,13 +711,8 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
                     </div>
                   )}
                 </div>
-                <div className="prose prose-sm prose-zinc max-w-none text-sm leading-relaxed">
-                  <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
-                    {a.content}
-                  </ReactMarkdown>
-                </div>
                 {a.media_urls.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="mb-3 flex flex-wrap gap-2">
                     {a.media_urls.map((url, i) => (
                       <a key={i} href={url} target="_blank" rel="noopener noreferrer"
                         className="rounded-md bg-zinc-200 px-2.5 py-1 text-xs text-zinc-700 hover:bg-zinc-300 transition-colors">
@@ -726,6 +721,11 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
                     ))}
                   </div>
                 )}
+                <div className="prose prose-sm prose-zinc max-w-none text-sm leading-relaxed">
+                  <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
+                    {a.content}
+                  </ReactMarkdown>
+                </div>
               </div>
             )
           )}

@@ -95,8 +95,11 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
   }))
 
   return (
-    <div className="h-[calc(100vh-120px)] bg-white rounded-xl border border-zinc-200 overflow-hidden">
-      <div className="h-full">
+    // 모바일에서는 페이지 자체 스크롤에 맡긴다 — 고정 100vh 패널은 화면 회전 시
+    // 주소창 높이 변화로 100vh가 어긋나면서 스크롤이 먹통이 되는 문제가 있었다.
+    // md 이상(데스크톱)에서만 내부 스크롤 패널 형태를 유지한다.
+    <div className="md:h-[calc(100vh-120px)] bg-white rounded-xl border border-zinc-200 md:overflow-hidden">
+      <div className="md:h-full">
         <CourseViewer courseName={decodedCourseName} lectures={lectures} materials={materials} />
       </div>
     </div>

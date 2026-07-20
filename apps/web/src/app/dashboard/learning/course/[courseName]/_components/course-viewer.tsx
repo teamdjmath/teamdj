@@ -28,7 +28,7 @@ export function CourseViewer({ courseName, lectures, materials }: Props) {
   const [playing, setPlaying] = useState<Lecture | null>(null)
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col md:h-full bg-white">
       {/* 헤더 영역 */}
       <div className="p-6 border-b border-zinc-100 shrink-0">
         <Link 
@@ -81,7 +81,7 @@ export function CourseViewer({ courseName, lectures, materials }: Props) {
       </div>
 
       {/* 강의 목록 영역 */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-white">
+      <div className="flex-1 md:overflow-y-auto p-4 md:p-6 bg-white">
         <h2 className="text-sm font-bold text-zinc-900 mb-4 px-1">강의 목록</h2>
         <div className="space-y-2">
           {lectures.map((lec) => {

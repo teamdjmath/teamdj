@@ -262,13 +262,8 @@ export function StudentQnaDetail({ question, answers, studentName, relatedAnswer
               <Card key={a.id}>
                 <CardHeader title={a.taName} subtitle={formatDatetime(a.answered_at)} />
                 <CardContent>
-                  <div className="prose prose-sm prose-zinc max-w-none text-[15px] font-medium leading-relaxed">
-                    <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
-                      {buildStudentContent(a.content, studentName, a.taName, a.isAiDraft)}
-                    </ReactMarkdown>
-                  </div>
                   {a.media_urls.length > 0 && (
-                    <div className="mt-6 space-y-3">
+                    <div className="mb-6 space-y-3">
                       {a.media_urls.map((url, i) => {
                         const raw = url.split('/').pop()?.split('?')[0] ?? ''
                         const ext = raw.split('.').pop()?.toLowerCase() ?? ''
@@ -335,6 +330,11 @@ export function StudentQnaDetail({ question, answers, studentName, relatedAnswer
                       })}
                     </div>
                   )}
+                  <div className="prose prose-sm prose-zinc max-w-none text-[15px] font-medium leading-relaxed">
+                    <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
+                      {buildStudentContent(a.content, studentName, a.taName, a.isAiDraft)}
+                    </ReactMarkdown>
+                  </div>
                   {question.status === 'answered' && (
                     <StarRating
                       answerId={a.id}
