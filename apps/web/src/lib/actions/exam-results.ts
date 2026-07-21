@@ -17,6 +17,7 @@ export async function createExamResult(data: {
   maxScore: number
   gradeCuts: Record<string, number>
   studySuggestion: string
+  examDifficulty?: string
   rankInExam?: number | null
   totalInExam?: number | null
   autoRank?: boolean
@@ -30,8 +31,7 @@ export async function createExamResult(data: {
     const role = user.user_metadata?.role as string | undefined
     if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).from('exam_results').insert({
+    const row = {
       student_id:       data.studentId,
       class_id:         data.classId,
       exam_name:        data.examName,
@@ -41,11 +41,22 @@ export async function createExamResult(data: {
       max_score:        data.maxScore,
       grade_cuts:       asJson(data.gradeCuts),
       study_suggestion: data.studySuggestion || null,
+      exam_difficulty:  data.examDifficulty || null,
       created_by:       user.id,
       rank_in_exam:     data.rankInExam ?? null,
       total_in_exam:    data.totalInExam ?? null,
       auto_rank:        data.autoRank ?? false,
-    })
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let { error } = await (supabase as any).from('exam_results').insert(row)
+
+    // 072 마이그레이션(exam_difficulty 컬럼) 미적용 환경 대비 — 없는 컬럼 때문에
+    // 시험 결과 등록 자체가 막히지 않도록 그 필드만 빼고 재시도
+    if (error?.code === 'PGRST204' && error.message?.includes('exam_difficulty')) {
+      const { exam_difficulty: _drop, ...legacyRow } = row
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;({ error } = await (supabase as any).from('exam_results').insert(legacyRow))
+    }
     if (error) throw error
 
     revalidatePath('/admin/exam-results')

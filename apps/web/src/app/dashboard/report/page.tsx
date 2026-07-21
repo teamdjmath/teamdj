@@ -34,7 +34,7 @@ export default async function ReportPage() {
     )
   }
 
-  const [reportsResult, scoresResult, examResultsResult] = await Promise.all([
+  const [reportsResult, scoresResult, examResultsResult, examReportsResult] = await Promise.all([
     supabase
       .from('reports')
       .select('id, created_at, image_url, class:class_groups!class_id(name)')
@@ -54,6 +54,15 @@ export default async function ReportPage() {
       .select('id, exam_name, exam_type, exam_date, score, max_score, grade_cuts, rank_in_exam, total_in_exam, auto_rank, study_suggestion, estimated_grade, estimated_percentile')
       .eq('student_id', userId)
       .order('exam_date', { ascending: false })
+      .limit(20),
+    // exam_reports는 생성 타입에 아직 없는 테이블(071 추가)이라 캐스팅으로 접근.
+    // 마이그레이션 미적용 환경에서는 data가 null로 와서 아래에서 빈 목록으로 처리된다.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any)
+      .from('exam_reports')
+      .select('id, created_at, image_url, content_json, exam_result_id')
+      .eq('student_id', userId)
+      .order('created_at', { ascending: false })
       .limit(20),
   ])
 
@@ -104,6 +113,20 @@ export default async function ReportPage() {
     .map((e) => ({ date: e.examDate, score: e.score, maxScore: e.maxScore, label: e.examName }))
     .sort((a, b) => a.date.localeCompare(b.date))
 
+  // 특별시험 레포트 (개발 중) — 분석지 형태로 생성된 이미지가 있는 것만 노출
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const examReportItems = ((examReportsResult.data ?? []) as any[])
+    .filter((r) => r.image_url)
+    .map((r) => {
+      const cj = (r.content_json ?? {}) as { examName?: string }
+      return {
+        id: r.id as string,
+        createdAt: r.created_at as string,
+        imageUrl: r.image_url as string,
+        title: cj.examName ? `${cj.examName} 레포트` : undefined,
+      }
+    })
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold text-zinc-950">리포트</h1>
@@ -126,6 +149,16 @@ export default async function ReportPage() {
           <CardHeader title="특별 시험 결과" />
           <div className="px-5 pb-5">
             <ExamResultsList items={examItems} />
+          </div>
+        </Card>
+      )}
+
+      {/* 특별시험 레포트 (개발 중) — 분석지 형태의 이미지 리포트 */}
+      {examReportItems.length > 0 && (
+        <Card>
+          <CardHeader title="특별시험 레포트 (개발 중)" />
+          <div className="px-6 pb-6">
+            <ReportList reports={examReportItems} />
           </div>
         </Card>
       )}

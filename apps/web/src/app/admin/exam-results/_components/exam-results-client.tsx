@@ -1,15 +1,21 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import { createExamResult, deleteExamResult, autoRankExam } from '@/lib/actions/exam-results'
+import { saveExamReport, type ExamReportContent } from '@/lib/actions/exam-reports'
+import { generateExamAnalysis } from '@/lib/actions/exam-analysis'
+import { ExamReportCard } from './exam-report-card'
 import { EmptyState } from '@/components/ui/empty-state'
 
 interface ClassOption { id: string; name: string }
-interface StudentOption { id: string; name: string; classId: string }
+interface StudentOption { id: string; name: string; classId: string; school: string; grade: string }
 
 interface ExamResult {
   id: string
+  studentId: string
   studentName: string
+  studentSchool: string
+  studentGrade: string
   className: string
   examName: string
   examType: string
@@ -18,11 +24,13 @@ interface ExamResult {
   maxScore: number
   gradeCuts: Record<string, number>
   studySuggestion: string | null
+  examDifficulty: string | null
   rankInExam: number | null
   totalInExam: number | null
   autoRank: boolean
   estimatedGrade: string | null
   estimatedPercentile: number | null
+  reportImageUrl: string | null
 }
 
 const EXAM_TYPES = [
@@ -40,7 +48,7 @@ function examTypeLabel(t: string) {
 
 import { gradeFromScore } from '@/lib/grade'
 
-import { InputField, SelectField, TextareaField } from '@/components/ui/form-field'
+import { InputField, SelectField } from '@/components/ui/form-field'
 
 export function ExamResultsClient({
   classes,
@@ -60,6 +68,64 @@ export function ExamResultsClient({
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
+  // 특별시험 레포트 (개발 중) — 미리보기 → 캡처 → 저장
+  const [reportPreviewFor, setReportPreviewFor] = useState<ExamResult | null>(null)
+  const [reportSaving, setReportSaving] = useState(false)
+  const [reportErr, setReportErr] = useState('')
+  const [reportSavedUrl, setReportSavedUrl] = useState<string | null>(null)
+  const reportCardRef = useRef<HTMLDivElement>(null)
+
+  function buildExamReportContent(r: ExamResult): ExamReportContent {
+    return {
+      examName: r.examName,
+      examType: examTypeLabel(r.examType),
+      examDate: r.examDate,
+      score: r.score,
+      maxScore: r.maxScore,
+      gradeCuts: r.gradeCuts,
+      examGrade: gradeFromScore(r.score, r.gradeCuts),
+      rankInExam: r.rankInExam,
+      totalInExam: r.totalInExam,
+      estimatedGrade: r.estimatedGrade,
+      estimatedPercentile: r.estimatedPercentile,
+      studySuggestion: r.studySuggestion,
+      studentName: r.studentName,
+      school: r.studentSchool,
+      studentGrade: r.studentGrade,
+      className: r.className,
+    }
+  }
+
+  function openReportPreview(r: ExamResult) {
+    setReportErr('')
+    setReportSavedUrl(r.reportImageUrl)
+    setReportPreviewFor(r)
+  }
+
+  async function handleSaveExamReport() {
+    if (!reportPreviewFor || !reportCardRef.current) return
+    setReportErr('')
+    setReportSaving(true)
+    try {
+      const { toPng } = await import('html-to-image')
+      const imageBase64 = await toPng(reportCardRef.current, {
+        backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true,
+      })
+      const res = await saveExamReport({
+        studentId: reportPreviewFor.studentId,
+        examResultId: reportPreviewFor.id,
+        contentJson: buildExamReportContent(reportPreviewFor),
+        imageBase64,
+      })
+      if (res.error) { setReportErr(res.error); return }
+      setReportSavedUrl(res.imageUrl ?? null)
+    } catch (e) {
+      setReportErr(e instanceof Error ? e.message : '리포트 생성 중 오류가 발생했습니다.')
+    } finally {
+      setReportSaving(false)
+    }
+  }
+
   // 폼 상태
   const [form, setForm] = useState({
     classId: classes[0]?.id ?? '',
@@ -70,12 +136,15 @@ export function ExamResultsClient({
     score: '',
     maxScore: '100',
     studySuggestion: '',
+    examDifficulty: '',
     gradeSystem: '5' as '5' | '9',   // 5등급제(22개정) 기본 — 현 고3만 9등급제(15개정)
     gradeCuts: {} as Record<string, string>,
     rankInExam: '',
     totalInExam: '',
     autoRank: false,
   })
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiErr, setAiErr] = useState('')
 
   const filteredStudents = form.classId
     ? students.filter((s) => s.classId === form.classId)
@@ -91,6 +160,7 @@ export function ExamResultsClient({
       score: '',
       maxScore: '100',
       studySuggestion: '',
+      examDifficulty: '',
       gradeSystem: '5',
       gradeCuts: {},
       rankInExam: '',
@@ -98,6 +168,44 @@ export function ExamResultsClient({
       autoRank: false,
     })
     setError(null)
+    setAiErr('')
+  }
+
+  async function handleAiAnalysis() {
+    setAiErr('')
+    if (!form.studentId) { setAiErr('학생을 먼저 선택하세요.'); return }
+    if (!form.examName.trim()) { setAiErr('시험명을 먼저 입력하세요.'); return }
+    const score = Number(form.score)
+    const maxScore = Number(form.maxScore)
+    if (isNaN(score) || isNaN(maxScore) || maxScore <= 0) { setAiErr('점수·만점을 먼저 입력하세요.'); return }
+
+    const student = students.find((s) => s.id === form.studentId)
+    const maxCut = form.gradeSystem === '5' ? 4 : 8
+    const gradeCuts: Record<string, number> = {}
+    for (let g = 1; g <= maxCut; g++) {
+      const val = Number(form.gradeCuts[String(g)])
+      if (!isNaN(val) && form.gradeCuts[String(g)] !== '') gradeCuts[String(g)] = val
+    }
+
+    setAiLoading(true)
+    const res = await generateExamAnalysis({
+      studentName: student?.name ?? '',
+      school: student?.school ?? '',
+      studentGrade: student?.grade ?? '',
+      examName: form.examName.trim(),
+      examType: examTypeLabel(form.examType),
+      examDifficulty: form.examDifficulty.trim(),
+      score,
+      maxScore,
+      examGrade: gradeFromScore(score, gradeCuts),
+      rankInExam: form.rankInExam !== '' ? Number(form.rankInExam) : null,
+      totalInExam: form.totalInExam !== '' ? Number(form.totalInExam) : null,
+      estimatedGrade: null,
+      estimatedPercentile: null,
+    })
+    setAiLoading(false)
+    if (res.error) { setAiErr(res.error); return }
+    if (res.draft) setForm((f) => ({ ...f, studySuggestion: res.draft! }))
   }
 
   function handleCreate(e: React.FormEvent) {
@@ -135,6 +243,7 @@ export function ExamResultsClient({
         maxScore,
         gradeCuts,
         studySuggestion: form.studySuggestion,
+        examDifficulty: form.examDifficulty.trim() || undefined,
         rankInExam,
         totalInExam,
         autoRank: form.autoRank,
@@ -436,6 +545,14 @@ export function ExamResultsClient({
                 />
               </div>
 
+              {/* 시험 난이도/특이사항 — 학교별 시험 특성 등 실제 맥락을 짧게 남기면 AI 분석이 이를 반영한다 */}
+              <InputField
+                label="시험 난이도 · 특이사항 (선택)"
+                value={form.examDifficulty}
+                onChange={(e) => setForm((f) => ({ ...f, examDifficulty: e.target.value }))}
+                placeholder="예: OO고 중간고사, 평이한 편 / 최상위권 학교 기출로 어려움 등 — AI 분석에 참고됩니다"
+              />
+
               {/* 등급컷 */}
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
@@ -527,13 +644,43 @@ export function ExamResultsClient({
               </div>
 
               {/* 학습 제안 */}
-              <TextareaField
-                label="학습 제안 및 피드백"
-                value={form.studySuggestion}
-                onChange={(e) => setForm((f) => ({ ...f, studySuggestion: e.target.value }))}
-                placeholder="학생의 강점과 약점, 향후 학습 방향에 대한 구체적인 피드백을 남겨주세요."
-                rows={4}
-              />
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-medium text-zinc-600">학습 제안 및 피드백</label>
+                  <button
+                    type="button"
+                    onClick={handleAiAnalysis}
+                    disabled={aiLoading}
+                    className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+                  >
+                    {aiLoading ? (
+                      <>
+                        <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        분석 중...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                        </svg>
+                        AI 분석
+                      </>
+                    )}
+                  </button>
+                </div>
+                <textarea
+                  value={form.studySuggestion}
+                  onChange={(e) => setForm((f) => ({ ...f, studySuggestion: e.target.value }))}
+                  placeholder="학생의 강점과 약점, 향후 학습 방향에 대한 구체적인 피드백을 남겨주세요. (또는 AI 분석 버튼으로 초안을 받아 다듬으세요)"
+                  rows={4}
+                  className="w-full resize-none rounded-2xl border border-zinc-200 bg-zinc-50/50 px-5 py-3.5 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 placeholder:font-normal focus:border-zinc-900 focus:bg-white focus:outline-none transition-all"
+                />
+                {aiErr && <p className="text-[11px] text-red-500">{aiErr}</p>}
+                <p className="text-[10px] text-zinc-400">AI 분석은 초안입니다 — 저장 전에 꼭 검토하고 다듬어주세요.</p>
+              </div>
 
               {error && (
                 <div className="flex items-center gap-2 p-4 bg-red-50 rounded-2xl text-red-600">
@@ -582,6 +729,9 @@ export function ExamResultsClient({
               <Row label="시험명" value={detailResult.examName} />
               <Row label="유형" value={examTypeLabel(detailResult.examType)} />
               <Row label="날짜" value={detailResult.examDate} />
+              {detailResult.examDifficulty && (
+                <Row label="난이도·특이사항" value={detailResult.examDifficulty} />
+              )}
               <Row label="점수" value={`${detailResult.score} / ${detailResult.maxScore}`} />
               {detailResult.rankInExam != null && (
                 <Row
@@ -639,14 +789,64 @@ export function ExamResultsClient({
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={() => handleDelete(detailResult.id)}
-              disabled={isPending}
-              className="mt-6 w-full rounded-xl border border-red-200 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
-            >
-              삭제
-            </button>
+            <div className="mt-6 flex gap-2">
+              <button
+                type="button"
+                onClick={() => openReportPreview(detailResult)}
+                className="flex-1 rounded-xl bg-zinc-950 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 transition-colors"
+              >
+                {detailResult.reportImageUrl ? '특별시험 레포트 다시 만들기' : '특별시험 레포트 만들기'}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDelete(detailResult.id)}
+                disabled={isPending}
+                className="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+              >
+                삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 특별시험 레포트 미리보기 + 저장 */}
+      {reportPreviewFor && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 px-4 py-8 overflow-y-auto"
+          onClick={() => setReportPreviewFor(null)}
+        >
+          <div className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-semibold text-white">특별시험 레포트 미리보기</p>
+              <button type="button" onClick={() => setReportPreviewFor(null)} className="text-sm text-white/80 hover:text-white">
+                닫기 ✕
+              </button>
+            </div>
+            <div className="overflow-hidden rounded-xl shadow-2xl">
+              <ExamReportCard data={{ content: buildExamReportContent(reportPreviewFor) }} cardRef={reportCardRef} />
+            </div>
+            {reportErr && <p className="mt-3 text-sm font-medium text-red-300">{reportErr}</p>}
+            {reportSavedUrl && !reportErr && (
+              <p className="mt-3 text-sm font-medium text-emerald-300">저장 완료 — 학생 대시보드에서 확인할 수 있습니다.</p>
+            )}
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setReportPreviewFor(null)}
+                className="flex-1 rounded-xl border border-white/20 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition-colors"
+              >
+                닫기
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveExamReport}
+                disabled={reportSaving}
+                className="flex-1 rounded-xl bg-white py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-100 transition-colors disabled:opacity-50"
+              >
+                {reportSaving ? '저장 중...' : '이 내용으로 저장'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -8,6 +8,8 @@ interface ReportItem {
   createdAt: string
   imageUrl: string | null
   isClinic?: boolean
+  title?: string   // 있으면 날짜 기반 기본 제목 대신 사용 (예: 시험명)
+  label?: string   // 날짜 뒤에 붙는 기본 접미어 — 기본값 '리포트'
 }
 
 export function ReportList({ reports }: { reports: ReportItem[] }) {
@@ -30,12 +32,16 @@ export function ReportList({ reports }: { reports: ReportItem[] }) {
             >
               <div>
                 <p className="text-sm font-medium text-zinc-800">
-                  {new Date(r.createdAt).toLocaleDateString('ko-KR', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}{' '}
-                  리포트{r.isClinic && '(클리닉)'}
+                  {r.title ?? (
+                    <>
+                      {new Date(r.createdAt).toLocaleDateString('ko-KR', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}{' '}
+                      {r.label ?? '리포트'}{r.isClinic && '(클리닉)'}
+                    </>
+                  )}
                 </p>
                 <p className="text-xs text-zinc-400 mt-0.5">
                   {r.imageUrl ? '탭하여 이미지 보기' : '이미지 없음'}

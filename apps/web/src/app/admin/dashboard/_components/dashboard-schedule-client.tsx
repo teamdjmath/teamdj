@@ -17,6 +17,14 @@ import {
 
 // ── 상수
 const PX_PER_MIN = 0.55
+// line-clamp-* 유틸리티 클래스가 이 프로젝트 빌드에서 display:-webkit-box를 만들어내지 않아
+// (webkitLineClamp만 적용되고 display는 flow-root로 남음) 인라인 스타일로 직접 지정한다.
+const CLAMP_2_LINES: React.CSSProperties = {
+  display: '-webkit-box',
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: 'vertical',
+  overflow: 'hidden',
+}
 const DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일']
 const DOW_LIST   = [1, 2, 3, 4, 5, 6, 0]
 
@@ -40,6 +48,52 @@ function getClassColor(idx: number) {
     border: `hsl(${hue}, 62%, 68%)`,
     ring:   `hsl(${hue}, 62%, 55%)`,
   }
+}
+
+// 같은 날 시간대가 겹치는 카드들을 나란히 배치하기 위한 레이아웃 계산 (시간 겹침 기준).
+// 총괄 화면(선생님/관리자)에서만 쓴다 — 담당자가 다른 분반끼리 겹쳐도 총괄 입장에서는
+// "이 시간에 뭔가 동시에 진행 중"이라는 걸 그대로 보여줘야 하므로 담당자 구분 없이 나눈다.
+// (조교 개인 화면은 애초에 한 조교가 같은 시간에 두 곳에 배정될 수 없으므로 아예 나누지 않는다 —
+// 호출하는 쪽에서 조교 화면일 땐 이 함수를 쓰지 않고 전부 col:0/totalCols:1로 둔다.)
+type LayoutInput = { key: string; start: number; end: number }
+type LayoutResult = { key: string; col: number; totalCols: number }
+
+function layoutOverlaps(items: LayoutInput[]): Map<string, LayoutResult> {
+  const result = new Map<string, LayoutResult>()
+  if (items.length === 0) return result
+
+  const sorted = [...items].sort((a, b) => a.start - b.start || a.end - b.end)
+
+  // 1. 시간대가 사슬처럼 이어져 겹치는 항목들을 하나의 클러스터로 묶는다
+  const clusters: LayoutInput[][] = []
+  let current: LayoutInput[] = []
+  let currentMaxEnd = -Infinity
+  for (const it of sorted) {
+    if (current.length > 0 && it.start >= currentMaxEnd) {
+      clusters.push(current)
+      current = []
+      currentMaxEnd = -Infinity
+    }
+    current.push(it)
+    currentMaxEnd = Math.max(currentMaxEnd, it.end)
+  }
+  if (current.length > 0) clusters.push(current)
+
+  // 2. 클러스터 안에서 그리디하게 열 배정 (구간 스케줄링의 "최소 플랫폼 수" 알고리즘과 동일)
+  for (const cluster of clusters) {
+    const colEnds: number[] = []
+    const assigned: Array<{ item: LayoutInput; col: number }> = []
+    for (const it of cluster) {
+      let col = colEnds.findIndex((end) => end <= it.start)
+      if (col === -1) { col = colEnds.length; colEnds.push(it.end) } else { colEnds[col] = it.end }
+      assigned.push({ item: it, col })
+    }
+    const totalCols = colEnds.length
+    for (const { item, col } of assigned) {
+      result.set(item.key, { key: item.key, col, totalCols })
+    }
+  }
+  return result
 }
 
 function getWeekDates() {
@@ -101,21 +155,31 @@ export interface DashboardScheduleProps {
   myInitialStatus: StaffStatus
 }
 
+// 겹침 레이아웃 결과를 CSS 위치로 변환 — 열 사이 2px 여백 유지 (기존 inset-x-0.5와 동일한 여백감)
+function overlapStyle(col: number, totalCols: number): React.CSSProperties {
+  const widthPct = 100 / totalCols
+  return {
+    left:  `calc(${col * widthPct}% + 2px)`,
+    width: `calc(${widthPct}% - 4px)`,
+  }
+}
+
 // ── 분반 카드
 function ClassCard({
-  cls, color, isActive, startHour, cancelled, onClick,
+  cls, color, isActive, startHour, cancelled, col, totalCols, onClick,
 }: {
   cls: ClassRow; color: ReturnType<typeof getClassColor>
-  isActive: boolean; startHour: number; cancelled?: boolean; onClick: () => void
+  isActive: boolean; startHour: number; cancelled?: boolean
+  col: number; totalCols: number; onClick: () => void
 }) {
   const top    = (timeToMin(cls.start_time!) - startHour * 60) * PX_PER_MIN
   const height = Math.max((timeToMin(cls.end_time!) - timeToMin(cls.start_time!)) * PX_PER_MIN, 20)
   return (
     <div
-      className="absolute inset-x-0.5 rounded-md px-1.5 py-0.5 overflow-hidden cursor-pointer transition-all hover:brightness-95 active:scale-95"
+      className="absolute rounded-md px-1.5 py-0.5 overflow-hidden cursor-pointer transition-all hover:brightness-95 active:scale-95"
       onClick={onClick}
       style={{
-        top, height,
+        top, height, ...overlapStyle(col, totalCols),
         backgroundColor: cancelled ? '#f4f4f5' : color.bg,
         color: cancelled ? '#a1a1aa' : color.text,
         borderLeft: cancelled ? '3px dashed #d4d4d8' : `3px solid ${color.border}`,
@@ -123,7 +187,10 @@ function ClassCard({
         zIndex: isActive && !cancelled ? 10 : 1,
       }}
     >
-      <p className={`text-[9px] font-bold leading-tight truncate ${cancelled ? 'line-through' : ''}`}>
+      <p
+        className={`text-[10px] font-bold leading-snug break-words ${cancelled ? 'line-through' : ''}`}
+        style={CLAMP_2_LINES}
+      >
         {cancelled ? '휴강 · ' : ''}{cls.name}
       </p>
       {height >= 30 && (
@@ -137,24 +204,24 @@ function ClassCard({
 
 // ── 추가 근무 카드 (시간표 내)
 function ExtraCard({
-  es, startHour, onClick,
+  es, startHour, col, totalCols, onClick,
 }: {
-  es: ExtraSchedule; startHour: number; onClick: () => void
+  es: ExtraSchedule; startHour: number; col: number; totalCols: number; onClick: () => void
 }) {
   const top    = (timeToMin(es.start_time) - startHour * 60) * PX_PER_MIN
   const height = Math.max((timeToMin(es.end_time) - timeToMin(es.start_time)) * PX_PER_MIN, 20)
   return (
     <div
-      className="absolute inset-x-0.5 rounded-md px-1.5 py-0.5 overflow-hidden cursor-pointer transition-all hover:brightness-95 active:scale-95"
+      className="absolute rounded-md px-1.5 py-0.5 overflow-hidden cursor-pointer transition-all hover:brightness-95 active:scale-95"
       onClick={onClick}
       style={{
-        top, height,
+        top, height, ...overlapStyle(col, totalCols),
         backgroundColor: '#fef3c7',
         borderLeft: '3px dashed #fbbf24',
         zIndex: 2,
       }}
     >
-      <p className="text-[9px] font-bold leading-tight truncate text-amber-800">{es.title}</p>
+      <p className="text-[10px] font-bold leading-snug break-words text-amber-800" style={CLAMP_2_LINES}>{es.title}</p>
       {height >= 30 && (
         <p className="text-[8px] text-amber-700 opacity-65 mt-0.5 truncate">
           {es.start_time.slice(0, 5)}–{es.end_time.slice(0, 5)}
@@ -284,6 +351,9 @@ export function DashboardScheduleClient({
 
   const sorted   = [...classes].sort((a, b) => a.name.localeCompare(b.name))
   const colorMap = Object.fromEntries(sorted.map((c, i) => [c.id, getClassColor(i)]))
+
+  // 총괄(선생님/관리자) 화면인지 — 시간표 겹침 분할 여부를 가른다
+  const isOverseer = currentUserRole === 'teacher' || currentUserIsSuperAdmin
 
   function isActive(cls: ClassRow) {
     if (!cls.day_of_week?.includes(todayDow)) return false
@@ -419,7 +489,7 @@ export function DashboardScheduleClient({
           <div className="flex-1 min-w-0">
             <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
               <div className="overflow-x-auto">
-                <div className="min-w-[500px]">
+                <div className="min-w-[640px]">
                   {/* 요일 헤더 */}
                   <div
                     className="border-b border-zinc-100 bg-zinc-50"
@@ -469,6 +539,21 @@ export function DashboardScheduleClient({
                       )
                       const dayExtra = weekExtra.filter((es) => es.scheduled_date === colDateStr)
 
+                      // 같은 날 시간대가 겹치는 분반(클리닉 등)·추가근무 카드를 나란히 배치 —
+                      // 총괄(선생님/관리자) 화면에서만. 조교 개인 화면은 애초에 한 조교가 같은
+                      // 시간에 두 곳에 배정될 수 없으므로 나누지 않는다(겹쳐 보이면 배정 실수).
+                      const overlapLayout = isOverseer
+                        ? layoutOverlaps([
+                            ...dayClasses.map((c) => ({
+                              key: `c:${c.id}`, start: timeToMin(c.start_time!), end: timeToMin(c.end_time!),
+                            })),
+                            ...dayExtra.map((es) => ({
+                              key: `e:${es.id}`, start: timeToMin(es.start_time), end: timeToMin(es.end_time),
+                            })),
+                          ])
+                        : new Map<string, LayoutResult>()
+                      const layoutOf = (key: string) => overlapLayout.get(key) ?? { col: 0, totalCols: 1 }
+
                       return (
                         <div
                           key={dow}
@@ -495,26 +580,36 @@ export function DashboardScheduleClient({
                             </div>
                           )}
 
-                          {dayClasses.map((cls) => (
-                            <ClassCard
-                              key={cls.id}
-                              cls={cls}
-                              color={colorMap[cls.id]}
-                              isActive={isActive(cls)}
-                              startHour={dynStart}
-                              cancelled={absenceKeySet.has(`${cls.id}|${colDateStr}`)}
-                              onClick={() => setPopup({ kind: 'class', cls, color: colorMap[cls.id] })}
-                            />
-                          ))}
+                          {dayClasses.map((cls) => {
+                            const { col, totalCols } = layoutOf(`c:${cls.id}`)
+                            return (
+                              <ClassCard
+                                key={cls.id}
+                                cls={cls}
+                                color={colorMap[cls.id]}
+                                isActive={isActive(cls)}
+                                startHour={dynStart}
+                                cancelled={absenceKeySet.has(`${cls.id}|${colDateStr}`)}
+                                col={col}
+                                totalCols={totalCols}
+                                onClick={() => setPopup({ kind: 'class', cls, color: colorMap[cls.id] })}
+                              />
+                            )
+                          })}
 
-                          {dayExtra.map((es) => (
-                            <ExtraCard
-                              key={es.id}
-                              es={es}
-                              startHour={dynStart}
-                              onClick={() => setPopup({ kind: 'extra', es })}
-                            />
-                          ))}
+                          {dayExtra.map((es) => {
+                            const { col, totalCols } = layoutOf(`e:${es.id}`)
+                            return (
+                              <ExtraCard
+                                key={es.id}
+                                es={es}
+                                startHour={dynStart}
+                                col={col}
+                                totalCols={totalCols}
+                                onClick={() => setPopup({ kind: 'extra', es })}
+                              />
+                            )
+                          })}
                         </div>
                       )
                     })}
