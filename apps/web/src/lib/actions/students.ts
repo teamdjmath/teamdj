@@ -435,6 +435,32 @@ export async function removeStudentFromClass(studentId: string, classId: string)
   })
 }
 
+// 학생 관리 목록에서 특정 분반으로 필터링한 뒤, 여러 학생을 한 번에 그 분반에서 제외 —
+// 분반을 완전 삭제하려면 재원생을 모두 빼야 하는데(hardDeleteClass 가드), 한 명씩 빼는 게 번거로워서 만든 일괄 처리.
+export async function bulkRemoveStudentsFromClass(
+  studentIds: string[],
+  classId: string,
+): Promise<ActionResult<{ removedCount: number }>> {
+  const supabase = await createClient()
+  const { data: { user: caller } } = await supabase.auth.getUser()
+
+  return withAction('bulkRemoveStudentsFromClass', caller?.id, async () => {
+    if (!caller) return { success: false, error: '인증이 필요합니다.' }
+    if (studentIds.length === 0) return { success: false, error: '제외할 학생을 선택하세요.' }
+
+    const adminSupabase = createAdminClient()
+    const { error, count } = await adminSupabase
+      .from('class_members')
+      .update({ is_active: false }, { count: 'exact' })
+      .eq('class_id', classId)
+      .in('student_id', studentIds)
+    if (error) throw error
+
+    revalidatePath('/admin/students')
+    return { success: true, data: { removedCount: count ?? studentIds.length } }
+  })
+}
+
 export async function linkParent(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user: caller } } = await supabase.auth.getUser()

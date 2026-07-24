@@ -7,6 +7,7 @@ import { InputField } from '@/components/ui/form-field'
 import { StudentFormModal } from './student-form-modal'
 import { ExcelImportModal } from './excel-import-modal'
 import { EmptyState } from '@/components/ui/empty-state'
+import { bulkRemoveStudentsFromClass } from '@/lib/actions/students'
 
 type StudentRow = {
   id: string
@@ -43,10 +44,14 @@ export function StudentsClient({
 }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
+  const [isRemoving, startRemoveTransition] = useTransition()
   const [createOpen, setCreateOpen] = useState(false)
   const [excelOpen, setExcelOpen]   = useState(false)
   const [inputValue, setInputValue] = useState(q)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // 분반 필터 상태에서만 쓰는 일괄 제외 선택 — 분반이 바뀌면 선택도 초기화
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [removeError, setRemoveError] = useState<string | null>(null)
 
   function pushParams(newQ: string, newPage: number, newClassId?: string, newStatus?: string) {
     const params = new URLSearchParams()
@@ -56,8 +61,38 @@ export function StudentsClient({
     if (classId) params.set('classId', classId)
     const status = newStatus ?? filterStatus
     if (status) params.set('status', status)
+    setSelectedIds(new Set())
     startTransition(() => {
       router.push(`/admin/students${params.size ? `?${params}` : ''}`)
+    })
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll(ids: string[]) {
+    setSelectedIds((prev) => {
+      const allSelected = ids.length > 0 && ids.every((id) => prev.has(id))
+      return allSelected ? new Set() : new Set(ids)
+    })
+  }
+
+  function handleBulkRemove() {
+    if (!filterClassId || selectedIds.size === 0) return
+    const label = classOptions.find((c) => c.id === filterClassId)?.label ?? '이 분반'
+    if (!confirm(`선택한 학생 ${selectedIds.size}명을 "${label}"에서 제외하시겠습니까?`)) return
+    setRemoveError(null)
+    startRemoveTransition(async () => {
+      const res = await bulkRemoveStudentsFromClass(Array.from(selectedIds), filterClassId)
+      if (!res.success) { setRemoveError(res.error); return }
+      setSelectedIds(new Set())
+      router.refresh()
     })
   }
 
@@ -179,11 +214,46 @@ export function StudentsClient({
         </select>
       </div>
 
+      {/* 분반 일괄 제외 — 특정 분반으로 필터링했을 때만. 분반을 통째로 삭제하려면
+          재원생을 모두 빼야 하는데, 한 명씩 빼는 대신 여기서 여러 명을 한 번에 뺄 수 있다. */}
+      {filterClassId && selectedIds.size > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+          <span className="text-sm font-medium text-red-700">{selectedIds.size}명 선택됨</span>
+          <button
+            type="button"
+            onClick={handleBulkRemove}
+            disabled={isRemoving}
+            className="rounded-lg bg-red-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+          >
+            {isRemoving ? '제외하는 중…' : '선택 학생 이 분반에서 제외'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs text-zinc-500 hover:text-zinc-800 transition-colors"
+          >
+            선택 해제
+          </button>
+          {removeError && <span className="text-xs font-medium text-red-600">{removeError}</span>}
+        </div>
+      )}
+
       {/* 테이블 */}
       <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-100 bg-zinc-50">
+              {filterClassId && (
+                <th className="w-10 px-5 py-3">
+                  <input
+                    type="checkbox"
+                    checked={displayedStudents.length > 0 && displayedStudents.every((s) => selectedIds.has(s.id))}
+                    onChange={() => toggleSelectAll(displayedStudents.map((s) => s.id))}
+                    className="h-4 w-4 rounded border-zinc-300 accent-zinc-950"
+                    aria-label="전체 선택"
+                  />
+                </th>
+              )}
               <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500">이름</th>
               <th className="hidden sm:table-cell px-5 py-3 text-left text-xs font-semibold text-zinc-500">전화번호</th>
               <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500">소속 반</th>
@@ -195,7 +265,7 @@ export function StudentsClient({
           <tbody className="divide-y divide-zinc-100">
             {displayedStudents.length === 0 ? (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={filterClassId ? 7 : 6}>
                   <EmptyState
                     message={q ? '검색 결과가 없습니다.' : '등록된 학생이 없습니다.'}
                     description={q ? `"${q}" 에 일치하는 학생이 없습니다.` : '학생 등록 버튼으로 추가하세요.'}
@@ -205,6 +275,17 @@ export function StudentsClient({
             ) : (
               displayedStudents.map((s) => (
                 <tr key={s.id} className="hover:bg-zinc-50 transition-colors">
+                  {filterClassId && (
+                    <td className="px-5 py-3.5">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(s.id)}
+                        onChange={() => toggleSelect(s.id)}
+                        className="h-4 w-4 rounded border-zinc-300 accent-zinc-950"
+                        aria-label={`${s.name} 선택`}
+                      />
+                    </td>
+                  )}
                   <td className="px-5 py-3.5">
                     <div className="font-medium text-zinc-900">{s.name}</div>
                     <div className="text-[11px] text-zinc-500">
