@@ -13,10 +13,11 @@ import { NativePickerOpener } from '@/components/ui/native-picker-opener'
 import { getUnreadConsultationCount } from '@/lib/actions/consultations'
 
 // 역할 계층 정의
-// 'all'      → teacher + ta_desk + ta_assistant
-// 'senior'   → teacher + ta_desk
-// 'teacher'  → teacher only
-type NavVisibility = 'all' | 'senior' | 'teacher'
+// 'all'       → teacher + ta_desk + ta_assistant
+// 'senior'    → teacher + ta_desk
+// 'teacher'   → teacher only
+// 'assistant' → ta_assistant only (teacher/ta_desk는 학생 관리에서 이미 전체 열람 가능)
+type NavVisibility = 'all' | 'senior' | 'teacher' | 'assistant'
 
 const NAV_ITEMS = [
   {
@@ -49,6 +50,17 @@ const NAV_ITEMS = [
         <path strokeLinecap="round" strokeLinejoin="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
         <circle cx="9" cy="7" r="4" />
         <path strokeLinecap="round" strokeLinejoin="round" d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
+  {
+    href: '/admin/roster',
+    label: '학생 조회',
+    visibility: 'assistant' as NavVisibility,
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+        <circle cx="10" cy="10" r="6" strokeLinecap="round" strokeLinejoin="round" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="m20 20-4.35-4.35" />
       </svg>
     ),
   },
@@ -206,6 +218,7 @@ function filterNavByRole(role: StaffRole) {
     if (item.visibility === 'all') return true
     if (item.visibility === 'senior') return role === 'teacher' || role === 'ta_desk'
     if (item.visibility === 'teacher') return role === 'teacher'
+    if (item.visibility === 'assistant') return role === 'ta_assistant'
     return false
   })
 }

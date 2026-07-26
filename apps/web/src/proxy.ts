@@ -83,12 +83,14 @@ const CONSENT_PATH = '/consent'
 const STAFF_ROLES = ['teacher', 'ta_desk', 'ta_assistant']
 
 // ta_assistant 허용 경로 (/admin 하위) — /admin/qna/stats 는 senior 전용이므로 제외
+// /admin/roster: 분반별 학생 조회(읽기전용) + 연락처 열람 요청
 const TA_ASSISTANT_ALLOWED = [
   '/admin/dashboard',
   '/admin/qna',
   '/admin/messages',
   '/admin/schedule',
   '/admin/staff',
+  '/admin/roster',
 ]
 
 // ta_assistant 접근 차단 경로 (허용 경로 하위라도 차단)

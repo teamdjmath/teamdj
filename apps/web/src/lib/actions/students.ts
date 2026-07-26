@@ -7,6 +7,7 @@ import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
 import { logger } from '@/lib/logger'
 import { logAudit } from '@/lib/audit'
+import { formatPhone } from '@/lib/phone'
 
 export type StudentBulkRow = {
   name: string
@@ -30,13 +31,6 @@ function toAuthEmail(phone: string) {
 
 function getInitialPassword() {
   return process.env.INITIAL_STUDENT_PASSWORD ?? 'teamdj1234'
-}
-
-function formatPhone(phone: string): string {
-  const d = phone.replace(/\D/g, '')
-  if (d.length === 11) return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`
-  if (d.length === 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`
-  return phone
 }
 
 export async function createStudent(formData: FormData): Promise<ActionResult> {

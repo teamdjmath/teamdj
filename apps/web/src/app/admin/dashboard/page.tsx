@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { isTestName } from '@/lib/test-data'
 import { DashboardScheduleClient } from './_components/dashboard-schedule-client'
+import { ContactRequestQueue, type PendingRequest } from './_components/contact-request-queue'
 import { expandClassSlots } from '@/lib/class-slots'
 import type { StaffStatus } from '@/lib/actions/staff'
 
@@ -86,8 +87,10 @@ export default async function AdminDashboardPage() {
     return []
   })()
 
+  const isTeacher = role === 'teacher'
+
   // ── 병렬 fetch ──
-  const [noticesRes, openQnaRes, staffUsersRes, extraSchedulesRes, taAccessRes] = await Promise.all([
+  const [noticesRes, openQnaRes, staffUsersRes, extraSchedulesRes, taAccessRes, contactRequestsRes] = await Promise.all([
     db.from('notices')
       .select('id, title, created_at, is_pinned, class_id, class_groups!class_id(name)')
       .order('is_pinned', { ascending: false })
@@ -113,7 +116,26 @@ export default async function AdminDashboardPage() {
     adminDb
       .from('ta_class_access')
       .select('ta_id, class_id, is_all_classes, days'),
+    // 선생님 전용 — 학생 연락처 열람 승인 대기 큐 (/admin/roster에서 클리닉 조교가 올린 요청)
+    isTeacher
+      ? adminDb
+          .from('student_contact_requests')
+          .select('id, student_id, requested_by, reason, requested_at, student:users!student_id(name), requester:users!requested_by(name, role)')
+          .eq('status', 'pending')
+          .order('requested_at', { ascending: true })
+      : Promise.resolve({ data: [] }),
   ])
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pendingContactRequests: PendingRequest[] = ((contactRequestsRes.data ?? []) as any[]).map((r) => ({
+    id: r.id as string,
+    studentId: r.student_id as string,
+    studentName: (r.student as { name?: string } | null)?.name ?? '',
+    requesterName: (r.requester as { name?: string } | null)?.name ?? '',
+    requesterRole: (r.requester as { role?: string } | null)?.role ?? '',
+    reason: (r.reason as string | null) ?? null,
+    requestedAt: r.requested_at as string,
+  }))
 
   // 이번 달 휴강 기록 (본인) — 근무 시간 차감용
   const { data: absenceRows } = await adminDb
@@ -214,6 +236,9 @@ export default async function AdminDashboardPage() {
           })}
         </p>
       </div>
+
+      {/* 학생 연락처 열람 승인 대기 — 요청이 있을 때만 표시 (선생님 전용) */}
+      {isTeacher && <ContactRequestQueue initial={pendingContactRequests} />}
 
       {/* 미답변 질문 */}
       <div className={[
