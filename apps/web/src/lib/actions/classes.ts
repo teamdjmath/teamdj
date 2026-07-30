@@ -7,6 +7,7 @@ import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
 
 import { scheduleTextFromSlots, type TimeSlot } from '@/lib/class-slots'
+import { removeStudentFromClass as removeStudentFromClassAction } from '@/lib/actions/students'
 
 // 요일별 시간대 슬롯 파싱 (slot_days_{i} 체크박스 + slot_start_{i}/slot_end_{i})
 // legacy 컬럼 동기화: day_of_week = 슬롯 요일 합집합, start/end_time = 첫 슬롯 시간
@@ -182,22 +183,10 @@ export async function hardDeleteClass(classId: string): Promise<ActionResult> {
   })
 }
 
+// class_members 소프트 삭제 자체는 students.ts의 removeStudentFromClass가 도맡는다 —
+// 여기서는 분반 상세 페이지 쪽 캐시만 추가로 무효화한다 (파라미터 순서만 반대라 그대로 위임).
 export async function removeStudentFromClass(classId: string, studentId: string): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  return withAction('removeStudentFromClass', user?.id, async () => {
-    if (!user) return { success: false, error: '인증이 필요합니다.' }
-
-    const adminSupabase = createAdminClient()
-    const { error } = await adminSupabase
-      .from('class_members')
-      .update({ is_active: false })
-      .eq('class_id', classId)
-      .eq('student_id', studentId)
-    if (error) throw error
-
-    revalidatePath(`/admin/classes/${classId}`)
-    return { success: true }
-  })
+  const result = await removeStudentFromClassAction(studentId, classId)
+  if (result.success) revalidatePath(`/admin/classes/${classId}`)
+  return result
 }

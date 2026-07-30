@@ -3,7 +3,6 @@
 import { useActionState, useState } from 'react'
 import Link from 'next/link'
 import { signIn, type AuthState } from '@/lib/actions/auth'
-import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'motion/react'
 
 const initial: AuthState = { error: null }
@@ -132,7 +131,7 @@ export default function LoginPage() {
                 )}
               </AnimatePresence>
 
-              <Button
+              <button
                 type="submit"
                 disabled={pending}
                 className="w-full h-12 rounded-xl bg-zinc-950 text-white text-sm font-bold transition-all hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50 shadow-sm"
@@ -146,7 +145,7 @@ export default function LoginPage() {
                     로그인 중...
                   </span>
                 ) : '로그인'}
-              </Button>
+              </button>
 
               {tab === 'staff' && (
                 <p className="text-center text-xs text-zinc-400">
