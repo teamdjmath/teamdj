@@ -484,11 +484,11 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
     <div>
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-zinc-950">강의 영상</h1>
+        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">강의 영상</h1>
         <button
           type="button"
           onClick={openCreateCourse}
-          className="flex items-center gap-1.5 rounded-lg bg-zinc-950 px-3.5 py-2 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
+          className="flex items-center gap-1.5 rounded-lg bg-zinc-950 dark:bg-zinc-50 px-3.5 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -499,7 +499,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
 
       {/* 강좌 목록 */}
       {courses.length === 0 ? (
-        <div className="rounded-xl border border-zinc-200 bg-white">
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
           <EmptyState message="등록된 강좌가 없습니다." description="강좌 추가 버튼으로 새 강좌를 만드세요." />
         </div>
       ) : (
@@ -511,46 +511,46 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
               .sort((a, b) => (b.syncedAt! > a.syncedAt! ? 1 : -1))[0]?.syncedAt ?? null
 
             return (
-              <div key={course.courseName} className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
+              <div key={course.courseName} className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
                 {/* 강좌 헤더 */}
-                <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-100">
+                <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-100 dark:border-zinc-900">
                   <button
                     type="button"
                     onClick={() => toggleCollapse(course.courseName)}
                     className="flex items-center gap-2 flex-1 min-w-0 text-left"
                   >
                     <svg
-                      className={`w-4 h-4 text-zinc-400 transition-transform shrink-0 ${isOpen ? 'rotate-90' : ''}`}
+                      className={`w-4 h-4 text-zinc-400 dark:text-zinc-600 transition-transform shrink-0 ${isOpen ? 'rotate-90' : ''}`}
                       fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
-                    <span className="font-semibold text-zinc-900 text-sm">{course.courseName}</span>
-                    <span className="text-xs text-zinc-400">{course.lectures.length}개 영상</span>
+                    <span className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">{course.courseName}</span>
+                    <span className="text-xs text-zinc-400 dark:text-zinc-600">{course.lectures.length}개 영상</span>
                     {lastSync && (
-                      <span className="hidden sm:block text-[11px] text-zinc-300">동기화 {fmtDate(lastSync)}</span>
+                      <span className="hidden sm:block text-[11px] text-zinc-300 dark:text-zinc-700">동기화 {fmtDate(lastSync)}</span>
                     )}
                   </button>
 
                   {/* 접근 분반 배지 */}
                   <div className="hidden md:flex items-center gap-1">
                     {course.allowedClassIds.length === 0 ? (
-                      <span className="text-[11px] text-zinc-300">분반 미설정</span>
+                      <span className="text-[11px] text-zinc-300 dark:text-zinc-700">분반 미설정</span>
                     ) : course.allowedClassIds.length <= 2 ? (
                       course.allowedClassIds.map((cid) => {
                         const cls = classOptions.find((c) => c.id === cid)
                         return cls ? (
-                          <span key={cid} className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-600">
+                          <span key={cid} className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-600 dark:text-zinc-400">
                             {cls.name}
                           </span>
                         ) : null
                       })
                     ) : (
                       <>
-                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-600">
+                        <span className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-600 dark:text-zinc-400">
                           {classOptions.find((c) => c.id === course.allowedClassIds[0])?.name ?? '?'}
                         </span>
-                        <span className="text-[11px] text-zinc-400">외 {course.allowedClassIds.length - 1}개</span>
+                        <span className="text-[11px] text-zinc-400 dark:text-zinc-600">외 {course.allowedClassIds.length - 1}개</span>
                       </>
                     )}
                   </div>
@@ -560,11 +560,11 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                     <button
                       type="button"
                       onClick={() => openSettings(course)}
-                      className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs text-zinc-500 hover:bg-zinc-100 transition-colors"
+                      className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs text-zinc-500 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
                     >
                       설정
                       {course.materials.length > 0 && (
-                        <span className="rounded-full bg-zinc-200 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600">
+                        <span className="rounded-full bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600 dark:text-zinc-400">
                           자료 {course.materials.length}
                         </span>
                       )}
@@ -572,14 +572,14 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                     <button
                       type="button"
                       onClick={() => openSync(course.courseName)}
-                      className="rounded-md px-2.5 py-1.5 text-xs text-zinc-500 hover:bg-zinc-100 transition-colors"
+                      className="rounded-md px-2.5 py-1.5 text-xs text-zinc-500 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
                     >
                       동기화
                     </button>
                     <button
                       type="button"
                       onClick={() => openAddLecture(course)}
-                      className="rounded-md px-2.5 py-1.5 text-xs text-zinc-500 hover:bg-zinc-100 transition-colors"
+                      className="rounded-md px-2.5 py-1.5 text-xs text-zinc-500 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
                     >
                       + 강의
                     </button>
@@ -597,14 +597,14 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                 {/* 강의 목록 */}
                 {isOpen && (
                   course.lectures.length === 0 ? (
-                    <div className="py-8 text-center text-xs text-zinc-400">
+                    <div className="py-8 text-center text-xs text-zinc-400 dark:text-zinc-600">
                       강의가 없습니다. 동기화하거나 직접 추가하세요.
                     </div>
                   ) : (
                     <table className="w-full text-sm">
-                      <tbody className="divide-y divide-zinc-50">
+                      <tbody className="divide-y divide-zinc-50 dark:divide-zinc-950">
                         {course.lectures.map((lec, idx) => (
-                          <tr key={lec.id} className="hover:bg-zinc-50 transition-colors">
+                          <tr key={lec.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors">
                             {/* 순서 */}
                             <td className="w-10 px-3 py-3">
                               <div className="flex flex-col gap-0.5 items-center">
@@ -612,18 +612,18 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                                   type="button"
                                   onClick={() => handleSwapOrder(course, idx, 'up')}
                                   disabled={idx === 0 || pending}
-                                  className="rounded p-0.5 text-zinc-300 hover:bg-zinc-200 disabled:opacity-20"
+                                  className="rounded p-0.5 text-zinc-300 dark:text-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-800 disabled:opacity-20"
                                 >
                                   <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
                                   </svg>
                                 </button>
-                                <span className="text-[11px] font-mono text-zinc-400">{lec.orderNum}</span>
+                                <span className="text-[11px] font-mono text-zinc-400 dark:text-zinc-600">{lec.orderNum}</span>
                                 <button
                                   type="button"
                                   onClick={() => handleSwapOrder(course, idx, 'down')}
                                   disabled={idx === course.lectures.length - 1 || pending}
-                                  className="rounded p-0.5 text-zinc-300 hover:bg-zinc-200 disabled:opacity-20"
+                                  className="rounded p-0.5 text-zinc-300 dark:text-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-800 disabled:opacity-20"
                                 >
                                   <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
@@ -640,12 +640,12 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                                     alt={lec.title}
                                     width={80}
                                     height={48}
-                                    className="h-12 w-20 rounded object-cover border border-zinc-100 hover:opacity-80"
+                                    className="h-12 w-20 rounded object-cover border border-zinc-100 dark:border-zinc-900 hover:opacity-80"
                                   />
                                 </a>
                               ) : (
-                                <div className="h-12 w-20 rounded bg-zinc-100 flex items-center justify-center">
-                                  <svg className="w-4 h-4 text-zinc-300" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                                <div className="h-12 w-20 rounded bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center">
+                                  <svg className="w-4 h-4 text-zinc-300 dark:text-zinc-700" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                                     <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" />
                                   </svg>
                                 </div>
@@ -653,13 +653,13 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                             </td>
                             {/* 제목 */}
                             <td className="px-3 py-3">
-                              <p className="font-medium text-zinc-900 text-sm">{lec.title}</p>
+                              <p className="font-medium text-zinc-900 dark:text-zinc-100 text-sm">{lec.title}</p>
                               {lec.videoId && (
                                 <a
                                   href={ytUrl(lec.videoId)}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="mt-0.5 font-mono text-[11px] text-zinc-400 hover:text-zinc-700 hover:underline"
+                                  className="mt-0.5 font-mono text-[11px] text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 hover:underline"
                                 >
                                   {lec.videoId}
                                 </a>
@@ -670,7 +670,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                                     href={materialDownloadUrl(lec.materialUrl, `${lec.title} 자료`)}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 rounded bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 hover:bg-zinc-200"
+                                    className="inline-flex items-center gap-1 rounded bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800"
                                   >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
@@ -686,7 +686,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                                 <button
                                   type="button"
                                   onClick={() => openEditLecture(lec)}
-                                  className="rounded px-2.5 py-1 text-xs text-zinc-500 hover:bg-zinc-100"
+                                  className="rounded px-2.5 py-1 text-xs text-zinc-500 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900"
                                 >
                                   수정
                                 </button>
@@ -713,20 +713,20 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
       )}
 
       {/* ─ 사용 교재 관리 섹션 */}
-      <div className="mt-10 rounded-2xl border border-zinc-200 bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-zinc-100">
-          <h2 className="text-sm font-bold text-zinc-900">사용 교재 관리</h2>
-          <p className="mt-1 text-xs text-zinc-400">여기에 교재를 추가해야 학생의 Q&amp;A 등록 시 교재 선택이 가능합니다.</p>
+      <div className="mt-10 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
+        <div className="px-5 py-4 border-b border-zinc-100 dark:border-zinc-900">
+          <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">사용 교재 관리</h2>
+          <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-600">여기에 교재를 추가해야 학생의 Q&amp;A 등록 시 교재 선택이 가능합니다.</p>
         </div>
         <div className="p-5 space-y-4">
           {/* 교재 목록 */}
           {textbooks.length === 0 ? (
-            <p className="text-xs text-zinc-400">등록된 교재가 없습니다.</p>
+            <p className="text-xs text-zinc-400 dark:text-zinc-600">등록된 교재가 없습니다.</p>
           ) : (
             <div className="space-y-2">
               {textbooks.map((t) => (
-                <div key={t.id} className="flex items-center justify-between rounded-xl bg-zinc-50 px-4 py-2.5">
-                  <span className="text-sm font-medium text-zinc-800">{t.name}</span>
+                <div key={t.id} className="flex items-center justify-between rounded-xl bg-zinc-50 dark:bg-zinc-950 px-4 py-2.5">
+                  <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{t.name}</span>
                   <button
                     type="button"
                     onClick={() => handleDeleteTextbook(t.id, t.name)}
@@ -748,13 +748,13 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
               onChange={(e) => setNewTextbookName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddTextbook()}
               placeholder="교재명 입력"
-              className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-2.5 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 placeholder:font-normal focus:border-zinc-900 focus:bg-white focus:outline-none transition-all"
+              className="flex-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50 px-4 py-2.5 text-sm font-medium text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 placeholder:font-normal focus:border-zinc-900 dark:focus:border-zinc-100 focus:bg-white dark:focus:bg-zinc-900 focus:outline-none transition-all"
             />
             <button
               type="button"
               onClick={handleAddTextbook}
               disabled={pending}
-              className="rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 transition-colors disabled:opacity-50"
+              className="rounded-xl bg-zinc-950 dark:bg-zinc-50 px-4 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50"
             >
               추가
             </button>
@@ -774,25 +774,25 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
             placeholder="예: 수학 기초 강좌"
           />
           <div>
-            <p className="mb-2 text-xs font-medium text-zinc-600">접근 허용 분반</p>
+            <p className="mb-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">접근 허용 분반</p>
             <div className="grid grid-cols-2 gap-2">
               {classOptions.map((c) => (
-                <label key={c.id} className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 cursor-pointer hover:bg-zinc-50">
+                <label key={c.id} className="flex items-center gap-2 rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-2 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-950">
                   <input
                     type="checkbox"
                     checked={newCourseClasses.includes(c.id)}
                     onChange={() => toggleClass(c.id, newCourseClasses, setNewCourseClasses)}
-                    className="h-3.5 w-3.5 rounded border-zinc-300 accent-zinc-900"
+                    className="h-3.5 w-3.5 rounded border-zinc-300 dark:border-zinc-700 accent-zinc-900 dark:accent-zinc-100"
                   />
-                  <span className="text-sm text-zinc-700">{c.name}</span>
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">{c.name}</span>
                 </label>
               ))}
             </div>
           </div>
           {err && <p className="text-sm text-red-500">{err}</p>}
           <div className="flex gap-2 pt-1">
-            <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50">취소</button>
-            <button type="button" onClick={handleCreateCourse} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">{pending ? '생성 중…' : '생성'}</button>
+            <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">취소</button>
+            <button type="button" onClick={handleCreateCourse} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50">{pending ? '생성 중…' : '생성'}</button>
           </div>
         </div>
       </Modal>
@@ -804,20 +804,20 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
           const mats = course?.materials ?? []
           return (
             <div className="space-y-4">
-              <p className="text-xs text-zinc-500 -mt-1">{modal.courseName}</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-500 -mt-1">{modal.courseName}</p>
 
               {/* 탭 */}
-              <div className="flex gap-1 rounded-xl bg-zinc-100 p-1">
+              <div className="flex gap-1 rounded-xl bg-zinc-100 dark:bg-zinc-900 p-1">
                 {([['rename', '이름 수정'], ['materials', '학습 자료'], ['access', '분반 설정'], ['students', '개별 지급']] as const).map(([tab, label]) => (
                   <button
                     key={tab}
                     type="button"
                     onClick={() => { setSettingsTab(tab); setErr('') }}
-                    className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors ${settingsTab === tab ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
+                    className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors ${settingsTab === tab ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm' : 'text-zinc-500 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
                   >
                     {label}
                     {tab === 'materials' && mats.length > 0 && (
-                      <span className="ml-1 rounded-full bg-zinc-200 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600">{mats.length}</span>
+                      <span className="ml-1 rounded-full bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600 dark:text-zinc-400">{mats.length}</span>
                     )}
                   </button>
                 ))}
@@ -836,8 +836,8 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                   />
                   {err && <p className="text-sm text-red-500">{err}</p>}
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50">취소</button>
-                    <button type="button" onClick={handleRenameCourse} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">{pending ? '저장 중…' : '저장'}</button>
+                    <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">취소</button>
+                    <button type="button" onClick={handleRenameCourse} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50">{pending ? '저장 중…' : '저장'}</button>
                   </div>
                 </div>
               )}
@@ -847,12 +847,12 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                 <div className="space-y-3">
                   {/* 등록된 자료 목록 */}
                   {mats.length === 0 ? (
-                    <p className="text-xs text-zinc-400 py-1">등록된 자료가 없습니다.</p>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-600 py-1">등록된 자료가 없습니다.</p>
                   ) : (
                     <div className="space-y-2">
                       {mats.map((m) => (
-                        <div key={m.id} className="flex items-center gap-2 rounded-xl bg-zinc-50 px-3 py-2.5">
-                          <a href={materialDownloadUrl(m.url, m.title)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 text-sm font-medium text-zinc-800 hover:text-zinc-950 truncate hover:underline">
+                        <div key={m.id} className="flex items-center gap-2 rounded-xl bg-zinc-50 dark:bg-zinc-950 px-3 py-2.5">
+                          <a href={materialDownloadUrl(m.url, m.title)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 text-sm font-medium text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-zinc-50 truncate hover:underline">
                             {m.title}
                           </a>
                           <button type="button" onClick={() => handleDeleteMaterial(m.id, m.title)} disabled={pending} className="shrink-0 text-xs text-red-400 hover:text-red-600 disabled:opacity-50">삭제</button>
@@ -862,34 +862,34 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                   )}
 
                   {/* 자료 추가 폼 */}
-                  <div className="space-y-3 border-t border-zinc-100 pt-3">
+                  <div className="space-y-3 border-t border-zinc-100 dark:border-zinc-900 pt-3">
                     {/* 파일 / 링크 토글 */}
-                    <div className="flex gap-1 rounded-lg bg-zinc-100 p-0.5">
-                      <button type="button" onClick={() => { setMaterialInputMode('file'); setMaterialForm((f) => ({ ...f, url: '' })); setFileUploadErr('') }} className={`flex-1 rounded-md py-1 text-xs font-medium transition-colors ${materialInputMode === 'file' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>파일 업로드</button>
-                      <button type="button" onClick={() => { setMaterialInputMode('url'); setMaterialForm((f) => ({ ...f, url: '' })); setFileUploadErr('') }} className={`flex-1 rounded-md py-1 text-xs font-medium transition-colors ${materialInputMode === 'url' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>링크 입력</button>
+                    <div className="flex gap-1 rounded-lg bg-zinc-100 dark:bg-zinc-900 p-0.5">
+                      <button type="button" onClick={() => { setMaterialInputMode('file'); setMaterialForm((f) => ({ ...f, url: '' })); setFileUploadErr('') }} className={`flex-1 rounded-md py-1 text-xs font-medium transition-colors ${materialInputMode === 'file' ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm' : 'text-zinc-500 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}>파일 업로드</button>
+                      <button type="button" onClick={() => { setMaterialInputMode('url'); setMaterialForm((f) => ({ ...f, url: '' })); setFileUploadErr('') }} className={`flex-1 rounded-md py-1 text-xs font-medium transition-colors ${materialInputMode === 'url' ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm' : 'text-zinc-500 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}>링크 입력</button>
                     </div>
 
                     <InputField label="제목" required value={materialForm.title} onChange={(e) => setMaterialForm((f) => ({ ...f, title: e.target.value }))} placeholder="예: 3월 모의고사 해설" />
 
                     {materialInputMode === 'file' ? (
                       <div className="space-y-2">
-                        <label className="block text-xs font-medium text-zinc-600">파일 선택</label>
-                        <label className={`flex items-center justify-center gap-2 w-full rounded-xl border-2 border-dashed px-4 py-4 cursor-pointer transition-colors ${fileUploading ? 'border-zinc-200 bg-zinc-50 opacity-60 pointer-events-none' : materialForm.url ? 'border-zinc-300 bg-zinc-50' : 'border-zinc-200 hover:border-zinc-400 hover:bg-zinc-50'}`}>
+                        <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">파일 선택</label>
+                        <label className={`flex items-center justify-center gap-2 w-full rounded-xl border-2 border-dashed px-4 py-4 cursor-pointer transition-colors ${fileUploading ? 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 opacity-60 pointer-events-none' : materialForm.url ? 'border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950' : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-950'}`}>
                           <input type="file" className="sr-only" onChange={handleFileChange} disabled={fileUploading} />
                           {fileUploading ? (
-                            <span className="text-xs text-zinc-400">업로드 중…</span>
+                            <span className="text-xs text-zinc-400 dark:text-zinc-600">업로드 중…</span>
                           ) : materialForm.url ? (
-                            <span className="text-xs text-zinc-600 font-medium truncate max-w-full">업로드 완료 ✓</span>
+                            <span className="text-xs text-zinc-600 dark:text-zinc-400 font-medium truncate max-w-full">업로드 완료 ✓</span>
                           ) : (
                             <>
-                              <svg className="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                              <span className="text-xs text-zinc-400">PDF, 이미지, 문서 등</span>
+                              <svg className="w-4 h-4 text-zinc-400 dark:text-zinc-600 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                              <span className="text-xs text-zinc-400 dark:text-zinc-600">PDF, 이미지, 문서 등</span>
                             </>
                           )}
                         </label>
                         {fileUploadErr && <p className="text-xs text-red-500">{fileUploadErr}</p>}
                         {materialForm.url && (
-                          <p className="text-[11px] text-zinc-400 truncate">{materialForm.url}</p>
+                          <p className="text-[11px] text-zinc-400 dark:text-zinc-600 truncate">{materialForm.url}</p>
                         )}
                       </div>
                     ) : (
@@ -899,8 +899,8 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
 
                   {err && <p className="text-sm text-red-500">{err}</p>}
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50">닫기</button>
-                    <button type="button" onClick={handleAddMaterial} disabled={pending || fileUploading || !materialForm.url} className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">{pending ? '추가 중…' : '자료 추가'}</button>
+                    <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">닫기</button>
+                    <button type="button" onClick={handleAddMaterial} disabled={pending || fileUploading || !materialForm.url} className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50">{pending ? '추가 중…' : '자료 추가'}</button>
                   </div>
                 </div>
               )}
@@ -910,16 +910,16 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-2">
                     {classOptions.map((c) => (
-                      <label key={c.id} className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 cursor-pointer hover:bg-zinc-50">
-                        <input type="checkbox" checked={editAccessClasses.includes(c.id)} onChange={() => toggleClass(c.id, editAccessClasses, setEditAccessClasses)} className="h-3.5 w-3.5 rounded border-zinc-300 accent-zinc-900" />
-                        <span className="text-sm text-zinc-700">{c.name}</span>
+                      <label key={c.id} className="flex items-center gap-2 rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-2 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-950">
+                        <input type="checkbox" checked={editAccessClasses.includes(c.id)} onChange={() => toggleClass(c.id, editAccessClasses, setEditAccessClasses)} className="h-3.5 w-3.5 rounded border-zinc-300 dark:border-zinc-700 accent-zinc-900 dark:accent-zinc-100" />
+                        <span className="text-sm text-zinc-700 dark:text-zinc-300">{c.name}</span>
                       </label>
                     ))}
                   </div>
                   {err && <p className="text-sm text-red-500">{err}</p>}
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50">취소</button>
-                    <button type="button" onClick={handleEditAccess} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">{pending ? '저장 중…' : '저장'}</button>
+                    <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">취소</button>
+                    <button type="button" onClick={handleEditAccess} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50">{pending ? '저장 중…' : '저장'}</button>
                   </div>
                 </div>
               )}
@@ -930,7 +930,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                 const lecIds = lecs.map((l) => l.id)
                 return (
                   <div className="space-y-4">
-                    <div className="rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-500 space-y-0.5">
+                    <div className="rounded-lg bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-xs text-zinc-500 dark:text-zinc-500 space-y-0.5">
                       <p>· 기본값은 &ldquo;분반 설정&rdquo;을 따릅니다. 특정 강의만 다르게 줄 학생을 선택해 편집하세요.</p>
                       <p>· <b className="text-red-600">차단</b>: 분반에 지급됐어도 이 강의는 안 보임 (차감) · <b className="text-emerald-600">지급</b>: 분반 미지급이어도 이 강의는 보임</p>
                     </div>
@@ -938,10 +938,10 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                     {/* 개별 설정이 있는 학생 요약 */}
                     {exSummary.length > 0 && (
                       <div className="space-y-1.5">
-                        <p className="text-xs font-semibold text-zinc-600">개별 설정된 학생 ({exSummary.length})</p>
+                        <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">개별 설정된 학생 ({exSummary.length})</p>
                         <div className="flex flex-wrap gap-1.5">
                           {exSummary.map((s) => (
-                            <span key={s.studentId} className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
+                            <span key={s.studentId} className="inline-flex items-center gap-1 rounded-full bg-zinc-100 dark:bg-zinc-900 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">
                               {s.studentName}
                               {s.grantCount > 0 && <span className="text-emerald-600">지급 {s.grantCount}</span>}
                               {s.blockCount > 0 && <span className="text-red-500">차단 {s.blockCount}</span>}
@@ -952,13 +952,13 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                     )}
 
                     {/* 학생 1명 편집 ↔ 여러 학생 일괄 지급(결석(차감) 연동) 전환 */}
-                    <div className="flex rounded-lg border border-zinc-200 p-0.5 text-xs">
+                    <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-800 p-0.5 text-xs">
                       <button type="button" onClick={() => setExMode('single')}
-                        className={`flex-1 rounded-md py-1.5 font-medium transition-colors ${exMode === 'single' ? 'bg-zinc-950 text-white' : 'text-zinc-500 hover:text-zinc-800'}`}>
+                        className={`flex-1 rounded-md py-1.5 font-medium transition-colors ${exMode === 'single' ? 'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900' : 'text-zinc-500 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
                         학생별 설정
                       </button>
                       <button type="button" onClick={() => setExMode('bulk')}
-                        className={`flex-1 rounded-md py-1.5 font-medium transition-colors ${exMode === 'bulk' ? 'bg-zinc-950 text-white' : 'text-zinc-500 hover:text-zinc-800'}`}>
+                        className={`flex-1 rounded-md py-1.5 font-medium transition-colors ${exMode === 'bulk' ? 'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900' : 'text-zinc-500 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
                         여러 학생 일괄 지급
                       </button>
                     </div>
@@ -972,11 +972,11 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
 
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1.5">
-                            <label className="block text-xs font-medium text-zinc-600">분반</label>
+                            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">분반</label>
                             <select
                               value={bulkClassId}
                               onChange={(e) => void loadBulkClassStudents(e.target.value)}
-                              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
+                              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
                             >
                               <option value="">선택</option>
                               {classOptions.map((c) => (
@@ -985,13 +985,13 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                             </select>
                           </div>
                           <div className="space-y-1.5">
-                            <label className="block text-xs font-medium text-zinc-600">결석(차감) 조회 날짜</label>
+                            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">결석(차감) 조회 날짜</label>
                             <input
                               type="date"
                               value={bulkDate}
                               onChange={(e) => { setBulkDate(e.target.value); setBulkAbsentErr('') }}
                               disabled={!bulkClassId}
-                              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none disabled:bg-zinc-50 disabled:text-zinc-400"
+                              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none disabled:bg-zinc-50 dark:disabled:bg-zinc-950 disabled:text-zinc-400 dark:disabled:text-zinc-600"
                             />
                           </div>
                         </div>
@@ -1011,23 +1011,23 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                         {bulkStudents.length > 0 && (
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
-                              <label className="block text-xs font-medium text-zinc-600">학생 선택 ({bulkSelectedIds.length}명)</label>
+                              <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">학생 선택 ({bulkSelectedIds.length}명)</label>
                               <div className="flex gap-1">
                                 <button type="button" onClick={() => setBulkSelectedIds(bulkStudents.map((s) => s.id))}
-                                  className="text-[11px] text-zinc-400 hover:text-zinc-700">전체 선택</button>
-                                <span className="text-[11px] text-zinc-300">·</span>
+                                  className="text-[11px] text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300">전체 선택</button>
+                                <span className="text-[11px] text-zinc-300 dark:text-zinc-700">·</span>
                                 <button type="button" onClick={() => setBulkSelectedIds([])}
-                                  className="text-[11px] text-zinc-400 hover:text-zinc-700">선택 해제</button>
+                                  className="text-[11px] text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300">선택 해제</button>
                               </div>
                             </div>
-                            <div className="max-h-40 overflow-y-auto rounded-xl border border-zinc-200 divide-y divide-zinc-100">
+                            <div className="max-h-40 overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-800 divide-y divide-zinc-100 dark:divide-zinc-900">
                               {bulkStudents.map((s) => (
-                                <label key={s.id} className="flex items-center gap-2 px-3.5 py-2 text-sm text-zinc-800 cursor-pointer hover:bg-zinc-50">
+                                <label key={s.id} className="flex items-center gap-2 px-3.5 py-2 text-sm text-zinc-800 dark:text-zinc-200 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-950">
                                   <input
                                     type="checkbox"
                                     checked={bulkSelectedIds.includes(s.id)}
                                     onChange={() => toggleBulkStudent(s.id)}
-                                    className="h-3.5 w-3.5 rounded border-zinc-300 accent-zinc-950"
+                                    className="h-3.5 w-3.5 rounded border-zinc-300 dark:border-zinc-700 accent-zinc-950 dark:accent-zinc-50"
                                   />
                                   {s.name}
                                 </label>
@@ -1037,12 +1037,12 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                         )}
 
                         <div className="space-y-1.5">
-                          <label className="block text-xs font-medium text-zinc-600">지급할 강의</label>
+                          <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">지급할 강의</label>
                           <select
                             value={bulkLectureId}
                             onChange={(e) => { setBulkLectureId(e.target.value); setBulkSaved(false) }}
                             disabled={lecs.length === 0}
-                            className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none disabled:bg-zinc-50 disabled:text-zinc-400"
+                            className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none disabled:bg-zinc-50 dark:disabled:bg-zinc-950 disabled:text-zinc-400 dark:disabled:text-zinc-600"
                           >
                             <option value="">선택</option>
                             {lecs.map((l) => (
@@ -1055,7 +1055,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                         {bulkSaved && <p className="text-xs text-emerald-600">저장되었습니다.</p>}
                         <div className="flex gap-2">
                           <button type="button" onClick={() => setModal(null)}
-                            className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50">닫기</button>
+                            className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">닫기</button>
                           <button
                             type="button"
                             disabled={pending || !bulkLectureId || bulkSelectedIds.length === 0}
@@ -1079,11 +1079,11 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                     {/* 1) 분반 → 2) 학생 선택 */}
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1.5">
-                        <label className="block text-xs font-medium text-zinc-600">분반</label>
+                        <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">분반</label>
                         <select
                           value={exClassId}
                           onChange={(e) => void loadExClassStudents(e.target.value)}
-                          className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
+                          className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
                         >
                           <option value="">선택</option>
                           {classOptions.map((c) => (
@@ -1092,12 +1092,12 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                         </select>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="block text-xs font-medium text-zinc-600">학생</label>
+                        <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">학생</label>
                         <select
                           value={exStudentId}
                           onChange={(e) => modal?.kind === 'settings' && void loadExStudent(modal.courseName, e.target.value)}
                           disabled={exStudents.length === 0}
-                          className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none disabled:bg-zinc-50 disabled:text-zinc-400"
+                          className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none disabled:bg-zinc-50 dark:disabled:bg-zinc-950 disabled:text-zinc-400 dark:disabled:text-zinc-600"
                         >
                           <option value="">{exStudents.length === 0 ? '분반 먼저 선택' : '선택'}</option>
                           {exStudents.map((s) => (
@@ -1107,16 +1107,16 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                       </div>
                     </div>
 
-                    {exLoading && <p className="text-xs text-zinc-400">불러오는 중…</p>}
+                    {exLoading && <p className="text-xs text-zinc-400 dark:text-zinc-600">불러오는 중…</p>}
 
                     {/* 3) 강의별 토글 */}
                     {exStudentId && !exLoading && (
                       <>
                         <div className="flex items-center justify-between">
-                          <p className="text-xs font-semibold text-zinc-600">강의별 설정 ({lecs.length}강)</p>
+                          <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">강의별 설정 ({lecs.length}강)</p>
                           <div className="flex gap-1">
                             <button type="button" onClick={() => setAllLectureModes(lecIds, null)}
-                              className="rounded-full border border-zinc-200 px-2.5 py-1 text-[11px] font-medium text-zinc-500 hover:border-zinc-400">전체 기본</button>
+                              className="rounded-full border border-zinc-200 dark:border-zinc-800 px-2.5 py-1 text-[11px] font-medium text-zinc-500 dark:text-zinc-500 hover:border-zinc-400 dark:hover:border-zinc-600">전체 기본</button>
                             <button type="button" onClick={() => setAllLectureModes(lecIds, 'grant')}
                               className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100">전체 지급</button>
                             <button type="button" onClick={() => setAllLectureModes(lecIds, 'block')}
@@ -1125,15 +1125,15 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                         </div>
 
                         {lecs.length === 0 ? (
-                          <p className="text-xs text-zinc-400">이 강좌에 등록된 강의가 없습니다.</p>
+                          <p className="text-xs text-zinc-400 dark:text-zinc-600">이 강좌에 등록된 강의가 없습니다.</p>
                         ) : (
-                          <div className="max-h-64 overflow-y-auto rounded-xl border border-zinc-200 divide-y divide-zinc-100">
+                          <div className="max-h-64 overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-800 divide-y divide-zinc-100 dark:divide-zinc-900">
                             {lecs.map((lec) => {
                               const mode = exModes[lec.id] ?? null
                               return (
                                 <div key={lec.id} className="flex items-center justify-between gap-3 px-3.5 py-2">
-                                  <span className="text-sm text-zinc-800 truncate">
-                                    <span className="mr-1.5 text-xs font-bold text-zinc-400">{lec.orderNum}강</span>
+                                  <span className="text-sm text-zinc-800 dark:text-zinc-200 truncate">
+                                    <span className="mr-1.5 text-xs font-bold text-zinc-400 dark:text-zinc-600">{lec.orderNum}강</span>
                                     {lec.title}
                                   </span>
                                   <div className="flex gap-1 shrink-0">
@@ -1146,10 +1146,10 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                                           onClick={() => setLectureMode(lec.id, m)}
                                           className={[
                                             'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
-                                            active && m === null    ? 'bg-zinc-950 text-white' :
+                                            active && m === null    ? 'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900' :
                                             active && m === 'grant' ? 'bg-emerald-500 text-white' :
                                             active && m === 'block' ? 'bg-red-500 text-white' :
-                                            'border border-zinc-200 text-zinc-400 hover:border-zinc-400 hover:text-zinc-700',
+                                            'border border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600 hover:border-zinc-400 dark:hover:border-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300',
                                           ].join(' ')}
                                         >
                                           {label}
@@ -1167,12 +1167,12 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                         {exSaved && !exDirty && <p className="text-xs text-emerald-600">저장되었습니다.</p>}
                         <div className="flex gap-2">
                           <button type="button" onClick={() => setModal(null)}
-                            className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50">닫기</button>
+                            className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">닫기</button>
                           <button
                             type="button"
                             disabled={pending || !exDirty}
                             onClick={() => modal?.kind === 'settings' && handleSaveStudentAccess(modal.courseName, lecIds)}
-                            className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+                            className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50"
                           >
                             {pending ? '저장 중…' : '저장'}
                           </button>
@@ -1184,7 +1184,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                       <>
                         {err && <p className="text-sm text-red-500">{err}</p>}
                         <button type="button" onClick={() => setModal(null)}
-                          className="w-full rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50">닫기</button>
+                          className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">닫기</button>
                       </>
                     )}
                       </>
@@ -1201,7 +1201,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
       <Modal open={modal?.kind === 'sync'} onClose={() => setModal(null)} title="YouTube 플레이리스트 동기화" size="md">
         <div className="space-y-4">
           {modal?.kind === 'sync' && (
-            <p className="text-xs text-zinc-500">강좌: <span className="font-medium text-zinc-800">{modal.courseName}</span></p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-500">강좌: <span className="font-medium text-zinc-800 dark:text-zinc-200">{modal.courseName}</span></p>
           )}
           <InputField
             label="플레이리스트 URL"
@@ -1210,16 +1210,16 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
             onChange={(e) => setSyncUrl(e.target.value)}
             placeholder="https://www.youtube.com/playlist?list=PLxxxx"
           />
-          <div className="rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-500 space-y-1">
+          <div className="rounded-lg bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-xs text-zinc-500 dark:text-zinc-500 space-y-1">
             <p>· 이 강좌에 이 플레이리스트로 동기화된 기존 영상을 교체합니다.</p>
             <p>· 개별 추가된 영상은 영향 없습니다.</p>
           </div>
           {err && <p className="text-sm text-red-500">{err}</p>}
-          {syncResult && <p className="text-sm font-medium text-zinc-700">{syncResult}</p>}
+          {syncResult && <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{syncResult}</p>}
           <div className="flex gap-2 pt-1">
-            <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50">닫기</button>
+            <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">닫기</button>
             {!syncResult && (
-              <button type="button" onClick={handleSync} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">{pending ? '동기화 중…' : '동기화'}</button>
+              <button type="button" onClick={handleSync} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50">{pending ? '동기화 중…' : '동기화'}</button>
             )}
           </div>
         </div>
@@ -1241,7 +1241,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
               onChange={(e) => setLectureForm((f) => ({ ...f, videoId: e.target.value }))}
               placeholder="예: dQw4w9WgXcQ"
             />
-            <p className="mt-1 text-xs text-zinc-400">URL의 <code className="bg-zinc-100 px-1 rounded">v=</code> 뒤 값</p>
+            <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-600">URL의 <code className="bg-zinc-100 dark:bg-zinc-900 px-1 rounded">v=</code> 뒤 값</p>
           </div>
           <InputField
             label="강의 자료 링크"
@@ -1251,14 +1251,14 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
           />
           <InputField label="순서" type="number" value={lectureForm.orderNum} onChange={(e) => setLectureForm((f) => ({ ...f, orderNum: e.target.value }))} />
           {lectureForm.videoId && (
-            <div className="rounded-lg overflow-hidden border border-zinc-200">
+            <div className="rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800">
               <Image src={ytThumb(lectureForm.videoId)} alt="썸네일" width={320} height={180} className="w-full h-auto" />
             </div>
           )}
           {err && <p className="text-sm text-red-500">{err}</p>}
           <div className="flex gap-2 pt-1">
-            <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50">취소</button>
-            <button type="button" onClick={handleSaveLecture} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">{pending ? '저장 중…' : '저장'}</button>
+            <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">취소</button>
+            <button type="button" onClick={handleSaveLecture} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50">{pending ? '저장 중…' : '저장'}</button>
           </div>
         </div>
       </Modal>

@@ -70,14 +70,14 @@ export function MessagesClient({
   return (
     <div className="space-y-4">
       {/* 발송 폼 */}
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-        <h2 className="mb-4 text-sm font-semibold text-zinc-900">쪽지 발송</h2>
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5">
+        <h2 className="mb-4 text-sm font-semibold text-zinc-900 dark:text-zinc-100">쪽지 발송</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* 대상 유형 */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-zinc-600">발송 대상</label>
-            <div className="flex rounded-xl border border-zinc-200 overflow-hidden">
+            <label className="mb-1.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">발송 대상</label>
+            <div className="flex rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
               {(['class', 'student'] as TargetType[]).map((t) => (
                 <button
                   key={t}
@@ -86,8 +86,8 @@ export function MessagesClient({
                   className={[
                     'flex-1 py-2 text-sm font-medium transition-colors',
                     targetType === t
-                      ? 'bg-zinc-950 text-white'
-                      : 'bg-white text-zinc-500 hover:bg-zinc-50',
+                      ? 'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900'
+                      : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-950',
                   ].join(' ')}
                 >
                   {t === 'class' ? '분반 전체' : '특정 학생'}
@@ -99,11 +99,11 @@ export function MessagesClient({
           {/* 대상 선택 */}
           {targetType === 'class' ? (
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-600">분반 선택</label>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">분반 선택</label>
               <select
                 value={classId}
                 onChange={(e) => setClassId(e.target.value)}
-                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
+                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
               >
                 {classes.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
@@ -113,14 +113,14 @@ export function MessagesClient({
           ) : (
             <div className="space-y-2">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-zinc-600">분반 필터</label>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">분반 필터</label>
                 <select
                   value={filterClassId}
                   onChange={(e) => {
                     setFilterClassId(e.target.value)
                     setStudentId('')
                   }}
-                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
                 >
                   <option value="">전체 분반</option>
                   {classes.map((c) => (
@@ -129,11 +129,11 @@ export function MessagesClient({
                 </select>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-zinc-600">학생 선택</label>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">학생 선택</label>
                 <select
                   value={studentId}
                   onChange={(e) => setStudentId(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
                 >
                   {filteredStudents.length === 0 && (
                     <option value="">학생 없음</option>
@@ -148,13 +148,13 @@ export function MessagesClient({
 
           {/* 메시지 내용 */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-zinc-600">메시지 내용</label>
+            <label className="mb-1.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">메시지 내용</label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="전달할 내용을 입력하세요."
               rows={4}
-              className="w-full resize-none rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none"
+              className="w-full resize-none rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
             />
           </div>
 
@@ -164,7 +164,7 @@ export function MessagesClient({
           <button
             type="submit"
             disabled={isPending || !content.trim()}
-            className="w-full rounded-xl bg-zinc-950 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:bg-zinc-200 disabled:text-zinc-400"
+            className="w-full rounded-xl bg-zinc-950 dark:bg-zinc-50 py-3 text-sm font-medium text-white dark:text-zinc-900 transition-colors hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:bg-zinc-200 dark:disabled:bg-zinc-800 disabled:text-zinc-400 dark:disabled:text-zinc-600"
           >
             {isPending ? '발송 중…' : '쪽지 발송'}
           </button>
@@ -172,22 +172,22 @@ export function MessagesClient({
       </div>
 
       {/* 발송 내역 */}
-      <div className="rounded-2xl border border-zinc-200 bg-white">
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <div className="px-5 pt-5 pb-3">
-          <h2 className="text-sm font-semibold text-zinc-900">발송 내역</h2>
+          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">발송 내역</h2>
         </div>
         {messages.length === 0 ? (
-          <p className="px-5 pb-6 text-center text-sm text-zinc-400">발송 내역이 없습니다.</p>
+          <p className="px-5 pb-6 text-center text-sm text-zinc-400 dark:text-zinc-600">발송 내역이 없습니다.</p>
         ) : (
-          <ul className="divide-y divide-zinc-100">
+          <ul className="divide-y divide-zinc-100 dark:divide-zinc-900">
             {messages.map((m) => (
               <li key={m.id} className="px-5 py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-zinc-500 mb-1">{m.targetLabel}</p>
-                    <p className="text-sm text-zinc-800 line-clamp-2">{m.content}</p>
+                    <p className="text-xs font-medium text-zinc-500 dark:text-zinc-500 mb-1">{m.targetLabel}</p>
+                    <p className="text-sm text-zinc-800 dark:text-zinc-200 line-clamp-2">{m.content}</p>
                   </div>
-                  <span className="shrink-0 text-[10px] text-zinc-400 mt-0.5">
+                  <span className="shrink-0 text-[10px] text-zinc-400 dark:text-zinc-600 mt-0.5">
                     {new Date(m.createdAt).toLocaleDateString('ko-KR', {
                       month: 'short',
                       day: 'numeric',

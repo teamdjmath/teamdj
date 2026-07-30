@@ -91,10 +91,10 @@ export function ExcelImportModal({
       {/* 완료 화면 */}
       {result ? (
         <div className="space-y-4">
-          <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-5 py-4">
-            <p className="text-sm font-semibold text-zinc-900">등록 완료</p>
-            <p className="mt-1 text-sm text-zinc-600">
-              신규 <span className="font-bold text-zinc-900">{result.succeeded}명</span>
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-5 py-4">
+            <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">등록 완료</p>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              신규 <span className="font-bold text-zinc-900 dark:text-zinc-100">{result.succeeded}명</span>
               {result.merged > 0 && (
                 <span> · 정보 보강 <span className="font-bold text-emerald-600">{result.merged}명</span></span>
               )}
@@ -103,7 +103,7 @@ export function ExcelImportModal({
               )}
             </p>
             {result.merged > 0 && (
-              <p className="mt-1 text-xs text-zinc-400">
+              <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-600">
                 정보 보강: 이미 등록된 학생(전화번호·이름 일치)에게 분반 소속·학부모 연결·빈 학교/학년만 추가했습니다.
               </p>
             )}
@@ -125,8 +125,8 @@ export function ExcelImportModal({
                 <tbody>
                   {result.failed.map((f, i) => (
                     <tr key={i} className="border-b border-red-50">
-                      <td className="px-4 py-2 text-zinc-700">{f.name}</td>
-                      <td className="px-4 py-2 text-zinc-500">{f.phone}</td>
+                      <td className="px-4 py-2 text-zinc-700 dark:text-zinc-300">{f.name}</td>
+                      <td className="px-4 py-2 text-zinc-500 dark:text-zinc-500">{f.phone}</td>
                       <td className="px-4 py-2 text-red-500">{f.reason}</td>
                     </tr>
                   ))}
@@ -139,14 +139,14 @@ export function ExcelImportModal({
             <button
               type="button"
               onClick={reset}
-              className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
+              className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950"
             >
               다시 업로드
             </button>
             <button
               type="button"
               onClick={handleClose}
-              className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+              className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200"
             >
               닫기
             </button>
@@ -156,7 +156,7 @@ export function ExcelImportModal({
         <div className="space-y-5">
           {/* 파일 업로드 */}
           <div>
-            <label className="block text-xs font-medium text-zinc-600 mb-1.5">
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5">
               엑셀 파일 선택 (.xlsx)
             </label>
             <input
@@ -164,11 +164,11 @@ export function ExcelImportModal({
               type="file"
               accept=".xlsx,.xls"
               onChange={handleFile}
-              className="block w-full text-sm text-zinc-500 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-zinc-700"
+              className="block w-full text-sm text-zinc-500 dark:text-zinc-500 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 dark:file:bg-zinc-100 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white dark:text-zinc-900 hover:file:bg-zinc-700 dark:hover:file:bg-zinc-300"
             />
-            <div className="mt-2 rounded-lg bg-zinc-50 border border-zinc-200 px-3 py-2.5 space-y-1">
-              <p className="text-[11px] font-semibold text-zinc-600">주의사항</p>
-              <ul className="list-disc pl-4 text-[11px] text-zinc-500 space-y-0.5">
+            <div className="mt-2 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 px-3 py-2.5 space-y-1">
+              <p className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">주의사항</p>
+              <ul className="list-disc pl-4 text-[11px] text-zinc-500 dark:text-zinc-500 space-y-0.5">
                 <li><b>이름·전화번호는 반드시 입력</b>해야 합니다. 학생 전화번호가 로그인 아이디가 됩니다.</li>
                 <li>학교명·학년은 리포트에 표시되니 정확히 입력해주세요.</li>
                 <li>학부모 전화번호는 공란이어도 되지만, 비워두면 카카오 리포트 발송이 되지 않습니다.</li>
@@ -184,30 +184,30 @@ export function ExcelImportModal({
           {/* 미리보기 테이블 */}
           {rows.length > 0 && (
             <div>
-              <p className="mb-2 text-xs font-medium text-zinc-600">
+              <p className="mb-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
                 미리보기 — {rows.length}명
               </p>
-              <div className="overflow-auto max-h-64 rounded-xl border border-zinc-200">
+              <div className="overflow-auto max-h-64 rounded-xl border border-zinc-200 dark:border-zinc-800">
                 <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-zinc-50 border-b border-zinc-200">
+                  <thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800">
                     <tr>
-                      <th className="px-4 py-2.5 text-left font-semibold text-zinc-500">행</th>
-                      <th className="px-4 py-2.5 text-left font-semibold text-zinc-500">이름</th>
-                      <th className="px-4 py-2.5 text-left font-semibold text-zinc-500">전화번호</th>
-                      <th className="px-4 py-2.5 text-left font-semibold text-zinc-500">학교/학년</th>
-                      <th className="px-4 py-2.5 text-left font-semibold text-zinc-500">학부모</th>
-                      <th className="px-4 py-2.5 text-left font-semibold text-zinc-500">분반명</th>
+                      <th className="px-4 py-2.5 text-left font-semibold text-zinc-500 dark:text-zinc-500">행</th>
+                      <th className="px-4 py-2.5 text-left font-semibold text-zinc-500 dark:text-zinc-500">이름</th>
+                      <th className="px-4 py-2.5 text-left font-semibold text-zinc-500 dark:text-zinc-500">전화번호</th>
+                      <th className="px-4 py-2.5 text-left font-semibold text-zinc-500 dark:text-zinc-500">학교/학년</th>
+                      <th className="px-4 py-2.5 text-left font-semibold text-zinc-500 dark:text-zinc-500">학부모</th>
+                      <th className="px-4 py-2.5 text-left font-semibold text-zinc-500 dark:text-zinc-500">분반명</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-100">
+                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-900">
                     {rows.map((r) => (
                       <tr key={r._idx}>
-                        <td className="px-4 py-2 text-zinc-400">{r._idx}</td>
-                        <td className="px-4 py-2 text-zinc-800">{r.name}</td>
-                        <td className="px-4 py-2 text-zinc-600">{r.phone}</td>
-                        <td className="px-4 py-2 text-zinc-500">{r.school || '세종고'}/{r.grade || '1'}학년</td>
-                        <td className="px-4 py-2 text-zinc-500">{r.parentPhone || '—'}</td>
-                        <td className="px-4 py-2 text-zinc-500">{r.className || '—'}</td>
+                        <td className="px-4 py-2 text-zinc-400 dark:text-zinc-600">{r._idx}</td>
+                        <td className="px-4 py-2 text-zinc-800 dark:text-zinc-200">{r.name}</td>
+                        <td className="px-4 py-2 text-zinc-600 dark:text-zinc-400">{r.phone}</td>
+                        <td className="px-4 py-2 text-zinc-500 dark:text-zinc-500">{r.school || '세종고'}/{r.grade || '1'}학년</td>
+                        <td className="px-4 py-2 text-zinc-500 dark:text-zinc-500">{r.parentPhone || '—'}</td>
+                        <td className="px-4 py-2 text-zinc-500 dark:text-zinc-500">{r.className || '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -220,7 +220,7 @@ export function ExcelImportModal({
             <button
               type="button"
               onClick={handleClose}
-              className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
+              className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950"
             >
               취소
             </button>
@@ -228,7 +228,7 @@ export function ExcelImportModal({
               type="button"
               onClick={handleImport}
               disabled={rows.length === 0 || isPending}
-              className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+              className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50"
             >
               {isPending ? `등록 중… (0/${rows.length})` : `${rows.length}명 등록`}
             </button>

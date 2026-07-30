@@ -3,6 +3,7 @@ import { AcmeHero } from "@/components/landing/acme-hero";
 import { TeacherIntro } from "@/components/landing/teacher-intro";
 import { SpecialLectureSection } from "@/components/landing/special-lecture-section";
 import { CurriculumSection } from "@/components/landing/curriculum-section";
+import { SystemSection } from "@/components/landing/system-section";
 import { TestimonialSection } from "@/components/landing/testimonial-section";
 import { SeminarSection } from "@/components/landing/seminar-section";
 import { ClosingSection } from "@/components/landing/closing-section";
@@ -68,6 +69,9 @@ export default function LandingPage() {
 
       {/* 4. 커리큘럼 라인업 */}
       <CurriculumSection />
+
+      {/* 4-1. 교재 체계 & 관리 시스템 */}
+      <SystemSection />
 
       {/* 5. 검증된 내용 (후기) */}
       <TestimonialSection />

@@ -40,15 +40,15 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
           role="dialog"
           aria-modal="true"
           aria-label={title}
-          className={`relative w-full ${SIZE[size]} rounded-2xl border border-zinc-200 bg-white shadow-xl my-8`}
+          className={`relative w-full ${SIZE[size]} rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl my-8`}
         >
           {/* 헤더 */}
-          <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
-            <h2 className="text-base font-semibold text-zinc-900">{title}</h2>
+          <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-900 px-6 py-4">
+            <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{title}</h2>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 transition-colors"
+              className="rounded-lg p-1.5 text-zinc-400 dark:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors"
               aria-label="닫기"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">

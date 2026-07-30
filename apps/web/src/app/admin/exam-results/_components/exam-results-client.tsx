@@ -293,7 +293,7 @@ export function ExamResultsClient({
         <select
           value={filterClassId}
           onChange={(e) => setFilterClassId(e.target.value)}
-          className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 focus:border-zinc-400 focus:outline-none"
+          className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
         >
           <option value="">전체 분반</option>
           {classes.map((c) => (
@@ -303,7 +303,7 @@ export function ExamResultsClient({
         <select
           value={filterExamType}
           onChange={(e) => setFilterExamType(e.target.value)}
-          className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 focus:border-zinc-400 focus:outline-none"
+          className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
         >
           <option value="">전체 유형</option>
           {EXAM_TYPES.map((t) => (
@@ -313,7 +313,7 @@ export function ExamResultsClient({
         <button
           type="button"
           onClick={() => { resetForm(); setCreateOpen(true) }}
-          className="ml-auto rounded-xl bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
+          className="ml-auto rounded-xl bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
         >
           결과 등록
         </button>
@@ -321,7 +321,7 @@ export function ExamResultsClient({
 
       {/* 시험별 그룹 통계 + 목록 */}
       {Object.entries(examGroups).length === 0 && (
-        <div className="rounded-2xl border border-zinc-200 bg-white">
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
           <EmptyState message="등록된 시험 결과가 없습니다." description="시험 결과 추가 버튼으로 등록하세요." />
         </div>
       )}
@@ -341,35 +341,35 @@ export function ExamResultsClient({
 
         const isOpen = expanded[key] ?? false
         return (
-          <div key={key} className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
+          <div key={key} className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
             {/* 시험 헤더 — 클릭으로 접기/펼치기 */}
             <div
-              className={`flex items-center gap-3 px-5 py-4 cursor-pointer hover:bg-zinc-50/60 transition-colors ${isOpen ? 'border-b border-zinc-100' : ''}`}
+              className={`flex items-center gap-3 px-5 py-4 cursor-pointer hover:bg-zinc-50/60 dark:hover:bg-zinc-950/60 transition-colors ${isOpen ? 'border-b border-zinc-100 dark:border-zinc-900' : ''}`}
               onClick={() => setExpanded((m) => ({ ...m, [key]: !isOpen }))}
             >
               <svg
-                className={`w-4 h-4 shrink-0 text-zinc-400 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+                className={`w-4 h-4 shrink-0 text-zinc-400 dark:text-zinc-600 transition-transform ${isOpen ? 'rotate-90' : ''}`}
                 fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-zinc-900">{first.examName}</p>
-                <p className="text-xs text-zinc-400 mt-0.5">
+                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{first.examName}</p>
+                <p className="text-xs text-zinc-400 dark:text-zinc-600 mt-0.5">
                   {examTypeLabel(first.examType)} · {first.examDate} · {rows.length}명
                 </p>
               </div>
               {/* 통계 요약 — 접힌 상태에서도 항상 표시 */}
-              <div className="hidden sm:flex gap-4 text-xs text-zinc-500">
-                <span>평균 <strong className="text-zinc-900">{avg}</strong></span>
-                <span>최고 <strong className="text-zinc-900">{max}</strong></span>
-                <span>최저 <strong className="text-zinc-900">{min}</strong></span>
+              <div className="hidden sm:flex gap-4 text-xs text-zinc-500 dark:text-zinc-500">
+                <span>평균 <strong className="text-zinc-900 dark:text-zinc-100">{avg}</strong></span>
+                <span>최고 <strong className="text-zinc-900 dark:text-zinc-100">{max}</strong></span>
+                <span>최저 <strong className="text-zinc-900 dark:text-zinc-100">{min}</strong></span>
               </div>
               <button
                 type="button"
                 disabled={isPending}
                 onClick={(e) => { e.stopPropagation(); handleAutoRank(first.examName, first.examDate) }}
-                className="shrink-0 rounded-lg border border-zinc-200 px-2.5 py-1 text-xs text-zinc-600 hover:bg-zinc-50 disabled:opacity-50 transition-colors"
+                className="shrink-0 rounded-lg border border-zinc-200 dark:border-zinc-800 px-2.5 py-1 text-xs text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950 disabled:opacity-50 transition-colors"
               >
                 등수 자동 산정
               </button>
@@ -377,13 +377,13 @@ export function ExamResultsClient({
 
             {/* 등급 분포 (등급컷 있는 경우) */}
             {isOpen && Object.keys(gradeDist).length > 0 && (
-              <div className="flex gap-1.5 flex-wrap px-5 py-3 border-b border-zinc-50">
+              <div className="flex gap-1.5 flex-wrap px-5 py-3 border-b border-zinc-50 dark:border-zinc-950">
                 {Object.entries(gradeDist)
                   .sort((a, b) => Number(a[0].replace('등급', '')) - Number(b[0].replace('등급', '')))
                   .map(([grade, cnt]) => (
                     <span
                       key={grade}
-                      className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs text-zinc-600"
+                      className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2.5 py-1 text-xs text-zinc-600 dark:text-zinc-400"
                     >
                       {grade} {cnt}명
                     </span>
@@ -393,33 +393,33 @@ export function ExamResultsClient({
 
             {/* 학생별 결과 목록 */}
             {isOpen && (
-            <ul className="divide-y divide-zinc-50">
+            <ul className="divide-y divide-zinc-50 dark:divide-zinc-950">
               {rows
                 .sort((a, b) => b.score - a.score)
                 .map((r) => (
                   <li
                     key={r.id}
-                    className="flex flex-col gap-2 px-5 py-3.5 hover:bg-zinc-50 cursor-pointer transition-colors sm:flex-row sm:items-center sm:justify-between"
+                    className="flex flex-col gap-2 px-5 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-950 cursor-pointer transition-colors sm:flex-row sm:items-center sm:justify-between"
                     onClick={() => setDetailResult(r)}
                   >
                     {/* 학생 정보 — 항상 한 줄 유지, 넘치면 말줄임 */}
                     <div className="min-w-0 flex items-baseline gap-2">
-                      <p className="text-sm font-medium text-zinc-900 truncate">{r.studentName}</p>
-                      <p className="text-xs text-zinc-400 truncate shrink-0">{r.className}</p>
+                      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{r.studentName}</p>
+                      <p className="text-xs text-zinc-400 dark:text-zinc-600 truncate shrink-0">{r.className}</p>
                     </div>
 
                     {/* 지표 — 각각 완결된 pill이라 좁아지면 pill 단위로 줄바꿈될 뿐 글자가 쪼개지지 않음 */}
                     <div className="flex items-center gap-1.5 flex-wrap sm:justify-end sm:shrink-0">
                       {r.rankInExam != null && (
-                        <span className="whitespace-nowrap rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-600">
+                        <span className="whitespace-nowrap rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-600 dark:text-zinc-400">
                           {r.rankInExam}/{r.totalInExam ?? '?'}등{r.autoRank && ' · 자동'}
                         </span>
                       )}
-                      <span className="whitespace-nowrap text-sm font-semibold text-zinc-900">
+                      <span className="whitespace-nowrap text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                         {r.score} / {r.maxScore}점
                       </span>
                       {Object.keys(r.gradeCuts).length > 0 && (
-                        <span className="whitespace-nowrap rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-600">
+                        <span className="whitespace-nowrap rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-600 dark:text-zinc-400">
                           {gradeFromScore(r.score, r.gradeCuts)}
                         </span>
                       )}
@@ -431,7 +431,7 @@ export function ExamResultsClient({
                           예상 {r.estimatedGrade}
                         </span>
                       )}
-                      <svg className="h-4 w-4 text-zinc-300 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <svg className="h-4 w-4 text-zinc-300 dark:text-zinc-700 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
                       </svg>
                     </div>
@@ -450,18 +450,18 @@ export function ExamResultsClient({
           onClick={() => setCreateOpen(false)}
         >
           <div
-            className="w-full max-w-xl rounded-3xl bg-white p-6 md:p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
+            className="w-full max-w-xl rounded-3xl bg-white dark:bg-zinc-900 p-6 md:p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-8 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-zinc-950">특별 시험 결과 등록</h2>
-                <p className="text-sm text-zinc-500 mt-1">학생의 시험 점수와 피드백을 기록하세요.</p>
+                <h2 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">특별 시험 결과 등록</h2>
+                <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">학생의 시험 점수와 피드백을 기록하세요.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setCreateOpen(false)}
-                className="rounded-full p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
+                className="rounded-full p-2 text-zinc-400 dark:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
               >
                 <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -556,11 +556,11 @@ export function ExamResultsClient({
               {/* 등급컷 */}
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <label className="block text-xs font-bold text-zinc-900 uppercase tracking-widest">
+                  <label className="block text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-widest">
                     등급컷 설정 (선택)
                   </label>
                   {/* 등급제 선택 — 고1·2: 5등급제(22개정) / 현 고3: 9등급제(15개정) */}
-                  <div className="ml-auto flex rounded-lg bg-zinc-100 p-0.5">
+                  <div className="ml-auto flex rounded-lg bg-zinc-100 dark:bg-zinc-900 p-0.5">
                     {([['5', '5등급제'], ['9', '9등급제']] as const).map(([val, label]) => (
                       <button
                         key={val}
@@ -568,8 +568,8 @@ export function ExamResultsClient({
                         onClick={() => setForm((f) => ({ ...f, gradeSystem: val }))}
                         className={`rounded-md px-3 py-1 text-[11px] font-semibold transition-colors ${
                           form.gradeSystem === val
-                            ? 'bg-white text-zinc-900 shadow-sm'
-                            : 'text-zinc-400 hover:text-zinc-600'
+                            ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                            : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400'
                         }`}
                       >
                         {label}
@@ -577,10 +577,10 @@ export function ExamResultsClient({
                     ))}
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3 p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
+                <div className="grid grid-cols-3 gap-3 p-4 bg-zinc-50 dark:bg-zinc-950 rounded-2xl border border-zinc-100 dark:border-zinc-900">
                   {GRADE_LABELS.slice(0, form.gradeSystem === '5' ? 4 : 8).map((label, idx) => (
                     <div key={idx} className="space-y-1">
-                      <span className="text-[10px] font-bold text-zinc-400 block ml-1">{label}</span>
+                      <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-600 block ml-1">{label}</span>
                       <input
                         type="number"
                         min={0}
@@ -592,12 +592,12 @@ export function ExamResultsClient({
                           }))
                         }
                         placeholder="점수"
-                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs focus:border-zinc-900 focus:outline-none transition-all"
+                        className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-xs focus:border-zinc-900 dark:focus:border-zinc-100 focus:outline-none transition-all"
                       />
                     </div>
                   ))}
                 </div>
-                <p className="text-[10px] text-zinc-400 ml-1">
+                <p className="text-[10px] text-zinc-400 dark:text-zinc-600 ml-1">
                   각 등급의 최저 기준 점수를 입력하면 등급이 자동 계산됩니다.
                   {form.gradeSystem === '5'
                     ? ' 4등급 컷까지 입력 — 미만은 5등급. (고1·2 / 22개정)'
@@ -608,13 +608,13 @@ export function ExamResultsClient({
               {/* 등수 입력 */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <label className="block text-xs font-bold text-zinc-900 uppercase tracking-widest">
+                  <label className="block text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-widest">
                     등수 (선택)
                   </label>
-                  <label className="ml-auto flex items-center gap-1.5 text-xs text-zinc-500">
+                  <label className="ml-auto flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-500">
                     <input
                       type="checkbox"
-                      className="accent-zinc-900"
+                      className="accent-zinc-900 dark:accent-zinc-100"
                       checked={form.autoRank}
                       onChange={(e) => setForm((f) => ({ ...f, autoRank: e.target.checked }))}
                     />
@@ -646,12 +646,12 @@ export function ExamResultsClient({
               {/* 학습 제안 */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-medium text-zinc-600">학습 제안 및 피드백</label>
+                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">학습 제안 및 피드백</label>
                   <button
                     type="button"
                     onClick={handleAiAnalysis}
                     disabled={aiLoading}
-                    className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+                    className="flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors disabled:opacity-50"
                   >
                     {aiLoading ? (
                       <>
@@ -676,10 +676,10 @@ export function ExamResultsClient({
                   onChange={(e) => setForm((f) => ({ ...f, studySuggestion: e.target.value }))}
                   placeholder="학생의 강점과 약점, 향후 학습 방향에 대한 구체적인 피드백을 남겨주세요. (또는 AI 분석 버튼으로 초안을 받아 다듬으세요)"
                   rows={4}
-                  className="w-full resize-none rounded-2xl border border-zinc-200 bg-zinc-50/50 px-5 py-3.5 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 placeholder:font-normal focus:border-zinc-900 focus:bg-white focus:outline-none transition-all"
+                  className="w-full resize-none rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50 px-5 py-3.5 text-sm font-medium text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 placeholder:font-normal focus:border-zinc-900 dark:focus:border-zinc-100 focus:bg-white dark:focus:bg-zinc-900 focus:outline-none transition-all"
                 />
                 {aiErr && <p className="text-[11px] text-red-500">{aiErr}</p>}
-                <p className="text-[10px] text-zinc-400">AI 분석은 초안입니다 — 저장 전에 꼭 검토하고 다듬어주세요.</p>
+                <p className="text-[10px] text-zinc-400 dark:text-zinc-600">AI 분석은 초안입니다 — 저장 전에 꼭 검토하고 다듬어주세요.</p>
               </div>
 
               {error && (
@@ -694,7 +694,7 @@ export function ExamResultsClient({
               <button
                 type="submit"
                 disabled={isPending}
-                className="w-full rounded-2xl bg-zinc-950 py-4 text-sm font-bold text-white shadow-xl transition-all hover:bg-zinc-800 hover:shadow-zinc-950/20 disabled:bg-zinc-200 disabled:text-zinc-400 active:scale-[0.98]"
+                className="w-full rounded-2xl bg-zinc-950 dark:bg-zinc-50 py-4 text-sm font-bold text-white dark:text-zinc-900 shadow-xl transition-all hover:bg-zinc-800 dark:hover:bg-zinc-200 hover:shadow-zinc-950/20 disabled:bg-zinc-200 dark:disabled:bg-zinc-800 disabled:text-zinc-400 dark:disabled:text-zinc-600 active:scale-[0.98]"
               >
                 {isPending ? '시험 결과 저장 중...' : '시험 결과 등록하기'}
               </button>
@@ -710,15 +710,15 @@ export function ExamResultsClient({
           onClick={() => setDetailResult(null)}
         >
           <div
-            className="w-full max-w-lg rounded-t-2xl sm:rounded-2xl bg-white px-5 pt-5 pb-8 max-h-[80vh] overflow-y-auto"
+            className="w-full max-w-lg rounded-t-2xl sm:rounded-2xl bg-white dark:bg-zinc-900 px-5 pt-5 pb-8 max-h-[80vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-zinc-900">시험 결과 상세</h2>
+              <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">시험 결과 상세</h2>
               <button
                 type="button"
                 onClick={() => setDetailResult(null)}
-                className="text-sm text-zinc-400 hover:text-zinc-700"
+                className="text-sm text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300"
               >
                 닫기
               </button>
@@ -747,12 +747,12 @@ export function ExamResultsClient({
               )}
               {Object.keys(detailResult.gradeCuts).length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-zinc-400 mb-2">등급컷</p>
+                  <p className="text-xs font-medium text-zinc-400 dark:text-zinc-600 mb-2">등급컷</p>
                   <div className="flex flex-wrap gap-1.5">
                     {Object.entries(detailResult.gradeCuts)
                       .sort((a, b) => Number(a[0]) - Number(b[0]))
                       .map(([g, cut]) => (
-                        <span key={g} className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs text-zinc-600">
+                        <span key={g} className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2.5 py-1 text-xs text-zinc-600 dark:text-zinc-400">
                           {g}등급 {cut}점
                         </span>
                       ))}
@@ -781,8 +781,8 @@ export function ExamResultsClient({
               )}
               {detailResult.studySuggestion && (
                 <div>
-                  <p className="text-xs font-medium text-zinc-400 mb-1">학습 제안</p>
-                  <p className="text-sm text-zinc-700 whitespace-pre-wrap leading-relaxed">
+                  <p className="text-xs font-medium text-zinc-400 dark:text-zinc-600 mb-1">학습 제안</p>
+                  <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
                     {detailResult.studySuggestion}
                   </p>
                 </div>
@@ -793,7 +793,7 @@ export function ExamResultsClient({
               <button
                 type="button"
                 onClick={() => openReportPreview(detailResult)}
-                className="flex-1 rounded-xl bg-zinc-950 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 transition-colors"
+                className="flex-1 rounded-xl bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-semibold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
               >
                 {detailResult.reportImageUrl ? '특별시험 레포트 다시 만들기' : '특별시험 레포트 만들기'}
               </button>
@@ -834,7 +834,7 @@ export function ExamResultsClient({
               <button
                 type="button"
                 onClick={() => setReportPreviewFor(null)}
-                className="flex-1 rounded-xl border border-white/20 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition-colors"
+                className="flex-1 rounded-xl border border-white/20 dark:border-zinc-900/20 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-white/10 dark:hover:bg-zinc-900/10 transition-colors"
               >
                 닫기
               </button>
@@ -842,7 +842,7 @@ export function ExamResultsClient({
                 type="button"
                 onClick={handleSaveExamReport}
                 disabled={reportSaving}
-                className="flex-1 rounded-xl bg-white py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-100 transition-colors disabled:opacity-50"
+                className="flex-1 rounded-xl bg-white dark:bg-zinc-900 py-2.5 text-sm font-semibold text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors disabled:opacity-50"
               >
                 {reportSaving ? '저장 중...' : '이 내용으로 저장'}
               </button>
@@ -857,8 +857,8 @@ export function ExamResultsClient({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4">
-      <span className="shrink-0 text-xs font-medium text-zinc-400">{label}</span>
-      <span className="text-sm text-zinc-800 text-right">{value}</span>
+      <span className="shrink-0 text-xs font-medium text-zinc-400 dark:text-zinc-600">{label}</span>
+      <span className="text-sm text-zinc-800 dark:text-zinc-200 text-right">{value}</span>
     </div>
   )
 }

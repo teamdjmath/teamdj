@@ -51,29 +51,29 @@ export function InactivityGuard() {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
-      <div className="w-full max-w-sm mx-4 rounded-3xl bg-white p-8 shadow-2xl text-center">
-        <div className="w-14 h-14 rounded-full bg-zinc-100 flex items-center justify-center mx-auto mb-5">
-          <svg className="w-7 h-7 text-zinc-500" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+      <div className="w-full max-w-sm mx-4 rounded-3xl bg-white dark:bg-zinc-900 p-8 shadow-2xl text-center">
+        <div className="w-14 h-14 rounded-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mx-auto mb-5">
+          <svg className="w-7 h-7 text-zinc-500 dark:text-zinc-500" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="10" />
             <polyline strokeLinecap="round" strokeLinejoin="round" points="12 6 12 12 16 14" />
           </svg>
         </div>
-        <h2 className="text-lg font-bold text-zinc-900">세션이 곧 만료됩니다</h2>
-        <p className="mt-2 text-sm text-zinc-500">
+        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">세션이 곧 만료됩니다</h2>
+        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-500">
           {mins > 0 ? `${mins}분 ${secs}초` : `${secs}초`} 후 자동으로 로그아웃됩니다.
         </p>
         <div className="mt-6 flex flex-col gap-2">
           <button
             type="button"
             onClick={reset}
-            className="w-full rounded-2xl bg-zinc-950 py-3.5 text-sm font-bold text-white hover:bg-zinc-800 transition-colors"
+            className="w-full rounded-2xl bg-zinc-950 dark:bg-zinc-50 py-3.5 text-sm font-bold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
           >
             계속 사용하기
           </button>
           <form action={signOut}>
             <button
               type="submit"
-              className="w-full rounded-2xl py-3.5 text-sm font-medium text-zinc-500 hover:text-zinc-800 transition-colors"
+              className="w-full rounded-2xl py-3.5 text-sm font-medium text-zinc-500 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
             >
               지금 로그아웃
             </button>

@@ -42,8 +42,8 @@ export function AuditClient({ logs, actionFilter }: { logs: AuditRow[]; actionFi
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-zinc-950">감사 로그</h1>
-        <p className="mt-0.5 text-sm text-zinc-400">계정·데이터에 영향을 주는 작업 기록 (최근 200건)</p>
+        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">감사 로그</h1>
+        <p className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-600">계정·데이터에 영향을 주는 작업 기록 (최근 200건)</p>
       </div>
 
       {/* 액션 필터 */}
@@ -52,7 +52,7 @@ export function AuditClient({ logs, actionFilter }: { logs: AuditRow[]; actionFi
           type="button"
           onClick={() => router.push('/admin/audit')}
           className={`rounded-full px-3.5 py-1.5 text-xs font-medium border transition-colors ${
-            !actionFilter ? 'bg-zinc-950 text-white border-zinc-950' : 'bg-white text-zinc-500 border-zinc-200 hover:border-zinc-400'
+            !actionFilter ? 'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900 border-zinc-950 dark:border-zinc-50' : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-500 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600'
           }`}
         >
           전체
@@ -63,7 +63,7 @@ export function AuditClient({ logs, actionFilter }: { logs: AuditRow[]; actionFi
             type="button"
             onClick={() => router.push(`/admin/audit?action=${encodeURIComponent(key)}`)}
             className={`rounded-full px-3.5 py-1.5 text-xs font-medium border transition-colors ${
-              actionFilter === key ? 'bg-zinc-950 text-white border-zinc-950' : 'bg-white text-zinc-500 border-zinc-200 hover:border-zinc-400'
+              actionFilter === key ? 'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900 border-zinc-950 dark:border-zinc-50' : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-500 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600'
             }`}
           >
             {label}
@@ -71,43 +71,43 @@ export function AuditClient({ logs, actionFilter }: { logs: AuditRow[]; actionFi
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         {logs.length === 0 ? (
-          <div className="py-16 text-center text-sm text-zinc-400">기록된 로그가 없습니다.</div>
+          <div className="py-16 text-center text-sm text-zinc-400 dark:text-zinc-600">기록된 로그가 없습니다.</div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-100 text-left text-xs text-zinc-400">
+              <tr className="border-b border-zinc-100 dark:border-zinc-900 text-left text-xs text-zinc-400 dark:text-zinc-600">
                 <th className="px-4 py-3 font-medium">시각</th>
                 <th className="px-4 py-3 font-medium">수행자</th>
                 <th className="px-4 py-3 font-medium">작업</th>
                 <th className="px-4 py-3 font-medium">대상</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-50">
+            <tbody className="divide-y divide-zinc-50 dark:divide-zinc-950">
               {logs.map((log) => (
-                <tr key={log.id} className="hover:bg-zinc-50 transition-colors">
-                  <td className="px-4 py-3 text-zinc-500 whitespace-nowrap tabular-nums">
+                <tr key={log.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors">
+                  <td className="px-4 py-3 text-zinc-500 dark:text-zinc-500 whitespace-nowrap tabular-nums">
                     {formatDatetime(log.createdAt)}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <span className="font-medium text-zinc-900">{log.actorName || '—'}</span>
-                    <span className="ml-1.5 text-xs text-zinc-400">{ROLE_LABELS[log.actorRole] ?? log.actorRole}</span>
+                    <span className="font-medium text-zinc-900 dark:text-zinc-100">{log.actorName || '—'}</span>
+                    <span className="ml-1.5 text-xs text-zinc-400 dark:text-zinc-600">{ROLE_LABELS[log.actorRole] ?? log.actorRole}</span>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      DESTRUCTIVE.has(log.action) ? 'bg-red-50 text-red-600' : 'bg-zinc-100 text-zinc-600'
+                      DESTRUCTIVE.has(log.action) ? 'bg-red-50 text-red-600' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400'
                     }`}>
                       {ACTION_LABELS[log.action] ?? log.action}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-zinc-700">
+                  <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
                     {log.targetLabel || '—'}
                     {log.detail && 'count' in log.detail && (
-                      <span className="ml-1.5 text-xs text-zinc-400">({String(log.detail.count)}건)</span>
+                      <span className="ml-1.5 text-xs text-zinc-400 dark:text-zinc-600">({String(log.detail.count)}건)</span>
                     )}
                     {log.detail && 'sent' in log.detail && (
-                      <span className="ml-1.5 text-xs text-zinc-400">
+                      <span className="ml-1.5 text-xs text-zinc-400 dark:text-zinc-600">
                         (성공 {String(log.detail.sent)}
                         {'failed' in log.detail && Number(log.detail.failed) > 0 ? ` · 실패 ${String(log.detail.failed)}` : ''})
                       </span>

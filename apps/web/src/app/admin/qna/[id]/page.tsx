@@ -86,7 +86,7 @@ export default async function QnaDetailPage({
       <div className="mb-6">
         <Link
           href="/admin/qna"
-          className="mb-3 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 transition-colors"
+          className="mb-3 inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
@@ -94,17 +94,17 @@ export default async function QnaDetailPage({
           질의응답 목록
         </Link>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-bold text-zinc-950">{question.title || '질문 상세'}</h1>
-          <span className="text-sm text-zinc-400">·</span>
-          <span className="text-sm text-zinc-500">{question.studentName}</span>
-          {question.className && <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">{question.className}</span>}
+          <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">{question.title || '질문 상세'}</h1>
+          <span className="text-sm text-zinc-400 dark:text-zinc-600">·</span>
+          <span className="text-sm text-zinc-500 dark:text-zinc-500">{question.studentName}</span>
+          {question.className && <span className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-xs text-zinc-600 dark:text-zinc-400">{question.className}</span>}
           {question.textbookName && (
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">
+            <span className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-xs text-zinc-600 dark:text-zinc-400">
               {question.textbookName}{question.problemNumber ? ` · ${question.problemNumber}번` : ''}
             </span>
           )}
           {!question.textbookName && question.problemNumber && (
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">{question.problemNumber}번</span>
+            <span className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-xs text-zinc-600 dark:text-zinc-400">{question.problemNumber}번</span>
           )}
         </div>
       </div>

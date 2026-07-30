@@ -261,14 +261,14 @@ export default async function NewReportPage({
         <div className="mb-6">
           <Link
             href="/admin/reports"
-            className="mb-3 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 transition-colors"
+            className="mb-3 inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
             </svg>
             리포트 목록
           </Link>
-          <h1 className="text-xl font-bold text-zinc-950">
+          <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">
             {existingReports?.length ? '리포트 수정' : '리포트 작성'}
           </h1>
         </div>
@@ -292,14 +292,14 @@ export default async function NewReportPage({
       <div className="mb-6">
         <Link
           href="/admin/reports"
-          className="mb-3 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 transition-colors"
+          className="mb-3 inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
           </svg>
           리포트 목록
         </Link>
-        <h1 className="text-xl font-bold text-zinc-950">리포트 작성</h1>
+        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">리포트 작성</h1>
       </div>
 
       <ReportFormClient

@@ -80,10 +80,10 @@ export default async function StudentDetailPage({
   return (
     <div>
       {/* 브레드크럼 */}
-      <div className="mb-4 flex items-center gap-2 text-sm text-zinc-400">
-        <Link href="/admin/students" className="hover:text-zinc-700">학생 관리</Link>
+      <div className="mb-4 flex items-center gap-2 text-sm text-zinc-400 dark:text-zinc-600">
+        <Link href="/admin/students" className="hover:text-zinc-700 dark:hover:text-zinc-300">학생 관리</Link>
         <span>/</span>
-        <span className="text-zinc-700 font-medium">{student.name}</span>
+        <span className="text-zinc-700 dark:text-zinc-300 font-medium">{student.name}</span>
       </div>
 
       <StudentDetailClient

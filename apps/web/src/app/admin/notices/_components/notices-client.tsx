@@ -145,10 +145,10 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
     <div>
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-zinc-950">공지사항</h1>
+        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">공지사항</h1>
         <button
           onClick={openCreate}
-          className="flex items-center gap-1.5 rounded-lg bg-zinc-950 px-3.5 py-2 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
+          className="flex items-center gap-1.5 rounded-lg bg-zinc-950 dark:bg-zinc-50 px-3.5 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -159,11 +159,11 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
 
       {/* 분반 필터 */}
       <div className="mb-6 max-w-xs space-y-1.5">
-        <label className="block text-xs font-medium text-zinc-600">분반</label>
+        <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">분반</label>
         <select
           value={selectedClassId ?? ''}
           onChange={(e) => handleClassFilter(e.target.value)}
-          className="w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
         >
           <option value="">전체 분반</option>
           {classOptions.map((c) => (
@@ -173,11 +173,11 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
       </div>
 
       {notices.length === 0 ? (
-        <div className="rounded-xl border border-zinc-200 bg-white">
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
           <EmptyState message="등록된 공지사항이 없습니다." description="공지사항 추가 버튼으로 새 공지를 작성하세요." />
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white divide-y divide-zinc-50">
+        <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 divide-y divide-zinc-50 dark:divide-zinc-950">
           {/* 고정 공지 */}
           {pinnedNotices.map((n) => (
             <NoticeRow
@@ -233,26 +233,26 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
 
           {/* 이미지 첨부 */}
           <div className="space-y-2">
-            <label className="block text-xs font-medium text-zinc-600">이미지 첨부</label>
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">이미지 첨부</label>
             <input
               type="file"
               accept="image/*"
               multiple
               onChange={handleImageUpload}
               disabled={uploading}
-              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded file:border-0 file:bg-zinc-200 file:px-2 file:py-1 file:text-xs file:text-zinc-700 disabled:opacity-50"
+              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 file:mr-3 file:rounded file:border-0 file:bg-zinc-200 dark:file:bg-zinc-800 file:px-2 file:py-1 file:text-xs file:text-zinc-700 dark:file:text-zinc-300 disabled:opacity-50"
             />
-            {uploading && <p className="text-xs text-zinc-400">업로드 중…</p>}
+            {uploading && <p className="text-xs text-zinc-400 dark:text-zinc-600">업로드 중…</p>}
             {form.imageUrls.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {form.imageUrls.map((url) => (
                   <div key={url} className="relative">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={url} alt="첨부" className="h-20 w-20 rounded-lg border border-zinc-200 object-cover" />
+                    <img src={url} alt="첨부" className="h-20 w-20 rounded-lg border border-zinc-200 dark:border-zinc-800 object-cover" />
                     <button
                       type="button"
                       onClick={() => removeImage(url)}
-                      className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-zinc-900 text-[10px] text-white hover:bg-red-500 transition-colors"
+                      className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-zinc-900 dark:bg-zinc-100 text-[10px] text-white dark:text-zinc-900 hover:bg-red-500 transition-colors"
                       aria-label="이미지 삭제"
                     >
                       ✕
@@ -280,11 +280,11 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
               type="checkbox"
               checked={form.isPublic}
               onChange={(e) => setForm((f) => ({ ...f, isPublic: e.target.checked }))}
-              className="mt-0.5 h-4 w-4 rounded border-zinc-300 accent-zinc-950"
+              className="mt-0.5 h-4 w-4 rounded border-zinc-300 dark:border-zinc-700 accent-zinc-950 dark:accent-zinc-50"
             />
-            <span className="text-sm text-zinc-700">
+            <span className="text-sm text-zinc-700 dark:text-zinc-300">
               홈페이지 공개 공지
-              <span className="block text-xs text-zinc-400">로그인 없이 누구나 볼 수 있는 공개 공지 페이지에 게시됩니다 (학부모 안내·홍보용)</span>
+              <span className="block text-xs text-zinc-400 dark:text-zinc-600">로그인 없이 누구나 볼 수 있는 공개 공지 페이지에 게시됩니다 (학부모 안내·홍보용)</span>
             </span>
           </label>
 
@@ -296,17 +296,17 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
               onClick={() => setForm((f) => ({ ...f, isPinned: !f.isPinned }))}
               className={[
                 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
-                form.isPinned ? 'bg-zinc-950' : 'bg-zinc-200',
+                form.isPinned ? 'bg-zinc-950 dark:bg-zinc-50' : 'bg-zinc-200 dark:bg-zinc-800',
               ].join(' ')}
             >
               <span
                 className={[
-                  'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                  'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white dark:bg-zinc-900 shadow transition-transform',
                   form.isPinned ? 'translate-x-4' : 'translate-x-0',
                 ].join(' ')}
               />
             </button>
-            <span className="text-sm text-zinc-700">고정 공지</span>
+            <span className="text-sm text-zinc-700 dark:text-zinc-300">고정 공지</span>
           </div>
 
           {err && <p className="text-sm text-red-500">{err}</p>}
@@ -314,14 +314,14 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
           <div className="flex gap-2 pt-1">
             <button
               onClick={() => setModal(null)}
-              className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+              className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors"
             >
               취소
             </button>
             <button
               onClick={handleSubmit}
               disabled={pending}
-              className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 transition-colors disabled:opacity-50"
+              className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50"
             >
               {pending ? '저장 중...' : modal?.type === 'edit' ? '수정' : '등록'}
             </button>
@@ -338,8 +338,8 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
       >
         {modal?.type === 'view' && (
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400">
-              {modal.notice.is_pinned && <span className="text-zinc-900">📌 고정</span>}
+            <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400 dark:text-zinc-600">
+              {modal.notice.is_pinned && <span className="text-zinc-900 dark:text-zinc-100">📌 고정</span>}
               {modal.notice.is_public && (
                 <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-600">홈페이지 공개</span>
               )}
@@ -349,19 +349,19 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
               <span>·</span>
               <span>{formatDate(modal.notice.created_at)}</span>
             </div>
-            <div className="min-h-[120px] rounded-lg bg-zinc-50 px-4 py-3 text-sm text-zinc-800">
+            <div className="min-h-[120px] rounded-lg bg-zinc-50 dark:bg-zinc-950 px-4 py-3 text-sm text-zinc-800 dark:text-zinc-200">
               <NoticeContent content={modal.notice.content} imageUrls={modal.notice.image_urls} />
             </div>
             <div className="flex gap-2 pt-1">
               <button
                 onClick={() => setModal(null)}
-                className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+                className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors"
               >
                 닫기
               </button>
               <button
                 onClick={() => openEdit(modal.notice)}
-                className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
+                className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
               >
                 수정
               </button>
@@ -389,17 +389,17 @@ function NoticeRow({
   pinned: boolean
 }) {
   return (
-    <div className={`flex items-start gap-3 px-4 py-4 hover:bg-zinc-50 transition-colors ${pinned ? 'bg-zinc-50/60' : ''}`}>
+    <div className={`flex items-start gap-3 px-4 py-4 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors ${pinned ? 'bg-zinc-50/60 dark:bg-zinc-950/60' : ''}`}>
       <div className="flex-1 min-w-0">
         <button
           onClick={onView}
           className="flex items-center gap-2 text-left w-full group"
         >
           {pinned && <span className="text-base leading-none shrink-0" aria-label="고정">📌</span>}
-          <span className="font-medium text-zinc-900 group-hover:text-zinc-700 truncate">{notice.title}</span>
+          <span className="font-medium text-zinc-900 dark:text-zinc-100 group-hover:text-zinc-700 dark:group-hover:text-zinc-300 truncate">{notice.title}</span>
         </button>
-        <div className="mt-1 flex flex-wrap gap-2 text-xs text-zinc-400">
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-zinc-600">
+        <div className="mt-1 flex flex-wrap gap-2 text-xs text-zinc-400 dark:text-zinc-600">
+          <span className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-zinc-600 dark:text-zinc-400">
             {notice.className ?? '전체'}
           </span>
           {notice.is_public && (
@@ -413,7 +413,7 @@ function NoticeRow({
       <div className="flex items-center gap-1 shrink-0">
         <button
           onClick={onEdit}
-          className="rounded-md px-2.5 py-1 text-xs text-zinc-500 hover:bg-zinc-200 transition-colors"
+          className="rounded-md px-2.5 py-1 text-xs text-zinc-500 dark:text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
         >
           수정
         </button>

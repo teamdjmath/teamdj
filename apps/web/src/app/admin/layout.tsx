@@ -10,6 +10,7 @@ import { NotificationBell } from '@/components/ui/notification-bell'
 import { ToastContainer } from '@/components/ui/toast'
 import { InactivityGuard } from '@/components/ui/inactivity-guard'
 import { NativePickerOpener } from '@/components/ui/native-picker-opener'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { getUnreadConsultationCount } from '@/lib/actions/consultations'
 
 // 역할 계층 정의
@@ -249,15 +250,15 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <NotificationsProvider userId={user.id}>
-      <div className="flex min-h-screen bg-zinc-50">
+      <div className="flex min-h-screen bg-zinc-50 dark:bg-zinc-950">
 
         {/* 데스크탑 사이드바 */}
         {/* z-30: 본문 내 z-index 요소(시간표 현재 시각 라인 등)보다 위 — 알림 드롭다운이 사이드바 폭을 넘어 본문 위로 열리므로 */}
-        <aside className="hidden md:flex md:w-56 md:flex-col md:fixed md:inset-y-0 md:z-30 border-r border-zinc-200 bg-white">
+        <aside className="hidden md:flex md:w-56 md:flex-col md:fixed md:inset-y-0 md:z-30 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
           {/* 로고 */}
-          <div className="flex h-14 items-center px-5 border-b border-zinc-100">
-            <span className="text-base font-bold tracking-tight text-zinc-950">TeamDJ</span>
-            <span className="ml-2 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 uppercase">
+          <div className="flex h-14 items-center px-5 border-b border-zinc-100 dark:border-zinc-900">
+            <span className="text-base font-bold tracking-tight text-zinc-950 dark:text-zinc-50">TeamDJ</span>
+            <span className="ml-2 rounded bg-zinc-100 dark:bg-zinc-900 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 dark:text-zinc-500 uppercase">
               {badgeLabel}
             </span>
           </div>
@@ -266,21 +267,25 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <SidebarNav items={visibleItems} badges={badges} />
 
           {/* 하단 유저 정보 */}
-          <div className="border-t border-zinc-100 px-4 py-4 space-y-2">
+          <div className="border-t border-zinc-100 dark:border-zinc-900 px-4 py-4 space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-zinc-900 truncate">{displayName}</p>
-              <NotificationBell placement="up" />
+              <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">{displayName}</p>
+              <div className="flex items-center gap-1 shrink-0">
+                <ThemeToggle className="w-7 h-7" />
+                <NotificationBell placement="up" />
+              </div>
             </div>
             <LogoutButton className="text-xs" />
           </div>
         </aside>
 
         {/* 모바일 헤더 */}
-        <div className="md:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between border-b border-zinc-200 bg-white px-4 h-14">
-          <span className="text-base font-bold text-zinc-950">TeamDJ</span>
+        <div className="md:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 h-14">
+          <span className="text-base font-bold text-zinc-950 dark:text-zinc-50">TeamDJ</span>
           <div className="flex items-center gap-2">
+            <ThemeToggle className="w-7 h-7" />
             <NotificationBell />
-            <span className="text-sm text-zinc-500">{displayName}</span>
+            <span className="text-sm text-zinc-500 dark:text-zinc-500">{displayName}</span>
             <MobileNav items={visibleItems} badges={badges} />
           </div>
         </div>

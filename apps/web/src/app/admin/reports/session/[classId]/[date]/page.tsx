@@ -56,7 +56,7 @@ export default async function ReportSessionPage({
       <div className="mb-6">
         <Link
           href="/admin/reports"
-          className="mb-3 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 transition-colors"
+          className="mb-3 inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
@@ -65,8 +65,8 @@ export default async function ReportSessionPage({
         </Link>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-zinc-950">{sessionLabel} 학습 리포트</h1>
-            <p className="mt-1 text-sm text-zinc-500">{date} · {reports.length}명</p>
+            <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">{sessionLabel} 학습 리포트</h1>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">{date} · {reports.length}명</p>
           </div>
         </div>
       </div>

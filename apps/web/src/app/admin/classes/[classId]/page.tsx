@@ -41,32 +41,32 @@ export default async function ClassDetailPage({
   return (
     <div>
       {/* 브레드크럼 */}
-      <div className="mb-4 flex items-center gap-2 text-sm text-zinc-400">
-        <Link href="/admin/classes" className="hover:text-zinc-700">분반 관리</Link>
+      <div className="mb-4 flex items-center gap-2 text-sm text-zinc-400 dark:text-zinc-600">
+        <Link href="/admin/classes" className="hover:text-zinc-700 dark:hover:text-zinc-300">분반 관리</Link>
         <span>/</span>
-        <span className="text-zinc-700 font-medium">{cls.name}</span>
+        <span className="text-zinc-700 dark:text-zinc-300 font-medium">{cls.name}</span>
       </div>
 
       {/* 분반 정보 */}
-      <div className="mb-6 rounded-2xl border border-zinc-200 bg-white px-6 py-5">
+      <div className="mb-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-6 py-5">
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-zinc-950">{cls.name}</h1>
+              <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">{cls.name}</h1>
               <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                cls.is_active ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-400'
+                cls.is_active ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600'
               }`}>
                 {cls.is_active ? '활성' : '비활성'}
               </span>
             </div>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
               {cls.subject} · {cls.grade}
               {cls.schedule && ` · ${cls.schedule}`}
             </p>
           </div>
           <Link
             href="/admin/classes"
-            className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs text-zinc-500 hover:bg-zinc-50"
+            className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-xs text-zinc-500 dark:text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-950"
           >
             목록으로
           </Link>

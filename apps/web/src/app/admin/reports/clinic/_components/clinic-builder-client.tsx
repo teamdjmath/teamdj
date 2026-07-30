@@ -336,12 +336,12 @@ export function ClinicBuilderClient() {
       {/* 드래그 중 오버레이 */}
       {dragOver && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/60 pointer-events-none"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/60 dark:bg-zinc-50/60 pointer-events-none"
           aria-hidden
         >
-          <div className="rounded-2xl border-2 border-dashed border-white bg-white/10 px-10 py-8 text-center">
+          <div className="rounded-2xl border-2 border-dashed border-white dark:border-zinc-900 bg-white/10 dark:bg-zinc-900/10 px-10 py-8 text-center">
             <p className="text-lg font-bold text-white">엑셀 파일을 여기에 놓으세요</p>
-            <p className="mt-1 text-sm text-zinc-300">클리닉 리포트 엑셀 (.xlsx)</p>
+            <p className="mt-1 text-sm text-zinc-300 dark:text-zinc-700">클리닉 리포트 엑셀 (.xlsx)</p>
           </div>
         </div>
       )}
@@ -349,35 +349,35 @@ export function ClinicBuilderClient() {
       <div className="mb-6">
         <Link
           href="/admin/reports"
-          className="mb-3 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 transition-colors"
+          className="mb-3 inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
           </svg>
           리포트 목록
         </Link>
-        <h1 className="text-xl font-bold text-zinc-950">클리닉 리포트 생성</h1>
-        <p className="mt-0.5 text-sm text-zinc-400">엑셀(구글 스프레드시트) 파일을 업로드하면 학생별 클리닉 리포트 이미지를 만듭니다.</p>
+        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">클리닉 리포트 생성</h1>
+        <p className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-600">엑셀(구글 스프레드시트) 파일을 업로드하면 학생별 클리닉 리포트 이미지를 만듭니다.</p>
       </div>
 
       {/* 컨트롤 패널 */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-5 mb-6 space-y-3 shadow-sm">
+      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 mb-6 space-y-3 shadow-sm">
         <div className="flex flex-wrap items-end gap-3">
           {/* 날짜 선택 */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-zinc-500">날짜</label>
+            <label className="text-xs font-bold text-zinc-500 dark:text-zinc-500">날짜</label>
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => { const t = todayString(); setStartDate(t); setEndDate(t) }}
-                className="rounded-xl border border-zinc-200 px-3 py-3 text-sm font-bold text-zinc-700 hover:bg-zinc-50 transition-colors whitespace-nowrap"
+                className="rounded-xl border border-zinc-200 dark:border-zinc-800 px-3 py-3 text-sm font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors whitespace-nowrap"
               >
                 당일
               </button>
               <div className="w-[200px]">
                 <DatePicker value={startDate} onChange={setStartDate} placeholder="시작일" />
               </div>
-              <span className="text-zinc-400 font-bold text-sm">~</span>
+              <span className="text-zinc-400 dark:text-zinc-600 font-bold text-sm">~</span>
               <div className="w-[200px]">
                 <DatePicker value={endDate} onChange={setEndDate} placeholder="종료일" />
               </div>
@@ -387,7 +387,7 @@ export function ClinicBuilderClient() {
           <div className="flex-1" />
 
           {/* 엑셀 업로드 */}
-          <label className="cursor-pointer rounded-xl border-2 border-zinc-200 px-4 py-3 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors flex items-center gap-2">
+          <label className="cursor-pointer rounded-xl border-2 border-zinc-200 dark:border-zinc-800 px-4 py-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors flex items-center gap-2">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -401,7 +401,7 @@ export function ClinicBuilderClient() {
             <button
               onClick={handleDownloadAll}
               disabled={downloading || saving}
-              className="rounded-xl border-2 border-zinc-200 px-4 py-3 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-60 flex items-center gap-2"
+              className="rounded-xl border-2 border-zinc-200 dark:border-zinc-800 px-4 py-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors disabled:opacity-60 flex items-center gap-2"
             >
               {downloading ? (
                 <>
@@ -428,7 +428,7 @@ export function ClinicBuilderClient() {
             <button
               onClick={handleSave}
               disabled={saving || downloading || matchedCount === 0}
-              className="rounded-xl bg-zinc-950 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-800 transition-colors disabled:opacity-60 flex items-center gap-2"
+              className="rounded-xl bg-zinc-950 dark:bg-zinc-50 px-4 py-3 text-sm font-semibold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-60 flex items-center gap-2"
             >
               {saving ? (
                 <>
@@ -454,24 +454,24 @@ export function ClinicBuilderClient() {
 
         {/* 저장 완료 + 발송 */}
         {savedCount !== null && (
-          <div className="flex flex-wrap items-center gap-3 rounded-xl bg-zinc-50 border border-zinc-200 px-4 py-3">
-            <p className="text-sm font-medium text-zinc-900">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 px-4 py-3">
+            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
               ✓ {savedCount}명 저장 완료
-              {sendResult && <span className="ml-2 text-zinc-600">· {sendResult}</span>}
+              {sendResult && <span className="ml-2 text-zinc-600 dark:text-zinc-400">· {sendResult}</span>}
             </p>
             <div className="flex items-center gap-2 ml-auto">
               <button
                 type="button"
                 onClick={handleSend}
                 disabled={sending}
-                className="rounded-lg bg-zinc-950 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 disabled:opacity-50 transition-colors"
+                className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-3.5 py-1.5 text-xs font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 transition-colors"
               >
                 {sending ? '발송 중…' : sendResult ? '카카오 재발송' : '카카오 전체 발송'}
               </button>
               <button
                 type="button"
                 onClick={() => router.push(`/admin/reports/clinic/session/${startDate}`)}
-                className="rounded-lg border border-zinc-200 bg-white px-3.5 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 transition-colors"
+                className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
               >
                 관리 페이지 →
               </button>
@@ -482,14 +482,14 @@ export function ClinicBuilderClient() {
         {/* 제목 미리보기 */}
         {dateString && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-zinc-400">생성될 제목</span>
-            <span className="text-sm font-bold text-zinc-800">
+            <span className="text-xs text-zinc-400 dark:text-zinc-600">생성될 제목</span>
+            <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
               {dateString} 역전의 수학 클리닉 리포트
             </span>
             {students.length > 0 && (
               <>
-                <span className="text-zinc-300">·</span>
-                <span className="text-xs text-zinc-500">{students.length}명</span>
+                <span className="text-zinc-300 dark:text-zinc-700">·</span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-500">{students.length}명</span>
               </>
             )}
           </div>
@@ -497,9 +497,9 @@ export function ClinicBuilderClient() {
 
         {/* 진행률 바 */}
         {downloading && (
-          <div className="w-full bg-zinc-100 rounded-full h-1.5">
+          <div className="w-full bg-zinc-100 dark:bg-zinc-900 rounded-full h-1.5">
             <div
-              className="bg-zinc-950 h-1.5 rounded-full transition-all duration-300"
+              className="bg-zinc-950 dark:bg-zinc-50 h-1.5 rounded-full transition-all duration-300"
               style={{ width: `${downloadProgress}%` }}
             />
           </div>
@@ -523,29 +523,29 @@ export function ClinicBuilderClient() {
 
       {/* 초기 안내 */}
       {students.length === 0 && !error && (
-        <div className="rounded-xl border border-zinc-200 bg-white flex flex-col items-center justify-center py-20 gap-5 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-zinc-100 flex items-center justify-center">
-            <svg className="w-8 h-8 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col items-center justify-center py-20 gap-5 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center">
+            <svg className="w-8 h-8 text-zinc-400 dark:text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                 d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
           <div>
-            <h2 className="text-lg font-bold text-zinc-800 mb-1">엑셀 파일을 업로드하세요</h2>
-            <p className="text-sm text-zinc-500 max-w-sm leading-relaxed">
+            <h2 className="text-lg font-bold text-zinc-800 dark:text-zinc-200 mb-1">엑셀 파일을 업로드하세요</h2>
+            <p className="text-sm text-zinc-500 dark:text-zinc-500 max-w-sm leading-relaxed">
               파일을 이 화면에 <strong>드래그해서 놓거나</strong>, 위의 &ldquo;엑셀 업로드&rdquo; 버튼을 사용하세요.
               구글 스프레드시트에서 <strong>xlsx로 다운로드</strong>한 파일도 그대로 사용할 수 있습니다.
             </p>
           </div>
-          <div className="text-xs text-zinc-400 space-y-1 bg-zinc-50 rounded-xl px-6 py-4 text-left">
-            <p className="font-bold text-zinc-500 mb-2">시트 컬럼 순서 (첫 번째 시트 기준)</p>
+          <div className="text-xs text-zinc-400 dark:text-zinc-600 space-y-1 bg-zinc-50 dark:bg-zinc-950 rounded-xl px-6 py-4 text-left">
+            <p className="font-bold text-zinc-500 dark:text-zinc-500 mb-2">시트 컬럼 순서 (첫 번째 시트 기준)</p>
             <p>학교 | 학년 | 이름 | 등원시각 | 하원시각 | 클리닉 내용</p>
-            <p className="mt-1 text-zinc-300">첫 행은 헤더 · 이름이 비어있는 행은 건너뜀 · 시각은 16:30 형식</p>
+            <p className="mt-1 text-zinc-300 dark:text-zinc-700">첫 행은 헤더 · 이름이 비어있는 행은 건너뜀 · 시각은 16:30 형식</p>
           </div>
           <button
             type="button"
             onClick={downloadSampleExcel}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-700 border border-zinc-200 rounded-lg px-4 py-2 hover:bg-zinc-50 transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -561,17 +561,17 @@ export function ClinicBuilderClient() {
         <>
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-lg font-bold text-zinc-800">
+              <h2 className="text-lg font-bold text-zinc-800 dark:text-zinc-200">
                 리포트 미리보기
-                <span className="ml-2 text-sm font-normal text-zinc-400">
+                <span className="ml-2 text-sm font-normal text-zinc-400 dark:text-zinc-600">
                   (전체 {students.length}명 중 {previewIndices.length}명 샘플)
                 </span>
               </h2>
-              <p className="text-xs text-zinc-400 mt-0.5">
+              <p className="text-xs text-zinc-400 dark:text-zinc-600 mt-0.5">
                 다운로드 시 전체 {students.length}명 모두 PNG로 저장됩니다
               </p>
             </div>
-            <p className="text-xs text-zinc-400">카드 420px · ×2 = 840px PNG</p>
+            <p className="text-xs text-zinc-400 dark:text-zinc-600">카드 420px · ×2 = 840px PNG</p>
           </div>
 
           {/* 미리보기 카드 (랜덤 최대 4개) */}

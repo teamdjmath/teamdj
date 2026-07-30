@@ -144,10 +144,10 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
     <div>
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-xl font-bold text-zinc-950">과제 관리</h1>
+        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">과제 관리</h1>
         <button
           onClick={openCreate}
-          className="flex items-center gap-1.5 rounded-lg bg-zinc-950 px-3.5 py-2 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
+          className="flex items-center gap-1.5 rounded-lg bg-zinc-950 dark:bg-zinc-50 px-3.5 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -159,11 +159,11 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
       {/* 분반 선택 + 정렬 */}
       <div className="flex items-end gap-3 mb-6">
         <div className="flex-1 max-w-xs space-y-1.5">
-          <label className="block text-xs font-medium text-zinc-600">분반</label>
+          <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">분반</label>
           <select
             value={selectedClassId ?? ''}
             onChange={handleClassChange}
-            className="w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
+            className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
           >
             <option value="">분반을 선택하세요</option>
             {classOptions.map((c) => (
@@ -174,7 +174,7 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
         {selectedClassId && (
           <button
             onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
-            className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors whitespace-nowrap"
+            className="flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors whitespace-nowrap"
           >
             {sortDir === 'desc' ? (
               <>
@@ -197,22 +197,22 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
 
       {/* 과제 목록 */}
       {!selectedClassId ? (
-        <div className="rounded-2xl border border-zinc-200 bg-white py-16 text-center">
-          <p className="text-sm text-zinc-400">위에서 분반을 선택하세요.</p>
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 py-16 text-center">
+          <p className="text-sm text-zinc-400 dark:text-zinc-600">위에서 분반을 선택하세요.</p>
         </div>
       ) : assignments.length === 0 ? (
-        <div className="rounded-xl border border-zinc-200 bg-white">
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
           <EmptyState message="등록된 과제가 없습니다." description="과제 추가 버튼으로 새 과제를 등록하세요." />
         </div>
       ) : (
         <div className="space-y-6">
           {sortedKeys.map((weekKey) => (
             <div key={weekKey}>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">{weekKey}</h2>
-              <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-500">{weekKey}</h2>
+              <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-zinc-100 text-left text-xs text-zinc-400">
+                    <tr className="border-b border-zinc-100 dark:border-zinc-900 text-left text-xs text-zinc-400 dark:text-zinc-600">
                       <th className="px-4 py-3 font-medium">과제명</th>
                       <th className="px-4 py-3 font-medium hidden sm:table-cell">카테고리</th>
                       <th className="px-4 py-3 font-medium hidden md:table-cell">분반</th>
@@ -220,37 +220,37 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
                       <th className="px-4 py-3 font-medium text-right">액션</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-50">
+                  <tbody className="divide-y divide-zinc-50 dark:divide-zinc-950">
                     {grouped.get(weekKey)!.map((a) => (
-                      <tr key={a.id} className="hover:bg-zinc-50 transition-colors">
-                        <td className="px-4 py-3 font-medium text-zinc-900">{a.title}</td>
-                        <td className="px-4 py-3 text-zinc-500 hidden sm:table-cell">
+                      <tr key={a.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors">
+                        <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">{a.title}</td>
+                        <td className="px-4 py-3 text-zinc-500 dark:text-zinc-500 hidden sm:table-cell">
                           {a.category ? (
-                            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs">{a.category}</span>
+                            <span className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-xs">{a.category}</span>
                           ) : '-'}
                         </td>
-                        <td className="px-4 py-3 text-zinc-500 hidden md:table-cell">{a.className}</td>
+                        <td className="px-4 py-3 text-zinc-500 dark:text-zinc-500 hidden md:table-cell">{a.className}</td>
                         <td className="px-4 py-3">
                           {a.due_date ? (
-                            <span className={isOverdue(a.due_date) ? 'text-red-500 font-medium' : 'text-zinc-500'}>
+                            <span className={isOverdue(a.due_date) ? 'text-red-500 font-medium' : 'text-zinc-500 dark:text-zinc-500'}>
                               {a.due_date}
                               {isOverdue(a.due_date) && ' (마감)'}
                             </span>
                           ) : (
-                            <span className="text-zinc-300">-</span>
+                            <span className="text-zinc-300 dark:text-zinc-700">-</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Link
                               href={`/admin/assignments/${a.id}`}
-                              className="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 transition-colors"
+                              className="rounded-md bg-zinc-100 dark:bg-zinc-900 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
                             >
                               진행률
                             </Link>
                             <button
                               onClick={() => openEdit(a)}
-                              className="rounded-md px-2.5 py-1 text-xs text-zinc-500 hover:bg-zinc-100 transition-colors"
+                              className="rounded-md px-2.5 py-1 text-xs text-zinc-500 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
                             >
                               수정
                             </button>
@@ -303,11 +303,11 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-zinc-400">카테고리</label>
+              <label className="text-xs font-bold text-zinc-400 dark:text-zinc-600">카테고리</label>
               {!isAddingCategory && (
                 <button
                   onClick={() => setIsAddingCategory(true)}
-                  className="text-[11px] font-bold text-zinc-400 hover:text-zinc-900 transition-colors"
+                  className="text-[11px] font-bold text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
                 >
                   + 새 카테고리
                 </button>
@@ -320,19 +320,19 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   placeholder="새 카테고리 명"
-                  className="flex-1 rounded-xl bg-white border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 placeholder:text-zinc-400 shadow-sm"
+                  className="flex-1 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-4 py-2.5 text-sm font-medium text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-900 dark:focus:border-zinc-100 focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 shadow-sm"
                   autoFocus
                 />
                 <button
                   onClick={handleAddCategory}
                   disabled={pending}
-                  className="rounded-xl bg-zinc-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-zinc-800 disabled:opacity-50"
+                  className="rounded-xl bg-zinc-900 dark:bg-zinc-100 px-4 py-2.5 text-xs font-bold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50"
                 >
                   추가
                 </button>
                 <button
                   onClick={() => setIsAddingCategory(false)}
-                  className="rounded-xl border border-zinc-200 px-4 py-2.5 text-xs font-bold text-zinc-500 hover:bg-zinc-50"
+                  className="rounded-xl border border-zinc-200 dark:border-zinc-800 px-4 py-2.5 text-xs font-bold text-zinc-500 dark:text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-950"
                 >
                   취소
                 </button>
@@ -341,7 +341,7 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
               <select
                 value={form.category}
                 onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-bold text-zinc-900 shadow-sm transition-all focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 cursor-pointer appearance-none"
+                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2.5 text-sm font-bold text-zinc-900 dark:text-zinc-100 shadow-sm transition-all focus:border-zinc-900 dark:focus:border-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100 cursor-pointer appearance-none"
                 style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2371717a' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 1rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
               >
                 {categoryOptions.map((c) => (
@@ -353,7 +353,7 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-zinc-400">출제일</label>
+              <label className="text-xs font-bold text-zinc-400 dark:text-zinc-600">출제일</label>
               <DatePicker
                 value={form.issueDate}
                 onChange={(d) => setForm((f) => ({ ...f, issueDate: d }))}
@@ -361,7 +361,7 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-zinc-400">마감일</label>
+              <label className="text-xs font-bold text-zinc-400 dark:text-zinc-600">마감일</label>
               <DatePicker
                 value={form.dueDate}
                 onChange={(d) => setForm((f) => ({ ...f, dueDate: d }))}
@@ -383,14 +383,14 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
           <div className="flex gap-2 pt-1">
             <button
               onClick={() => setModal(null)}
-              className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+              className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors"
             >
               취소
             </button>
             <button
               onClick={handleSubmit}
               disabled={pending}
-              className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 transition-colors disabled:opacity-50"
+              className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50"
             >
               {pending ? '저장 중...' : modal?.type === 'edit' ? '수정' : '등록'}
             </button>

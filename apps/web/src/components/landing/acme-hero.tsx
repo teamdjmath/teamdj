@@ -33,7 +33,7 @@ export function AcmeHero() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.5 }}
             >
-              결국, 승부는<br />끝에서 뒤집힙니다.
+              결국, 승부는<br />그 <span className="text-emerald-500">D</span> 하나로 뒤집힙니다.
             </motion.h1>
             <motion.p
               className="mx-auto max-w-2xl text-md sm:text-lg text-zinc-500 leading-loose tracking-tight break-keep"
@@ -42,7 +42,7 @@ export function AcmeHero() {
               transition={{ delay: 0.3, duration: 0.5 }}
             >
               11월의 기초공사부터 수능 날의 마지막 스퍼트까지.<br />
-              당신의 <span className="font-bold text-zinc-950 tracking-tighter">&apos;1등급 역전극&apos;</span>, 저희 TeamDJ가 함께합니다.
+              당신의 <span className="font-bold text-zinc-950 tracking-tighter">&apos;1등급 역전극&apos;</span>, 그 D를 TeamDJ가 함께 채웁니다.
             </motion.p>
 
             <motion.div

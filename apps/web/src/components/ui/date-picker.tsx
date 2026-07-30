@@ -28,12 +28,12 @@ export function DatePicker({ value, onChange, placeholder = '날짜 선택' }: D
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between rounded-2xl bg-zinc-50 border border-zinc-100 px-5 py-3.5 text-sm text-zinc-900 focus:ring-2 focus:ring-zinc-900 transition-all outline-none"
+        className="w-full flex items-center justify-between rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-900 px-5 py-3.5 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-all outline-none"
       >
-        <span className={value ? 'font-bold' : 'text-zinc-400'}>
+        <span className={value ? 'font-bold' : 'text-zinc-400 dark:text-zinc-600'}>
           {value ? new Date(value).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) : placeholder}
         </span>
-        <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-zinc-400 dark:text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
       </button>

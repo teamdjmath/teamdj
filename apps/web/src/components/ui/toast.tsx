@@ -52,20 +52,20 @@ function Toast({ toast }: { toast: ToastItem }) {
     <div
       onClick={handleClick}
       role="alert"
-      className="flex items-start gap-3 w-80 bg-white border border-zinc-200 rounded-2xl px-4 py-3.5 shadow-lg cursor-pointer hover:bg-zinc-50 transition-colors"
+      className="flex items-start gap-3 w-80 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3.5 shadow-lg cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors"
       style={{ animation: 'toast-slide-in 0.28s ease forwards' }}
     >
-      <span className="mt-0.5 text-zinc-800">
+      <span className="mt-0.5 text-zinc-800 dark:text-zinc-200">
         {TYPE_ICONS[toast.type] ?? TYPE_ICONS.notice_new}
       </span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-zinc-900 leading-snug">{toast.title}</p>
-        <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2 leading-relaxed">{toast.body}</p>
+        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 leading-snug">{toast.title}</p>
+        <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-0.5 line-clamp-2 leading-relaxed">{toast.body}</p>
       </div>
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); dismissToast(toast.id) }}
-        className="mt-0.5 text-zinc-300 hover:text-zinc-600 transition-colors shrink-0"
+        className="mt-0.5 text-zinc-300 dark:text-zinc-700 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors shrink-0"
         aria-label="닫기"
       >
         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">

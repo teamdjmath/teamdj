@@ -15,23 +15,23 @@ const STATUS_CONFIG: Record<
 > = {
   present: {
     label:        '출석',
-    activeClass:  'bg-zinc-950 text-white',
-    inactiveClass:'border border-zinc-200 text-zinc-400 hover:border-zinc-400 hover:text-zinc-700',
+    activeClass:  'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900',
+    inactiveClass:'border border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600 hover:border-zinc-400 dark:hover:border-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300',
   },
   late: {
     label:        '지각',
-    activeClass:  'bg-zinc-600 text-white',
-    inactiveClass:'border border-zinc-200 text-zinc-400 hover:border-zinc-400 hover:text-zinc-700',
+    activeClass:  'bg-zinc-600 dark:bg-zinc-400 text-white',
+    inactiveClass:'border border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600 hover:border-zinc-400 dark:hover:border-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300',
   },
   absent: {
     label:        '결석(차감)',
-    activeClass:  'bg-zinc-200 text-zinc-700',
-    inactiveClass:'border border-zinc-200 text-zinc-400 hover:border-zinc-400 hover:text-zinc-700',
+    activeClass:  'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300',
+    inactiveClass:'border border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600 hover:border-zinc-400 dark:hover:border-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300',
   },
   absent_video: {
     label:        '결석(영상)',
     activeClass:  'bg-blue-100 text-blue-800',
-    inactiveClass:'border border-zinc-200 text-zinc-400 hover:border-zinc-400 hover:text-zinc-700',
+    inactiveClass:'border border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600 hover:border-zinc-400 dark:hover:border-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300',
   },
 }
 
@@ -151,19 +151,19 @@ export function AttendanceClient({
 
       {/* 페이지 제목 */}
       <div>
-        <h1 className="text-xl font-bold text-zinc-950">출석 체크</h1>
-        <p className="mt-0.5 text-sm text-zinc-400">반과 날짜를 선택하고 출결을 기록하세요.</p>
+        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">출석 체크</h1>
+        <p className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-600">반과 날짜를 선택하고 출결을 기록하세요.</p>
       </div>
 
       {/* 상단 컨트롤 */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         {/* 분반 선택 */}
         <div className="flex-1 space-y-1.5">
-          <label className="block text-xs font-medium text-zinc-600">분반</label>
+          <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">분반</label>
           <select
             value={selectedClassId ?? ''}
             onChange={handleClassChange}
-            className="w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
+            className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
           >
             <option value="">반을 선택하세요</option>
             {classOptions.map((c) => (
@@ -174,20 +174,20 @@ export function AttendanceClient({
 
         {/* 날짜 선택 */}
         <div className="space-y-1.5">
-          <label className="block text-xs font-medium text-zinc-600">날짜</label>
+          <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">날짜</label>
           <input
             type="date"
             value={selectedDate}
             onChange={handleDateChange}
-            className="rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
+            className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
           />
         </div>
       </div>
 
       {/* 반 미선택 */}
       {!selectedClassId && (
-        <div className="rounded-2xl border border-zinc-200 bg-white py-16 text-center">
-          <p className="text-sm text-zinc-400">위에서 분반을 선택하세요.</p>
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 py-16 text-center">
+          <p className="text-sm text-zinc-400 dark:text-zinc-600">위에서 분반을 선택하세요.</p>
         </div>
       )}
 
@@ -196,29 +196,29 @@ export function AttendanceClient({
         <>
           {/* 기존 데이터 배너 */}
           {isExisting && (
-            <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />
-              <p className="text-xs text-zinc-500">
+            <div className="flex items-center gap-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-4 py-2.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-zinc-400 dark:bg-zinc-600" />
+              <p className="text-xs text-zinc-500 dark:text-zinc-500">
                 {selectedDate} 출결 기록을 불러왔습니다. 아래에 기존 상태가 표시되어 있으니 수정할 부분만 바꾸고 저장하세요.
               </p>
             </div>
           )}
 
           {students.length === 0 ? (
-            <div className="rounded-2xl border border-zinc-200 bg-white">
+            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
               <EmptyState message="소속 학생이 없습니다." description="분반을 먼저 선택하거나 학생을 등록하세요." />
             </div>
           ) : (
             <>
               {/* 일괄 버튼 */}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-400 mr-1">일괄:</span>
+                <span className="text-xs text-zinc-400 dark:text-zinc-600 mr-1">일괄:</span>
                 {ALL_STATUSES.map((s) => (
                   <button
                     key={s}
                     type="button"
                     onClick={() => setAll(s)}
-                    className="rounded-full border border-zinc-200 px-3 py-1 text-xs text-zinc-500 hover:bg-zinc-100 transition-colors"
+                    className="rounded-full border border-zinc-200 dark:border-zinc-800 px-3 py-1 text-xs text-zinc-500 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
                   >
                     전원 {STATUS_CONFIG[s].label}
                   </button>
@@ -226,31 +226,31 @@ export function AttendanceClient({
               </div>
 
               {/* 학생 카드 목록 */}
-              <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
+              <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-zinc-100 bg-zinc-50">
-                      <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500 w-8">#</th>
-                      <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500">이름</th>
-                      <th className="hidden sm:table-cell px-5 py-3 text-left text-xs font-semibold text-zinc-500">전화번호</th>
-                      <th className="px-5 py-3 text-center text-xs font-semibold text-zinc-500">출결 상태</th>
-                      <th className="hidden md:table-cell px-5 py-3 text-left text-xs font-semibold text-zinc-500">결석 사유</th>
+                    <tr className="border-b border-zinc-100 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950">
+                      <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-500 w-8">#</th>
+                      <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-500">이름</th>
+                      <th className="hidden sm:table-cell px-5 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-500">전화번호</th>
+                      <th className="px-5 py-3 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-500">출결 상태</th>
+                      <th className="hidden md:table-cell px-5 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-500">결석 사유</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-100">
+                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-900">
                     {students.map((student, idx) => {
                       const current = statusMap[student.id]
                       return (
                         <tr
                           key={student.id}
                           className={`transition-colors ${
-                            current === 'absent'       ? 'bg-zinc-50/60' :
-                            current === 'late'         ? 'bg-zinc-50/30' :
+                            current === 'absent'       ? 'bg-zinc-50/60 dark:bg-zinc-950/60' :
+                            current === 'late'         ? 'bg-zinc-50/30 dark:bg-zinc-950/30' :
                             current === 'absent_video' ? 'bg-blue-50/40' : ''
                           }`}
                         >
                           {/* 번호 */}
-                          <td className="px-5 py-3.5 text-xs text-zinc-300 tabular-nums">
+                          <td className="px-5 py-3.5 text-xs text-zinc-300 dark:text-zinc-700 tabular-nums">
                             {idx + 1}
                           </td>
 
@@ -259,20 +259,20 @@ export function AttendanceClient({
                             <div className="flex items-center gap-2">
                               {/* 상태 인디케이터 */}
                               <span className={`h-2 w-2 shrink-0 rounded-full ${
-                                current === 'present'      ? 'bg-zinc-900' :
-                                current === 'late'         ? 'bg-zinc-400' :
-                                current === 'absent'       ? 'bg-zinc-200' :
+                                current === 'present'      ? 'bg-zinc-900 dark:bg-zinc-100' :
+                                current === 'late'         ? 'bg-zinc-400 dark:bg-zinc-600' :
+                                current === 'absent'       ? 'bg-zinc-200 dark:bg-zinc-800' :
                                 current === 'absent_video' ? 'bg-blue-300' :
-                                'bg-zinc-100'
+                                'bg-zinc-100 dark:bg-zinc-900'
                               }`} />
-                              <span className="text-sm font-medium text-zinc-900">
+                              <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                                 {student.name}
                               </span>
                             </div>
                           </td>
 
                           {/* 전화번호 */}
-                          <td className="hidden sm:table-cell px-5 py-3.5 text-xs text-zinc-400">
+                          <td className="hidden sm:table-cell px-5 py-3.5 text-xs text-zinc-400 dark:text-zinc-600">
                             {student.phone}
                           </td>
 
@@ -309,10 +309,10 @@ export function AttendanceClient({
                                   }))
                                 }
                                 placeholder="사유 입력 (선택)"
-                                className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 focus:outline-none transition-all shadow-sm"
+                                className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 focus:border-zinc-950 dark:focus:border-zinc-50 focus:ring-1 focus:ring-zinc-950 dark:focus:ring-zinc-50 focus:outline-none transition-all shadow-sm"
                               />
                             ) : (
-                              <span className="text-xs text-zinc-300">—</span>
+                              <span className="text-xs text-zinc-300 dark:text-zinc-700">—</span>
                             )}
                           </td>
                         </tr>
@@ -323,7 +323,7 @@ export function AttendanceClient({
               </div>
 
               {/* 하단 요약 + 저장 */}
-              <div className="sticky bottom-0 rounded-2xl border border-zinc-200 bg-white px-5 py-4 shadow-lg shadow-zinc-100">
+              <div className="sticky bottom-0 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-5 py-4 shadow-lg shadow-zinc-100">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   {/* 요약 */}
                   <div className="flex items-center gap-5 text-sm">
@@ -331,19 +331,19 @@ export function AttendanceClient({
                       label="출석"
                       count={summary.present}
                       total={students.length}
-                      dotClass="bg-zinc-900"
+                      dotClass="bg-zinc-900 dark:bg-zinc-100"
                     />
                     <SummaryItem
                       label="지각"
                       count={summary.late}
                       total={students.length}
-                      dotClass="bg-zinc-400"
+                      dotClass="bg-zinc-400 dark:bg-zinc-600"
                     />
                     <SummaryItem
                       label="결석(차감)"
                       count={summary.absent}
                       total={students.length}
-                      dotClass="bg-zinc-200 border border-zinc-300"
+                      dotClass="bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700"
                     />
                     <SummaryItem
                       label="결석(영상)"
@@ -352,7 +352,7 @@ export function AttendanceClient({
                       dotClass="bg-blue-300"
                     />
                     {summary.unchecked > 0 && (
-                      <span className="text-xs text-zinc-300">
+                      <span className="text-xs text-zinc-300 dark:text-zinc-700">
                         미체크 {summary.unchecked}명
                       </span>
                     )}
@@ -361,7 +361,7 @@ export function AttendanceClient({
                   {/* 저장 버튼 + 결과 메시지 */}
                   <div className="flex items-center gap-3">
                     {saveResult && (
-                      <span className={`text-xs ${saveResult.startsWith('오류') ? 'text-red-500' : 'text-zinc-500'}`}>
+                      <span className={`text-xs ${saveResult.startsWith('오류') ? 'text-red-500' : 'text-zinc-500 dark:text-zinc-500'}`}>
                         {saveResult}
                       </span>
                     )}
@@ -369,7 +369,7 @@ export function AttendanceClient({
                       type="button"
                       onClick={handleSave}
                       disabled={isPending || summary.unchecked === students.length}
-                      className="rounded-lg bg-zinc-950 px-5 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-40 transition-colors"
+                      className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-5 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-40 transition-colors"
                     >
                       {isPending ? '저장 중…' : '저장'}
                     </button>
@@ -399,10 +399,10 @@ function SummaryItem({
   return (
     <div className="flex items-center gap-1.5">
       <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${dotClass}`} />
-      <span className="font-medium text-zinc-800">{label}</span>
-      <span className="text-zinc-500">
+      <span className="font-medium text-zinc-800 dark:text-zinc-200">{label}</span>
+      <span className="text-zinc-500 dark:text-zinc-500">
         {count}명
-        <span className="ml-1 text-zinc-300 text-xs">({pct}%)</span>
+        <span className="ml-1 text-zinc-300 dark:text-zinc-700 text-xs">({pct}%)</span>
       </span>
     </div>
   )

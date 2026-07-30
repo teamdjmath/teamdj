@@ -146,8 +146,8 @@ export function StudentsClient({
       {/* 헤더 */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-zinc-950">학생 관리</h1>
-          <p className="mt-0.5 text-sm text-zinc-400">총 {totalCount}명</p>
+          <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">학생 관리</h1>
+          <p className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-600">총 {totalCount}명</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {filterClassId && (
@@ -162,21 +162,21 @@ export function StudentsClient({
           <button
             type="button"
             onClick={handleSampleDownload}
-            className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
+            className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors"
           >
             등록용 샘플 엑셀
           </button>
           <button
             type="button"
             onClick={() => setExcelOpen(true)}
-            className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
+            className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors"
           >
             엑셀 일괄 등록
           </button>
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
+            className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
           >
             + 학생 등록
           </button>
@@ -196,7 +196,7 @@ export function StudentsClient({
         <select
           value={filterClassId}
           onChange={(e) => pushParams(q, 1, e.target.value)}
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+          className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600"
         >
           <option value="">전체 분반</option>
           {classOptions.map((c) => (
@@ -206,7 +206,7 @@ export function StudentsClient({
         <select
           value={filterStatus}
           onChange={(e) => pushParams(q, 1, undefined, e.target.value)}
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+          className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600"
         >
           <option value="">전체 상태</option>
           <option value="active">활성</option>
@@ -230,7 +230,7 @@ export function StudentsClient({
           <button
             type="button"
             onClick={() => setSelectedIds(new Set())}
-            className="text-xs text-zinc-500 hover:text-zinc-800 transition-colors"
+            className="text-xs text-zinc-500 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
           >
             선택 해제
           </button>
@@ -239,30 +239,30 @@ export function StudentsClient({
       )}
 
       {/* 테이블 */}
-      <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-zinc-100 bg-zinc-50">
+            <tr className="border-b border-zinc-100 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950">
               {filterClassId && (
                 <th className="w-10 px-5 py-3">
                   <input
                     type="checkbox"
                     checked={displayedStudents.length > 0 && displayedStudents.every((s) => selectedIds.has(s.id))}
                     onChange={() => toggleSelectAll(displayedStudents.map((s) => s.id))}
-                    className="h-4 w-4 rounded border-zinc-300 accent-zinc-950"
+                    className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-700 accent-zinc-950 dark:accent-zinc-50"
                     aria-label="전체 선택"
                   />
                 </th>
               )}
-              <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500">이름</th>
-              <th className="hidden sm:table-cell px-5 py-3 text-left text-xs font-semibold text-zinc-500">전화번호</th>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500">소속 반</th>
-              <th className="hidden md:table-cell px-5 py-3 text-center text-xs font-semibold text-zinc-500">학부모</th>
-              <th className="px-5 py-3 text-center text-xs font-semibold text-zinc-500">상태</th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">상세</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-500">이름</th>
+              <th className="hidden sm:table-cell px-5 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-500">전화번호</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-500">소속 반</th>
+              <th className="hidden md:table-cell px-5 py-3 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-500">학부모</th>
+              <th className="px-5 py-3 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-500">상태</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-500">상세</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100">
+          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-900">
             {displayedStudents.length === 0 ? (
               <tr>
                 <td colSpan={filterClassId ? 7 : 6}>
@@ -274,25 +274,25 @@ export function StudentsClient({
               </tr>
             ) : (
               displayedStudents.map((s) => (
-                <tr key={s.id} className="hover:bg-zinc-50 transition-colors">
+                <tr key={s.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors">
                   {filterClassId && (
                     <td className="px-5 py-3.5">
                       <input
                         type="checkbox"
                         checked={selectedIds.has(s.id)}
                         onChange={() => toggleSelect(s.id)}
-                        className="h-4 w-4 rounded border-zinc-300 accent-zinc-950"
+                        className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-700 accent-zinc-950 dark:accent-zinc-50"
                         aria-label={`${s.name} 선택`}
                       />
                     </td>
                   )}
                   <td className="px-5 py-3.5">
-                    <div className="font-medium text-zinc-900">{s.name}</div>
-                    <div className="text-[11px] text-zinc-500">
+                    <div className="font-medium text-zinc-900 dark:text-zinc-100">{s.name}</div>
+                    <div className="text-[11px] text-zinc-500 dark:text-zinc-500">
                       {s.school || '학교 미지정'} · {s.grade ? `${s.grade}학년` : '학년 미지정'}
                     </div>
                   </td>
-                  <td className="hidden sm:table-cell px-5 py-3.5 text-zinc-700">{s.phone}</td>
+                  <td className="hidden sm:table-cell px-5 py-3.5 text-zinc-700 dark:text-zinc-300">{s.phone}</td>
                   <td className="px-5 py-3.5">
                     {s.classes.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
@@ -300,18 +300,18 @@ export function StudentsClient({
                           <Link
                             key={c.id}
                             href={`/admin/classes/${c.id}`}
-                            className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-700 hover:bg-zinc-200 transition-colors"
+                            className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
                           >
                             {c.name}
                           </Link>
                         ))}
                       </div>
                     ) : (
-                      <span className="text-zinc-300">—</span>
+                      <span className="text-zinc-300 dark:text-zinc-700">—</span>
                     )}
                   </td>
                   <td className="hidden md:table-cell px-5 py-3.5 text-center">
-                    <span className={`inline-block h-2 w-2 rounded-full ${s.hasParent ? 'bg-zinc-900' : 'bg-zinc-200'}`} />
+                    <span className={`inline-block h-2 w-2 rounded-full ${s.hasParent ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-800'}`} />
                   </td>
                   <td className="px-5 py-3.5 text-center">
                     {s.suspendedUntil ? (
@@ -327,7 +327,7 @@ export function StudentsClient({
                   <td className="px-5 py-3.5 text-right">
                     <Link
                       href={`/admin/students/${s.id}`}
-                      className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors"
+                      className="text-xs text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
                     >
                       상세 →
                     </Link>
@@ -341,14 +341,14 @@ export function StudentsClient({
 
       {/* 페이지네이션 */}
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between text-sm text-zinc-500">
+        <div className="mt-4 flex items-center justify-between text-sm text-zinc-500 dark:text-zinc-500">
           <span>{PAGE_SIZE * (page - 1) + 1}–{Math.min(PAGE_SIZE * page, totalCount)} / 총 {totalCount}명</span>
           <div className="flex items-center gap-1">
             <button
               type="button"
               disabled={page <= 1}
               onClick={() => pushParams(q, page - 1)}
-              className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-xs font-medium hover:bg-zinc-50 dark:hover:bg-zinc-950 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               이전
             </button>
@@ -369,8 +369,8 @@ export function StudentsClient({
                     onClick={() => pushParams(q, p as number)}
                     className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                       p === page
-                        ? 'bg-zinc-950 text-white'
-                        : 'border border-zinc-200 hover:bg-zinc-50'
+                        ? 'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900'
+                        : 'border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-950'
                     }`}
                   >
                     {p}
@@ -381,7 +381,7 @@ export function StudentsClient({
               type="button"
               disabled={page >= totalPages}
               onClick={() => pushParams(q, page + 1)}
-              className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-xs font-medium hover:bg-zinc-50 dark:hover:bg-zinc-950 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               다음
             </button>

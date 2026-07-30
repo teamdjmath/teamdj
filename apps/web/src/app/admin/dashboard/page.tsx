@@ -224,13 +224,13 @@ export default async function AdminDashboardPage() {
 
       {/* 헤더 */}
       <div>
-        <h1 className="text-xl font-bold text-zinc-950">
+        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">
           안녕하세요, {displayName}님
           {role && displayName !== roleLabel && (
-            <span className="ml-2 text-sm font-normal text-zinc-400">({roleLabel})</span>
+            <span className="ml-2 text-sm font-normal text-zinc-400 dark:text-zinc-600">({roleLabel})</span>
           )}
         </h1>
-        <p className="mt-0.5 text-sm text-zinc-400">
+        <p className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-600">
           {today.toLocaleDateString('ko-KR', {
             year: 'numeric', month: 'long', day: 'numeric', weekday: 'short',
           })}
@@ -245,13 +245,13 @@ export default async function AdminDashboardPage() {
         'rounded-2xl border p-5 flex items-center justify-between',
         openQnaCount > 0
           ? 'border-zinc-900 bg-zinc-950'
-          : 'border-zinc-200 bg-white',
+          : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900',
       ].join(' ')}>
         <div>
-          <p className="text-xs font-medium text-zinc-400">미답변 질문</p>
-          <p className={`mt-1 text-3xl font-bold ${openQnaCount > 0 ? 'text-white' : 'text-zinc-900'}`}>
+          <p className="text-xs font-medium text-zinc-400 dark:text-zinc-600">미답변 질문</p>
+          <p className={`mt-1 text-3xl font-bold ${openQnaCount > 0 ? 'text-white' : 'text-zinc-900 dark:text-zinc-100'}`}>
             {openQnaCount}
-            <span className={`ml-1 text-sm font-normal ${openQnaCount > 0 ? 'text-zinc-400' : 'text-zinc-500'}`}>
+            <span className={`ml-1 text-sm font-normal ${openQnaCount > 0 ? 'text-zinc-400' : 'text-zinc-500 dark:text-zinc-500'}`}>
               건
             </span>
           </p>
@@ -262,7 +262,7 @@ export default async function AdminDashboardPage() {
             'rounded-xl px-4 py-2 text-sm font-medium transition-colors',
             openQnaCount > 0
               ? 'bg-white/10 text-white hover:bg-white/20'
-              : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200',
+              : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800',
           ].join(' ')}
         >
           질의응답 →
@@ -270,31 +270,31 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* 오늘 수업 현황 */}
-      <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
-        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-zinc-100">
-          <h2 className="text-sm font-semibold text-zinc-900">오늘 수업 현황</h2>
-          <span className="text-xs text-zinc-400">
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-zinc-100 dark:border-zinc-900">
+          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">오늘 수업 현황</h2>
+          <span className="text-xs text-zinc-400 dark:text-zinc-600">
             {today.toLocaleDateString('ko-KR', { weekday: 'long' })}
           </span>
         </div>
         {todayClasses.length === 0 ? (
-          <p className="px-5 py-6 text-center text-sm text-zinc-400">오늘 예정된 수업이 없습니다.</p>
+          <p className="px-5 py-6 text-center text-sm text-zinc-400 dark:text-zinc-600">오늘 예정된 수업이 없습니다.</p>
         ) : (
-          <ul className="divide-y divide-zinc-100">
+          <ul className="divide-y divide-zinc-100 dark:divide-zinc-900">
             {todayClasses.map((cls) => {
               const taCount = (taCountByClass.get(cls.id) ?? 0) + allClassesTaCount
               return (
                 <li key={cls.id} className="flex items-center gap-3 px-5 py-3.5">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-zinc-900">{cls.name}</p>
-                    <p className="text-xs text-zinc-400">{cls.subject}</p>
+                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{cls.name}</p>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-600">{cls.subject}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-medium text-zinc-700">
+                    <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                       {cls.start_time!.slice(0, 5)} – {cls.end_time!.slice(0, 5)}
                     </p>
                     {taCount > 0 && (
-                      <p className="text-xs text-zinc-400">조교 {taCount}명</p>
+                      <p className="text-xs text-zinc-400 dark:text-zinc-600">조교 {taCount}명</p>
                     )}
                   </div>
                 </li>
@@ -305,32 +305,32 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* 최근 공지사항 */}
-      <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
-        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-zinc-100">
-          <h2 className="text-sm font-semibold text-zinc-900">최근 공지사항</h2>
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-zinc-100 dark:border-zinc-900">
+          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">최근 공지사항</h2>
           <Link
             href="/admin/notices"
-            className="text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+            className="text-xs text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
           >
             더보기 →
           </Link>
         </div>
         {notices.length === 0 ? (
-          <p className="px-5 py-6 text-center text-sm text-zinc-400">등록된 공지사항이 없습니다.</p>
+          <p className="px-5 py-6 text-center text-sm text-zinc-400 dark:text-zinc-600">등록된 공지사항이 없습니다.</p>
         ) : (
-          <ul className="divide-y divide-zinc-100">
+          <ul className="divide-y divide-zinc-100 dark:divide-zinc-900">
             {notices.map((n) => (
               <li key={n.id} className="flex items-center gap-2 px-5 py-3">
                 {n.is_pinned && (
-                  <span className="shrink-0 rounded bg-zinc-900 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                  <span className="shrink-0 rounded bg-zinc-900 dark:bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-white dark:text-zinc-900">
                     고정
                   </span>
                 )}
-                <span className="flex-1 truncate text-sm text-zinc-800">{n.title}</span>
-                <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-500">
+                <span className="flex-1 truncate text-sm text-zinc-800 dark:text-zinc-200">{n.title}</span>
+                <span className="shrink-0 rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-500 dark:text-zinc-500">
                   {n.class_id ? (n.className ?? '분반') : '전체'}
                 </span>
-                <span className="shrink-0 text-xs text-zinc-400">{formatDate(n.created_at)}</span>
+                <span className="shrink-0 text-xs text-zinc-400 dark:text-zinc-600">{formatDate(n.created_at)}</span>
               </li>
             ))}
           </ul>

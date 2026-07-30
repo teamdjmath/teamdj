@@ -61,19 +61,19 @@ export function Calendar({ value, onChange }: CalendarProps) {
   const weekDays = ['일', '월', '화', '수', '목', '금', '토']
 
   return (
-    <div className="w-full bg-white rounded-[32px] p-6 shadow-sm border border-zinc-100">
+    <div className="w-full bg-white dark:bg-zinc-900 rounded-[32px] p-6 shadow-sm border border-zinc-100 dark:border-zinc-900">
       <div className="flex items-center justify-between mb-6">
-        <button onClick={handlePrev} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-zinc-50 transition-colors">
-          <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button onClick={handlePrev} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors">
+          <svg className="w-5 h-5 text-zinc-400 dark:text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
         <div className="text-center">
-          <p className="text-xs font-medium text-zinc-400 mb-0.5">{year}년</p>
-          <p className="text-xl font-extrabold text-zinc-900">{month + 1}월</p>
+          <p className="text-xs font-medium text-zinc-400 dark:text-zinc-600 mb-0.5">{year}년</p>
+          <p className="text-xl font-extrabold text-zinc-900 dark:text-zinc-100">{month + 1}월</p>
         </div>
-        <button onClick={handleNext} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-zinc-50 transition-colors">
-          <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button onClick={handleNext} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors">
+          <svg className="w-5 h-5 text-zinc-400 dark:text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>
@@ -81,7 +81,7 @@ export function Calendar({ value, onChange }: CalendarProps) {
 
       <div className="grid grid-cols-7 mb-2">
         {weekDays.map((wd, i) => (
-          <div key={wd} className={`text-center text-[13px] font-bold py-2 ${i === 0 ? 'text-red-300' : i === 6 ? 'text-blue-300' : 'text-zinc-300'}`}>
+          <div key={wd} className={`text-center text-[13px] font-bold py-2 ${i === 0 ? 'text-red-300' : i === 6 ? 'text-blue-300' : 'text-zinc-300 dark:text-zinc-700'}`}>
             {wd}
           </div>
         ))}
@@ -100,7 +100,7 @@ export function Calendar({ value, onChange }: CalendarProps) {
               onClick={() => handleSelect(d.date)}
               className={`
                 relative h-11 w-11 mx-auto flex items-center justify-center rounded-full text-[15px] font-bold transition-all
-                ${!d.current ? 'text-zinc-200 font-medium' : selected ? 'bg-zinc-900 text-white shadow-lg' : today ? 'bg-blue-50 text-blue-600' : isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-zinc-800 hover:bg-zinc-50'}
+                ${!d.current ? 'text-zinc-200 dark:text-zinc-800 font-medium' : selected ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-lg' : today ? 'bg-blue-50 text-blue-600' : isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-950'}
               `}
             >
               {d.day}

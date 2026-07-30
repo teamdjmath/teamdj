@@ -63,15 +63,15 @@ export default async function AssignmentProgressPage({
       <div className="mb-6">
         <Link
           href="/admin/assignments"
-          className="mb-3 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 transition-colors"
+          className="mb-3 inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
           </svg>
           과제 목록
         </Link>
-        <h1 className="text-xl font-bold text-zinc-950">{assignment.title}</h1>
-        <div className="mt-1 flex flex-wrap gap-3 text-sm text-zinc-500">
+        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">{assignment.title}</h1>
+        <div className="mt-1 flex flex-wrap gap-3 text-sm text-zinc-500 dark:text-zinc-500">
           <span>{className}</span>
           {assignment.category && <span>·  {assignment.category}</span>}
           {assignment.week_num != null && <span>· {assignment.week_num}주차</span>}

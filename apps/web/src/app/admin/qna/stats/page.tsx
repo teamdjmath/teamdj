@@ -158,8 +158,8 @@ export default async function QnaStatsPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-zinc-950">답변 통계</h1>
-        <p className="mt-0.5 text-sm text-zinc-400">조교별 질문 답변 현황</p>
+        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">답변 통계</h1>
+        <p className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-600">조교별 질문 답변 현황</p>
       </div>
 
       {/* 기간 필터 */}
@@ -171,8 +171,8 @@ export default async function QnaStatsPage({
             className={[
               'rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
               period === p
-                ? 'bg-zinc-950 text-white'
-                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200',
+                ? 'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900'
+                : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800',
             ].join(' ')}
           >
             {periodLabel(p)}
@@ -181,101 +181,101 @@ export default async function QnaStatsPage({
       </div>
 
       {/* AI 초안 채택률·평점 (전체 기간) */}
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-        <h2 className="text-sm font-semibold text-zinc-900">AI 초안 활용 현황</h2>
-        <p className="mt-0.5 text-xs text-zinc-400">전체 기간 · AI 초안을 채택해 제출한 답변과 직접 작성한 답변 비교</p>
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5">
+        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">AI 초안 활용 현황</h2>
+        <p className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-600">전체 기간 · AI 초안을 채택해 제출한 답변과 직접 작성한 답변 비교</p>
         {totalAnswerCount === 0 ? (
-          <p className="mt-4 text-sm text-zinc-400">데이터가 없습니다.</p>
+          <p className="mt-4 text-sm text-zinc-400 dark:text-zinc-600">데이터가 없습니다.</p>
         ) : (
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <p className="text-xs text-zinc-400">AI 초안 채택률</p>
-              <p className="mt-1 text-xl font-bold text-zinc-950">
+              <p className="text-xs text-zinc-400 dark:text-zinc-600">AI 초안 채택률</p>
+              <p className="mt-1 text-xl font-bold text-zinc-950 dark:text-zinc-50">
                 {aiAdoptionRate !== null ? `${aiAdoptionRate.toFixed(1)}%` : '—'}
               </p>
-              <p className="mt-0.5 text-xs text-zinc-400">{aiDraftCount} / {totalAnswerCount}건</p>
+              <p className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-600">{aiDraftCount} / {totalAnswerCount}건</p>
             </div>
             <div>
-              <p className="text-xs text-zinc-400">AI 초안 채택 답변 평균 별점</p>
-              <p className="mt-1 text-xl font-bold text-zinc-950">
+              <p className="text-xs text-zinc-400 dark:text-zinc-600">AI 초안 채택 답변 평균 별점</p>
+              <p className="mt-1 text-xl font-bold text-zinc-950 dark:text-zinc-50">
                 {aiAvgRating !== null ? `★ ${aiAvgRating.toFixed(1)}` : '아직 없음'}
               </p>
-              <p className="mt-0.5 text-xs text-zinc-400">{aiRatingCount}건 평가됨</p>
+              <p className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-600">{aiRatingCount}건 평가됨</p>
             </div>
             <div>
-              <p className="text-xs text-zinc-400">직접 작성 답변 평균 별점</p>
-              <p className="mt-1 text-xl font-bold text-zinc-950">
+              <p className="text-xs text-zinc-400 dark:text-zinc-600">직접 작성 답변 평균 별점</p>
+              <p className="mt-1 text-xl font-bold text-zinc-950 dark:text-zinc-50">
                 {manualAvgRating !== null ? `★ ${manualAvgRating.toFixed(1)}` : '아직 없음'}
               </p>
-              <p className="mt-0.5 text-xs text-zinc-400">{manualRatingCount}건 평가됨</p>
+              <p className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-600">{manualRatingCount}건 평가됨</p>
             </div>
           </div>
         )}
       </div>
 
       {/* 통계 테이블 */}
-      <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-zinc-100 bg-zinc-50">
-              <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500">이름</th>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500">역할</th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">
+            <tr className="border-b border-zinc-100 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950">
+              <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-500">이름</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-500">역할</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-500">
                 {periodLabel(period)} 답변
               </th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">전체 답변</th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">하 (1–4)</th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">중 (5–6)</th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">상 (7–8)</th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">평균</th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">미설정</th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">학생 별점</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-500">전체 답변</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-500">하 (1–4)</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-500">중 (5–6)</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-500">상 (7–8)</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-500">평균</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-500">미설정</th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-500">학생 별점</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-50">
+          <tbody className="divide-y divide-zinc-50 dark:divide-zinc-950">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-5 py-10 text-center text-sm text-zinc-400">
+                <td colSpan={10} className="px-5 py-10 text-center text-sm text-zinc-400 dark:text-zinc-600">
                   데이터가 없습니다.
                 </td>
               </tr>
             ) : (
               rows.map((r, idx) => (
-                <tr key={r.id} className="hover:bg-zinc-50 transition-colors">
-                  <td className="px-5 py-3.5 font-semibold text-zinc-900">
+                <tr key={r.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors">
+                  <td className="px-5 py-3.5 font-semibold text-zinc-900 dark:text-zinc-100">
                     <span className="inline-flex items-center gap-2">
                       {idx === 0 && r.periodCount > 0 && (
-                        <span className="text-[10px] font-bold text-zinc-400">1위</span>
+                        <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-600">1위</span>
                       )}
                       {r.name}
                     </span>
                   </td>
-                  <td className="px-5 py-3.5 text-zinc-500 text-xs">
-                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 font-medium">
+                  <td className="px-5 py-3.5 text-zinc-500 dark:text-zinc-500 text-xs">
+                    <span className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 font-medium">
                       {roleLabel(r.role)}
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-right">
-                    <span className={`font-bold ${r.periodCount > 0 ? 'text-zinc-950' : 'text-zinc-300'}`}>
+                    <span className={`font-bold ${r.periodCount > 0 ? 'text-zinc-950 dark:text-zinc-50' : 'text-zinc-300 dark:text-zinc-700'}`}>
                       {r.periodCount}
                     </span>
                   </td>
-                  <td className="px-5 py-3.5 text-right text-zinc-500">{r.totalCount}</td>
-                  <td className="px-5 py-3.5 text-right text-zinc-500">{r.diffLow || '—'}</td>
-                  <td className="px-5 py-3.5 text-right text-zinc-500">{r.diffMid || '—'}</td>
-                  <td className="px-5 py-3.5 text-right text-zinc-500">{r.diffHigh || '—'}</td>
-                  <td className="px-5 py-3.5 text-right text-zinc-500">
+                  <td className="px-5 py-3.5 text-right text-zinc-500 dark:text-zinc-500">{r.totalCount}</td>
+                  <td className="px-5 py-3.5 text-right text-zinc-500 dark:text-zinc-500">{r.diffLow || '—'}</td>
+                  <td className="px-5 py-3.5 text-right text-zinc-500 dark:text-zinc-500">{r.diffMid || '—'}</td>
+                  <td className="px-5 py-3.5 text-right text-zinc-500 dark:text-zinc-500">{r.diffHigh || '—'}</td>
+                  <td className="px-5 py-3.5 text-right text-zinc-500 dark:text-zinc-500">
                     {r.diffAvg !== null ? r.diffAvg.toFixed(2) : '—'}
                   </td>
-                  <td className="px-5 py-3.5 text-right text-zinc-400 text-xs">{r.diffUnset || '—'}</td>
+                  <td className="px-5 py-3.5 text-right text-zinc-400 dark:text-zinc-600 text-xs">{r.diffUnset || '—'}</td>
                   <td className="px-5 py-3.5 text-right whitespace-nowrap">
                     {r.avgRating != null ? (
                       <span className="font-semibold text-yellow-600">
                         ★ {r.avgRating.toFixed(1)}
-                        <span className="ml-1 text-xs font-normal text-zinc-400">({r.ratedCount}건)</span>
+                        <span className="ml-1 text-xs font-normal text-zinc-400 dark:text-zinc-600">({r.ratedCount}건)</span>
                       </span>
                     ) : (
-                      <span className="text-zinc-300 text-xs">아직 없음</span>
+                      <span className="text-zinc-300 dark:text-zinc-700 text-xs">아직 없음</span>
                     )}
                   </td>
                 </tr>
@@ -283,22 +283,22 @@ export default async function QnaStatsPage({
             )}
           </tbody>
           {rows.length > 0 && (
-            <tfoot className="border-t border-zinc-100 bg-zinc-50">
+            <tfoot className="border-t border-zinc-100 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950">
               <tr>
-                <td colSpan={2} className="px-5 py-3 text-xs font-semibold text-zinc-500">합계</td>
-                <td className="px-5 py-3 text-right text-xs font-bold text-zinc-950">
+                <td colSpan={2} className="px-5 py-3 text-xs font-semibold text-zinc-500 dark:text-zinc-500">합계</td>
+                <td className="px-5 py-3 text-right text-xs font-bold text-zinc-950 dark:text-zinc-50">
                   {rows.reduce((s, r) => s + r.periodCount, 0)}
                 </td>
-                <td className="px-5 py-3 text-right text-xs text-zinc-500">
+                <td className="px-5 py-3 text-right text-xs text-zinc-500 dark:text-zinc-500">
                   {rows.reduce((s, r) => s + r.totalCount, 0)}
                 </td>
-                <td className="px-5 py-3 text-right text-xs text-zinc-500">
+                <td className="px-5 py-3 text-right text-xs text-zinc-500 dark:text-zinc-500">
                   {rows.reduce((s, r) => s + r.diffLow, 0) || '—'}
                 </td>
-                <td className="px-5 py-3 text-right text-xs text-zinc-500">
+                <td className="px-5 py-3 text-right text-xs text-zinc-500 dark:text-zinc-500">
                   {rows.reduce((s, r) => s + r.diffMid, 0) || '—'}
                 </td>
-                <td className="px-5 py-3 text-right text-xs text-zinc-500">
+                <td className="px-5 py-3 text-right text-xs text-zinc-500 dark:text-zinc-500">
                   {rows.reduce((s, r) => s + r.diffHigh, 0) || '—'}
                 </td>
                 <td colSpan={3} />
@@ -308,7 +308,7 @@ export default async function QnaStatsPage({
         </table>
       </div>
 
-      <p className="text-xs text-zinc-400">
+      <p className="text-xs text-zinc-400 dark:text-zinc-600">
         * 기간 기준: {period === 'week' ? '이번 주 월요일 00:00 이후' : period === 'month' ? '이번 달 1일 00:00 이후' : '전체 기간'}
       </p>
     </div>

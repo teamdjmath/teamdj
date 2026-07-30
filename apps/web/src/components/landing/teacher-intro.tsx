@@ -18,16 +18,16 @@ export function TeacherIntro() {
               Teacher&apos;s Philosophy
             </span>
             <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-zinc-950 mb-10 leading-[1.4] break-keep">
-              지식 그 이상의,<br />
-              페이스메이커.
+              그 차이를 만드는,<br />
+              단 하나의 <span className="text-emerald-500">D</span>.
             </h2>
             <div className="space-y-8 text-zinc-600 leading-loose text-lg break-keep">
               <p>
-                수능은 지능의 싸움이 아닙니다. 그것은 <span className="text-zinc-950 font-bold">인내와 전략, 그리고 올바른 습관</span>의 싸움입니다. 
-                저는 단순히 문제 풀이 기술을 가르치는 강사가 아닙니다.
+                수능은 지능의 싸움이 아닙니다. <span className="text-zinc-950 font-bold">인내와 전략, 그리고 올바른 습관</span>의 싸움입니다.
+                제가 가르치는 것은 문제 풀이 기술이 아니라, 시험장에서 발현될 이동재T의 <span className="text-emerald-600 font-bold">DNA</span>입니다.
               </p>
               <p>
-                여러분이 가장 힘든 순간, 포기하고 싶은 그 시점에 끝까지 함께 달릴 페이스메이커가 되겠습니다. 
+                듣느냐, 듣지 않느냐. 그 작은 <span className="text-emerald-600 font-bold">D(Δ)</span> 하나가 1등급과 만점을 가릅니다.
                 모든 커리큘럼은 여러분의 <span className="text-zinc-950 font-bold">실질적인 점수 역전</span>을 목표로 설계되었습니다.
               </p>
             </div>

@@ -170,27 +170,27 @@ export function TestDetailClient({
     <div className="space-y-5">
       {/* 통계 */}
       {validScores.length > 0 && (
-        <div className="flex flex-wrap gap-4 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm">
-          <span className="text-zinc-500">
-            평균 <span className="font-bold text-zinc-900">{avg!.toFixed(1)}</span>
+        <div className="flex flex-wrap gap-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 text-sm">
+          <span className="text-zinc-500 dark:text-zinc-500">
+            평균 <span className="font-bold text-zinc-900 dark:text-zinc-100">{avg!.toFixed(1)}</span>
           </span>
-          <span className="text-zinc-300">|</span>
-          <span className="text-zinc-500">
-            최고 <span className="font-bold text-zinc-900">{max}</span>
+          <span className="text-zinc-300 dark:text-zinc-700">|</span>
+          <span className="text-zinc-500 dark:text-zinc-500">
+            최고 <span className="font-bold text-zinc-900 dark:text-zinc-100">{max}</span>
           </span>
-          <span className="text-zinc-300">|</span>
-          <span className="text-zinc-500">
-            최저 <span className="font-bold text-zinc-900">{min}</span>
+          <span className="text-zinc-300 dark:text-zinc-700">|</span>
+          <span className="text-zinc-500 dark:text-zinc-500">
+            최저 <span className="font-bold text-zinc-900 dark:text-zinc-100">{min}</span>
           </span>
-          <span className="text-zinc-300">|</span>
-          <span className="text-zinc-500">
-            입력 <span className="font-bold text-zinc-900">{validScores.length}</span>/{students.length}명
+          <span className="text-zinc-300 dark:text-zinc-700">|</span>
+          <span className="text-zinc-500 dark:text-zinc-500">
+            입력 <span className="font-bold text-zinc-900 dark:text-zinc-100">{validScores.length}</span>/{students.length}명
           </span>
           {absentCount > 0 && (
             <>
-              <span className="text-zinc-300">|</span>
-              <span className="text-zinc-500">
-                미응시 <span className="font-bold text-zinc-900">{absentCount}</span>명 <span className="text-zinc-400">(평균 제외)</span>
+              <span className="text-zinc-300 dark:text-zinc-700">|</span>
+              <span className="text-zinc-500 dark:text-zinc-500">
+                미응시 <span className="font-bold text-zinc-900 dark:text-zinc-100">{absentCount}</span>명 <span className="text-zinc-400 dark:text-zinc-600">(평균 제외)</span>
               </span>
             </>
           )}
@@ -199,12 +199,12 @@ export function TestDetailClient({
 
       {/* 컨트롤 */}
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-zinc-700">학생별 점수 입력</h2>
+        <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">학생별 점수 입력</h2>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => { setOmrErr(''); setOmrResult(null); setOmrOpen(true) }}
-            className="rounded-lg border border-zinc-200 px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors"
+            className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-3.5 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors"
           >
             OMR 업로드
           </button>
@@ -212,7 +212,7 @@ export function TestDetailClient({
             type="button"
             onClick={handleSave}
             disabled={pending}
-            className="rounded-lg bg-zinc-950 px-3.5 py-2 text-sm font-medium text-white hover:bg-zinc-800 transition-colors disabled:opacity-50"
+            className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-3.5 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50"
           >
             {pending ? '저장 중…' : '저장'}
           </button>
@@ -220,28 +220,28 @@ export function TestDetailClient({
       </div>
 
       {saveErr && <p className="text-sm text-red-500">{saveErr}</p>}
-      {saveOk  && <p className="text-sm text-zinc-400">저장되었습니다.</p>}
+      {saveOk  && <p className="text-sm text-zinc-400 dark:text-zinc-600">저장되었습니다.</p>}
 
       {/* 점수 입력 테이블 */}
-      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+      <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-zinc-100 bg-zinc-50">
-              <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500">이름</th>
-              <th className="px-5 py-3 text-center text-xs font-semibold text-zinc-500">
-                점수 <span className="font-normal text-zinc-400">({maxScore}점 만점)</span>
+            <tr className="border-b border-zinc-100 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950">
+              <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-500">이름</th>
+              <th className="px-5 py-3 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-500">
+                점수 <span className="font-normal text-zinc-400 dark:text-zinc-600">({maxScore}점 만점)</span>
               </th>
               {showGrades && (
-                <th className="px-5 py-3 text-center text-xs font-semibold text-zinc-500">등급</th>
+                <th className="px-5 py-3 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-500">등급</th>
               )}
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100">
+          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-900">
             {students.length === 0 ? (
               <tr>
                 <td
                   colSpan={showGrades ? 3 : 2}
-                  className="py-10 text-center text-sm text-zinc-400"
+                  className="py-10 text-center text-sm text-zinc-400 dark:text-zinc-600"
                 >
                   소속 학생이 없습니다.
                 </td>
@@ -257,8 +257,8 @@ export function TestDetailClient({
                     : null
 
                 return (
-                  <tr key={s.id} className="hover:bg-zinc-50 transition-colors">
-                    <td className="px-5 py-3 font-medium text-zinc-900">{s.name}</td>
+                  <tr key={s.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors">
+                    <td className="px-5 py-3 font-medium text-zinc-900 dark:text-zinc-100">{s.name}</td>
                     <td className="px-5 py-3">
                       <div className="flex items-center justify-center gap-2">
                         {isAbsent ? (
@@ -268,7 +268,7 @@ export function TestDetailClient({
                             onChange={(e) =>
                               setAbsentReasons((prev) => ({ ...prev, [s.id]: e.target.value }))
                             }
-                            className="w-40 rounded-lg border border-amber-200 bg-amber-50 px-2 py-2 text-sm text-zinc-800 placeholder:text-amber-400 focus:border-amber-400 focus:outline-none transition-all"
+                            className="w-40 rounded-lg border border-amber-200 bg-amber-50 px-2 py-2 text-sm text-zinc-800 dark:text-zinc-200 placeholder:text-amber-400 focus:border-amber-400 focus:outline-none transition-all"
                             placeholder="미응시 사유 (선택)"
                           />
                         ) : (
@@ -281,7 +281,7 @@ export function TestDetailClient({
                             onChange={(e) =>
                               setScores((prev) => ({ ...prev, [s.id]: e.target.value }))
                             }
-                            className="w-24 rounded-lg border border-zinc-200 bg-white px-2 py-2 text-center text-base font-bold text-zinc-950 placeholder:text-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 focus:outline-none transition-all shadow-sm"
+                            className="w-24 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2 py-2 text-center text-base font-bold text-zinc-950 dark:text-zinc-50 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 focus:border-zinc-950 dark:focus:border-zinc-50 focus:ring-1 focus:ring-zinc-950 dark:focus:ring-zinc-50 focus:outline-none transition-all shadow-sm"
                             placeholder="—"
                           />
                         )}
@@ -291,7 +291,7 @@ export function TestDetailClient({
                           className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
                             isAbsent
                               ? 'bg-amber-500 text-white hover:bg-amber-600'
-                              : 'border border-zinc-200 text-zinc-400 hover:border-zinc-400 hover:text-zinc-700'
+                              : 'border border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600 hover:border-zinc-400 dark:hover:border-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300'
                           }`}
                         >
                           미응시
@@ -304,18 +304,18 @@ export function TestDetailClient({
                           <span
                             className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${
                               grade === 1
-                                ? 'bg-zinc-900 text-white'
+                                ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
                                 : grade <= 3
-                                  ? 'bg-zinc-700 text-white'
+                                  ? 'bg-zinc-700 dark:bg-zinc-300 text-white'
                                   : grade <= 6
-                                    ? 'bg-zinc-200 text-zinc-700'
-                                    : 'bg-zinc-100 text-zinc-400'
+                                    ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                                    : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600'
                             }`}
                           >
                             {grade}등급
                           </span>
                         ) : (
-                          <span className="text-zinc-300">—</span>
+                          <span className="text-zinc-300 dark:text-zinc-700">—</span>
                         )}
                       </td>
                     )}
@@ -331,9 +331,9 @@ export function TestDetailClient({
       <Modal open={omrOpen} onClose={closeOmr} title="OMR 엑셀 업로드" size="sm">
         {omrResult ? (
           <div className="space-y-4">
-            <div className="rounded-lg bg-zinc-50 p-4 text-sm">
-              <p className="font-medium text-zinc-900">업로드 완료</p>
-              <p className="mt-1 text-zinc-600">성공: {omrResult.succeeded}건</p>
+            <div className="rounded-lg bg-zinc-50 dark:bg-zinc-950 p-4 text-sm">
+              <p className="font-medium text-zinc-900 dark:text-zinc-100">업로드 완료</p>
+              <p className="mt-1 text-zinc-600 dark:text-zinc-400">성공: {omrResult.succeeded}건</p>
               {omrResult.failed.length > 0 && (
                 <p className="mt-0.5 text-red-500">실패: {omrResult.failed.length}건</p>
               )}
@@ -345,7 +345,7 @@ export function TestDetailClient({
                     key={i}
                     className="flex justify-between border-b border-red-100 px-3 py-2 text-xs last:border-b-0"
                   >
-                    <span className="text-zinc-700">{f.name}</span>
+                    <span className="text-zinc-700 dark:text-zinc-300">{f.name}</span>
                     <span className="text-red-500">{f.reason}</span>
                   </div>
                 ))}
@@ -354,31 +354,31 @@ export function TestDetailClient({
             <button
               type="button"
               onClick={closeOmr}
-              className="w-full rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
+              className="w-full rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
             >
               닫기
             </button>
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-xs text-zinc-400">
-              필수 컬럼: <b className="text-zinc-700">이름</b>, <b className="text-zinc-700">점수</b>
+            <p className="text-xs text-zinc-400 dark:text-zinc-600">
+              필수 컬럼: <b className="text-zinc-700 dark:text-zinc-300">이름</b>, <b className="text-zinc-700 dark:text-zinc-300">점수</b>
             </p>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-zinc-700">엑셀 파일</label>
+              <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">엑셀 파일</label>
               <input
                 type="file"
                 accept=".xlsx,.xls"
                 onChange={handleOmrFile}
                 disabled={pending}
-                className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded file:border-0 file:bg-zinc-200 file:px-2 file:py-1 file:text-xs file:text-zinc-700 disabled:opacity-50"
+                className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 file:mr-3 file:rounded file:border-0 file:bg-zinc-200 dark:file:bg-zinc-800 file:px-2 file:py-1 file:text-xs file:text-zinc-700 dark:file:text-zinc-300 disabled:opacity-50"
               />
               {omrErr && <p className="mt-1 text-sm text-red-500">{omrErr}</p>}
             </div>
             <button
               type="button"
               onClick={closeOmr}
-              className="w-full rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors"
             >
               취소
             </button>

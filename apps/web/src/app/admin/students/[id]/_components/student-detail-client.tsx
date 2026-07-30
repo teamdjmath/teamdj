@@ -196,14 +196,14 @@ export function StudentDetailClient({
             </div>
             <div className="flex items-center gap-4">
               <div>
-                <p className="text-xs font-medium text-zinc-600 mb-0.5">등록일</p>
-                <p className="text-sm text-zinc-700">
+                <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-0.5">등록일</p>
+                <p className="text-sm text-zinc-700 dark:text-zinc-300">
                   {new Date(student.createdAt).toLocaleDateString('ko-KR')}
                 </p>
               </div>
               <div>
-                <p className="text-xs font-medium text-zinc-600 mb-0.5">로그인 ID</p>
-                <p className="font-mono text-xs text-zinc-600">
+                <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-0.5">로그인 ID</p>
+                <p className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
                   {(student.phone ?? '').replace(/\D/g, '')}@teamdj.com
                 </p>
               </div>
@@ -215,7 +215,7 @@ export function StudentDetailClient({
               <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{resetError}</p>
             )}
             {resetSuccess && (
-              <p className="rounded-lg bg-zinc-100 px-3 py-2 text-xs text-zinc-600">
+              <p className="rounded-lg bg-zinc-100 dark:bg-zinc-900 px-3 py-2 text-xs text-zinc-600 dark:text-zinc-400">
                 비밀번호가 초기화되었습니다. 학생이 다음 로그인 시 비밀번호를 변경해야 합니다.
               </p>
             )}
@@ -224,14 +224,14 @@ export function StudentDetailClient({
                 type="button"
                 disabled={isPending}
                 onClick={() => { setResetError(null); setResetSuccess(false); setResetConfirmOpen(true) }}
-                className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-500 hover:bg-zinc-50 hover:text-zinc-700 disabled:opacity-50 transition-colors"
+                className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-4 py-2 text-sm text-zinc-500 dark:text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-950 hover:text-zinc-700 dark:hover:text-zinc-300 disabled:opacity-50 transition-colors"
               >
                 비밀번호 초기화
               </button>
               <button
                 type="submit"
                 disabled={isPending}
-                className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+                className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50"
               >
                 {isPending ? '저장 중…' : '저장'}
               </button>
@@ -244,19 +244,19 @@ export function StudentDetailClient({
           <CardHeader title="소속 분반" />
           <div className="px-5 pb-5 space-y-3">
             {currentClasses.length === 0 ? (
-              <p className="text-sm text-zinc-400">소속 반 없음</p>
+              <p className="text-sm text-zinc-400 dark:text-zinc-600">소속 반 없음</p>
             ) : (
-              <ul className="divide-y divide-zinc-100">
+              <ul className="divide-y divide-zinc-100 dark:divide-zinc-900">
                 {currentClasses.map((m) => (
                   <li key={m.memberId} className="flex items-center justify-between py-2.5">
                     <div>
                       <Link
                         href={`/admin/classes/${m.classId}`}
-                        className="font-medium text-zinc-900 hover:underline text-sm"
+                        className="font-medium text-zinc-900 dark:text-zinc-100 hover:underline text-sm"
                       >
                         {m.className}
                       </Link>
-                      <p className="text-xs text-zinc-600 mt-0.5">
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
                         {m.subject} · {m.grade} · {new Date(m.enrolledAt).toLocaleDateString('ko-KR')} 등록
                       </p>
                     </div>
@@ -264,7 +264,7 @@ export function StudentDetailClient({
                       type="button"
                       disabled={isPending}
                       onClick={() => handleRemoveClass(m.classId, m.className)}
-                      className="text-xs text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                      className="text-xs text-zinc-400 dark:text-zinc-600 hover:text-red-500 transition-colors disabled:opacity-50"
                     >
                       제거
                     </button>
@@ -287,7 +287,7 @@ export function StudentDetailClient({
               <button
                 type="submit"
                 disabled={isPending}
-                className="shrink-0 rounded-lg border border-zinc-200 px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+                className="shrink-0 rounded-lg border border-zinc-200 dark:border-zinc-800 px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 disabled:opacity-50"
               >
                 추가
               </button>
@@ -308,7 +308,7 @@ export function StudentDetailClient({
               <button
                 type="button"
                 onClick={() => { setParentError(null); setParentOpen(true) }}
-                className="hover:text-zinc-700 transition-colors"
+                className="hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
               >
                 + 연결
               </button>
@@ -316,20 +316,20 @@ export function StudentDetailClient({
           />
           <div className="px-5 pb-5">
             {parents.length === 0 ? (
-              <p className="py-4 text-center text-xs text-zinc-400">연결된 학부모가 없습니다.</p>
+              <p className="py-4 text-center text-xs text-zinc-400 dark:text-zinc-600">연결된 학부모가 없습니다.</p>
             ) : (
-              <ul className="divide-y divide-zinc-100">
+              <ul className="divide-y divide-zinc-100 dark:divide-zinc-900">
                 {parents.map((p) => (
                   <li key={p.linkId} className="flex items-center justify-between py-3">
                     <div>
-                      <p className="text-sm font-medium text-zinc-800">{p.name}</p>
-                      <p className="text-xs text-zinc-400">{p.phone}</p>
+                      <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{p.name}</p>
+                      <p className="text-xs text-zinc-400 dark:text-zinc-600">{p.phone}</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleUnlink(p.linkId, p.name)}
                       disabled={isPending}
-                      className="text-xs text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                      className="text-xs text-zinc-400 dark:text-zinc-600 hover:text-red-500 transition-colors disabled:opacity-50"
                     >
                       해제
                     </button>
@@ -372,11 +372,11 @@ export function StudentDetailClient({
             <form onSubmit={handleSetSuspension} className="space-y-3">
               <div className="space-y-2.5">
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-700 mb-1">시작일</label>
+                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">시작일</label>
                   <DatePicker value={suspendFrom} onChange={setSuspendFrom} placeholder="시작일 선택" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-700 mb-1">종료일</label>
+                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">종료일</label>
                   <DatePicker value={suspendUntil} onChange={setSuspendUntil} placeholder="종료일 선택" />
                 </div>
               </div>
@@ -384,7 +384,7 @@ export function StudentDetailClient({
               <button
                 type="submit"
                 disabled={isPending}
-                className="w-full rounded-lg border border-zinc-200 py-2 text-sm text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 transition-colors"
+                className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 disabled:opacity-50 transition-colors"
               >
                 {isPending ? '저장 중…' : '휴원 설정'}
               </button>
@@ -396,8 +396,8 @@ export function StudentDetailClient({
       {/* 비밀번호 초기화 확인 모달 */}
       <Modal open={resetConfirmOpen} onClose={() => setResetConfirmOpen(false)} title="비밀번호 초기화" size="sm">
         <div className="space-y-4">
-          <p className="text-sm text-zinc-600">
-            <span className="font-semibold text-zinc-900">{student.name}</span> 학생의 비밀번호를 초기 비밀번호로 재설정합니다.
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <span className="font-semibold text-zinc-900 dark:text-zinc-100">{student.name}</span> 학생의 비밀번호를 초기 비밀번호로 재설정합니다.
             <br />
             학생이 다음 로그인 시 비밀번호를 변경해야 합니다.
           </p>
@@ -408,7 +408,7 @@ export function StudentDetailClient({
             <button
               type="button"
               onClick={() => setResetConfirmOpen(false)}
-              className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
+              className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950"
             >
               취소
             </button>
@@ -416,7 +416,7 @@ export function StudentDetailClient({
               type="button"
               disabled={isPending}
               onClick={handleResetPassword}
-              className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+              className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50"
             >
               {isPending ? '초기화 중…' : '초기화'}
             </button>
@@ -435,7 +435,7 @@ export function StudentDetailClient({
             placeholder="01012345678"
             required
           />
-          <p className="text-[11px] text-zinc-400">
+          <p className="text-[11px] text-zinc-400 dark:text-zinc-600">
             이미 등록된 학부모 계정의 전화번호를 입력하세요.
           </p>
           {parentError && (
@@ -445,14 +445,14 @@ export function StudentDetailClient({
             <button
               type="button"
               onClick={() => setParentOpen(false)}
-              className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
+              className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950"
             >
               취소
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+              className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50"
             >
               {isPending ? '연결 중…' : '연결'}
             </button>
@@ -463,8 +463,8 @@ export function StudentDetailClient({
       {/* 회원 삭제 확인 모달 */}
       <Modal open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} title="회원 정보 삭제" size="sm">
         <div className="space-y-4">
-          <p className="text-sm text-zinc-700">
-            <span className="font-semibold text-zinc-950">{student.name}</span> 학생의 모든 정보가 삭제됩니다.
+          <p className="text-sm text-zinc-700 dark:text-zinc-300">
+            <span className="font-semibold text-zinc-950 dark:text-zinc-50">{student.name}</span> 학생의 모든 정보가 삭제됩니다.
             <br />
             출석, QnA, 점수 등 연관된 데이터가 함께 삭제되며, 이 작업은 되돌릴 수 없습니다.
           </p>
@@ -476,7 +476,7 @@ export function StudentDetailClient({
             <button
               type="button"
               onClick={() => setDeleteConfirmOpen(false)}
-              className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+              className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950"
             >
               취소
             </button>

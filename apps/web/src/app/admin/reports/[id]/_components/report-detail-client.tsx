@@ -64,7 +64,7 @@ export function ReportDetailClient({ report }: Props) {
       {/* 리포트 이미지 / 재렌더링 */}
       <div>
         {report.image_url ? (
-          <div className="rounded-xl overflow-hidden border border-zinc-200">
+          <div className="rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={report.image_url}
@@ -73,8 +73,8 @@ export function ReportDetailClient({ report }: Props) {
             />
           </div>
         ) : (
-          <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-            <p className="mb-3 text-xs text-zinc-400">저장된 이미지가 없습니다. 리포트 내용으로 표시합니다.</p>
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-4">
+            <p className="mb-3 text-xs text-zinc-400 dark:text-zinc-600">저장된 이미지가 없습니다. 리포트 내용으로 표시합니다.</p>
             <ReportCard data={cardData} />
           </div>
         )}
@@ -83,29 +83,29 @@ export function ReportDetailClient({ report }: Props) {
       {/* 오른쪽: 정보 + 카카오 발송 */}
       <div className="space-y-4">
         {/* 상태 카드 */}
-        <div className="rounded-xl border border-zinc-200 bg-white p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-zinc-900">발송 상태</h2>
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">발송 상태</h2>
 
           <div className="space-y-3">
-            <div className="flex items-center justify-between py-2 border-b border-zinc-50">
-              <span className="text-sm text-zinc-500">리포트 날짜</span>
-              <span className="text-sm font-medium text-zinc-900">{report.report_date}</span>
+            <div className="flex items-center justify-between py-2 border-b border-zinc-50 dark:border-zinc-950">
+              <span className="text-sm text-zinc-500 dark:text-zinc-500">리포트 날짜</span>
+              <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{report.report_date}</span>
             </div>
-            <div className="flex items-center justify-between py-2 border-b border-zinc-50">
-              <span className="text-sm text-zinc-500">작성 일시</span>
-              <span className="text-sm text-zinc-700">{formatDatetime(report.updated_at || report.created_at)}</span>
+            <div className="flex items-center justify-between py-2 border-b border-zinc-50 dark:border-zinc-950">
+              <span className="text-sm text-zinc-500 dark:text-zinc-500">작성 일시</span>
+              <span className="text-sm text-zinc-700 dark:text-zinc-300">{formatDatetime(report.updated_at || report.created_at)}</span>
             </div>
             <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-zinc-500">카카오톡 발송</span>
+              <span className="text-sm text-zinc-500 dark:text-zinc-500">카카오톡 발송</span>
               {report.kakao_sent_at ? (
                 <div className="text-right">
-                  <span className="rounded-full bg-zinc-900 px-2.5 py-0.5 text-xs font-medium text-white">
+                  <span className="rounded-full bg-zinc-900 dark:bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-white dark:text-zinc-900">
                     발송 완료
                   </span>
-                  <p className="mt-1 text-xs text-zinc-400">{formatDatetime(report.kakao_sent_at)}</p>
+                  <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-600">{formatDatetime(report.kakao_sent_at)}</p>
                 </div>
               ) : (
-                <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-500">
+                <span className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2.5 py-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-500">
                   미발송
                 </span>
               )}
@@ -114,9 +114,9 @@ export function ReportDetailClient({ report }: Props) {
         </div>
 
         {/* 카카오 발송 버튼 */}
-        <div className="rounded-xl border border-zinc-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-semibold text-zinc-900">카카오톡 친구톡 발송</h2>
-          <p className="mb-4 text-xs text-zinc-500 leading-relaxed">
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5">
+          <h2 className="mb-3 text-sm font-semibold text-zinc-900 dark:text-zinc-100">카카오톡 친구톡 발송</h2>
+          <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-500 leading-relaxed">
             학부모 계정에 연결된 카카오톡으로 리포트 이미지를 발송합니다.
             {report.kakao_sent_at && ' 재발송 시 기존 발송 기록이 덮어씌워집니다.'}
           </p>
@@ -127,7 +127,7 @@ export function ReportDetailClient({ report }: Props) {
             </div>
           )}
           {kakaoResult && (
-            <div className="mb-3 rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-700 font-medium">
+            <div className="mb-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 font-medium">
               ✓ {kakaoResult}
             </div>
           )}
@@ -138,8 +138,8 @@ export function ReportDetailClient({ report }: Props) {
             className={[
               'w-full rounded-lg py-2.5 text-sm font-medium transition-colors disabled:opacity-50',
               report.kakao_sent_at
-                ? 'border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
-                : 'bg-zinc-950 text-white hover:bg-zinc-800',
+                ? 'border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950'
+                : 'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200',
             ].join(' ')}
           >
             {pending
@@ -150,36 +150,36 @@ export function ReportDetailClient({ report }: Props) {
           </button>
 
           {!report.image_url && (
-            <p className="mt-2 text-xs text-zinc-400">이미지가 없어 발송할 수 없습니다.</p>
+            <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-600">이미지가 없어 발송할 수 없습니다.</p>
           )}
         </div>
 
         {/* 리포트 내용 요약 */}
-        <div className="rounded-xl border border-zinc-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-semibold text-zinc-900">리포트 내용</h2>
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5">
+          <h2 className="mb-3 text-sm font-semibold text-zinc-900 dark:text-zinc-100">리포트 내용</h2>
           <div className="space-y-3 text-sm">
             {report.content_json.studyContent && (
               <div>
-                <p className="text-xs font-semibold text-zinc-400 mb-1">📚 학습 내용</p>
-                <p className="text-zinc-700 whitespace-pre-wrap text-xs leading-relaxed">{report.content_json.studyContent}</p>
+                <p className="text-xs font-semibold text-zinc-400 dark:text-zinc-600 mb-1">📚 학습 내용</p>
+                <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap text-xs leading-relaxed">{report.content_json.studyContent}</p>
               </div>
             )}
             {report.content_json.homework && (
               <div>
-                <p className="text-xs font-semibold text-zinc-400 mb-1">📝 과제</p>
-                <p className="text-zinc-700 whitespace-pre-wrap text-xs leading-relaxed">{report.content_json.homework}</p>
+                <p className="text-xs font-semibold text-zinc-400 dark:text-zinc-600 mb-1">📝 과제</p>
+                <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap text-xs leading-relaxed">{report.content_json.homework}</p>
               </div>
             )}
             {report.content_json.notes && (
               <div>
-                <p className="text-xs font-semibold text-zinc-400 mb-1">📌 특이사항</p>
-                <p className="text-zinc-700 whitespace-pre-wrap text-xs leading-relaxed">{report.content_json.notes}</p>
+                <p className="text-xs font-semibold text-zinc-400 dark:text-zinc-600 mb-1">📌 특이사항</p>
+                <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap text-xs leading-relaxed">{report.content_json.notes}</p>
               </div>
             )}
             {report.content_json.announcement && (
               <div>
-                <p className="text-xs font-semibold text-zinc-400 mb-1">📢 공지사항</p>
-                <p className="text-zinc-700 whitespace-pre-wrap text-xs leading-relaxed">{report.content_json.announcement}</p>
+                <p className="text-xs font-semibold text-zinc-400 dark:text-zinc-600 mb-1">📢 공지사항</p>
+                <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap text-xs leading-relaxed">{report.content_json.announcement}</p>
               </div>
             )}
           </div>

@@ -43,11 +43,11 @@ export function ReportsClient({ classOptions, selectedClassId, selectedDate, ses
       {/* 필터 */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex-1 max-w-xs space-y-1.5">
-          <label className="block text-xs font-medium text-zinc-600">분반</label>
+          <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">분반</label>
           <select
             value={selectedClassId ?? ''}
             onChange={(e) => nav(e.target.value, selectedDate ?? '')}
-            className="w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
+            className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
           >
             <option value="">전체 분반</option>
             {classOptions.map((c) => (
@@ -56,18 +56,18 @@ export function ReportsClient({ classOptions, selectedClassId, selectedDate, ses
           </select>
         </div>
         <div className="space-y-1.5">
-          <label className="block text-xs font-medium text-zinc-600">날짜</label>
+          <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">날짜</label>
           <input
             type="date"
             value={selectedDate ?? ''}
             onChange={(e) => nav(selectedClassId ?? '', e.target.value)}
-            className="rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none"
+            className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
           />
         </div>
         {(selectedClassId || selectedDate) && (
           <button
             onClick={() => nav('', '')}
-            className="rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-500 hover:bg-zinc-50 transition-colors whitespace-nowrap"
+            className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-500 dark:text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors whitespace-nowrap"
           >
             초기화
           </button>
@@ -76,11 +76,11 @@ export function ReportsClient({ classOptions, selectedClassId, selectedDate, ses
 
       {/* 세션 목록 */}
       {sessions.length === 0 ? (
-        <div className="rounded-xl border border-zinc-200 bg-white py-20 text-center">
-          <p className="text-sm text-zinc-400 mb-4">작성된 리포트가 없습니다.</p>
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 py-20 text-center">
+          <p className="text-sm text-zinc-400 dark:text-zinc-600 mb-4">작성된 리포트가 없습니다.</p>
           <Link
             href="/admin/reports/new"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
           >
             첫 리포트 작성하기
           </Link>
@@ -93,10 +93,10 @@ export function ReportsClient({ classOptions, selectedClassId, selectedDate, ses
               href={s.classId === 'clinic'
                 ? `/admin/reports/clinic/session/${s.date}`
                 : `/admin/reports/session/${s.classId}/${s.date}`}
-              className="group rounded-xl border border-zinc-200 bg-white overflow-hidden hover:border-zinc-300 hover:shadow-sm transition-all"
+              className="group rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-sm transition-all"
             >
               {/* 썸네일 */}
-              <div className="aspect-4/3 bg-zinc-100 overflow-hidden relative">
+              <div className="aspect-4/3 bg-zinc-100 dark:bg-zinc-900 overflow-hidden relative">
                 {s.sampleImageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -106,7 +106,7 @@ export function ReportsClient({ classOptions, selectedClassId, selectedDate, ses
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <svg className="w-10 h-10 text-zinc-300" fill="none" stroke="currentColor" strokeWidth={1} viewBox="0 0 24 24">
+                    <svg className="w-10 h-10 text-zinc-300 dark:text-zinc-700" fill="none" stroke="currentColor" strokeWidth={1} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
                     </svg>
                   </div>
@@ -120,19 +120,19 @@ export function ReportsClient({ classOptions, selectedClassId, selectedDate, ses
               <div className="p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <p className="font-semibold text-sm text-zinc-900">{fmtDate(s.date)} · {s.className}</p>
-                    <p className="text-xs text-zinc-400 mt-0.5">{s.date}</p>
+                    <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">{fmtDate(s.date)} · {s.className}</p>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-600 mt-0.5">{s.date}</p>
                   </div>
                   {s.sentCount === s.total && s.total > 0 ? (
-                    <span className="shrink-0 rounded-full bg-zinc-900 px-2 py-0.5 text-[10px] font-medium text-white">
+                    <span className="shrink-0 rounded-full bg-zinc-900 dark:bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-white dark:text-zinc-900">
                       전체 발송 완료
                     </span>
                   ) : s.sentCount > 0 ? (
-                    <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-600">
+                    <span className="shrink-0 rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:text-zinc-400">
                       {s.sentCount}/{s.total} 발송
                     </span>
                   ) : (
-                    <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500">
+                    <span className="shrink-0 rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-[10px] font-medium text-zinc-500 dark:text-zinc-500">
                       미발송
                     </span>
                   )}

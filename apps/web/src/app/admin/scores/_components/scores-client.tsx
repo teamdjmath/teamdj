@@ -14,11 +14,11 @@ type ExamType = (typeof EXAM_TYPES)[number]
 const GRADE_EXAM_TYPES: ExamType[] = ['모의고사', '중간고사', '기말고사']
 const GRADE_NUMS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as const
 const EXAM_TYPE_BADGE: Record<string, string> = {
-  일반: 'bg-zinc-100 text-zinc-600',
-  모의고사: 'bg-zinc-900 text-white',
-  중간고사: 'bg-zinc-700 text-white',
-  기말고사: 'bg-zinc-700 text-white',
-  기타: 'bg-zinc-100 text-zinc-600',
+  일반: 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400',
+  모의고사: 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900',
+  중간고사: 'bg-zinc-700 dark:bg-zinc-300 text-white',
+  기말고사: 'bg-zinc-700 dark:bg-zinc-300 text-white',
+  기타: 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400',
 }
 
 type ClassOption = { id: string; name: string }
@@ -140,11 +140,11 @@ export function ScoresClient({ classOptions, selectedClassId, selectedDate, test
     <div>
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-zinc-950">테스트 점수</h1>
+        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">테스트 점수</h1>
         <button
           type="button"
           onClick={openCreate}
-          className="flex items-center gap-1.5 rounded-lg bg-zinc-950 px-3.5 py-2 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
+          className="flex items-center gap-1.5 rounded-lg bg-zinc-950 dark:bg-zinc-50 px-3.5 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -158,7 +158,7 @@ export function ScoresClient({ classOptions, selectedClassId, selectedDate, test
         <select
           value={selectedClassId ?? ''}
           onChange={(e) => applyFilter(e.target.value, selectedDate ?? '')}
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 focus:outline-none focus:border-zinc-400"
+          className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
         >
           <option value="">전체 분반</option>
           {classOptions.map((c) => (
@@ -169,13 +169,13 @@ export function ScoresClient({ classOptions, selectedClassId, selectedDate, test
           type="date"
           value={selectedDate ?? ''}
           onChange={(e) => applyFilter(selectedClassId ?? '', e.target.value)}
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 focus:outline-none focus:border-zinc-400"
+          className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
         />
         {(selectedClassId || selectedDate) && (
           <button
             type="button"
             onClick={() => applyFilter('', '')}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-500 hover:bg-zinc-50 transition-colors"
+            className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-500 dark:text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors"
           >
             초기화
           </button>
@@ -184,61 +184,61 @@ export function ScoresClient({ classOptions, selectedClassId, selectedDate, test
 
       {/* 테스트 목록 */}
       {tests.length === 0 ? (
-        <div className="rounded-xl border border-zinc-200 bg-white">
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
           <EmptyState message="등록된 테스트가 없습니다." description="테스트 추가 버튼으로 새 시험을 등록하세요." />
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+        <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-100 bg-zinc-50">
-                <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500">테스트명</th>
-                <th className="hidden sm:table-cell px-5 py-3 text-left text-xs font-semibold text-zinc-500">분반</th>
-                <th className="px-5 py-3 text-center text-xs font-semibold text-zinc-500">유형</th>
-                <th className="hidden md:table-cell px-5 py-3 text-left text-xs font-semibold text-zinc-500">날짜</th>
-                <th className="hidden md:table-cell px-5 py-3 text-center text-xs font-semibold text-zinc-500">총문항</th>
-                <th className="hidden lg:table-cell px-5 py-3 text-center text-xs font-semibold text-zinc-500">난이도</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">관리</th>
+              <tr className="border-b border-zinc-100 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950">
+                <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-500">테스트명</th>
+                <th className="hidden sm:table-cell px-5 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-500">분반</th>
+                <th className="px-5 py-3 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-500">유형</th>
+                <th className="hidden md:table-cell px-5 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-500">날짜</th>
+                <th className="hidden md:table-cell px-5 py-3 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-500">총문항</th>
+                <th className="hidden lg:table-cell px-5 py-3 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-500">난이도</th>
+                <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-500">관리</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100">
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-900">
               {tests.map((t) => (
-                <tr key={t.id} className="hover:bg-zinc-50 transition-colors">
+                <tr key={t.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors">
                   <td className="px-5 py-3.5">
                     <Link
                       href={`/admin/scores/${t.id}`}
-                      className="font-medium text-zinc-900 hover:underline"
+                      className="font-medium text-zinc-900 dark:text-zinc-100 hover:underline"
                     >
                       {t.title}
                     </Link>
                   </td>
-                  <td className="hidden sm:table-cell px-5 py-3.5 text-zinc-500">{t.className}</td>
+                  <td className="hidden sm:table-cell px-5 py-3.5 text-zinc-500 dark:text-zinc-500">{t.className}</td>
                   <td className="px-5 py-3.5 text-center">
-                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${EXAM_TYPE_BADGE[t.examType] ?? 'bg-zinc-100 text-zinc-600'}`}>
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${EXAM_TYPE_BADGE[t.examType] ?? 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400'}`}>
                       {t.examType}
                     </span>
                   </td>
-                  <td className="hidden md:table-cell px-5 py-3.5 text-zinc-500">{t.testDate}</td>
-                  <td className="hidden md:table-cell px-5 py-3.5 text-center text-zinc-500">
+                  <td className="hidden md:table-cell px-5 py-3.5 text-zinc-500 dark:text-zinc-500">{t.testDate}</td>
+                  <td className="hidden md:table-cell px-5 py-3.5 text-center text-zinc-500 dark:text-zinc-500">
                     {t.totalQ ?? '—'}
                   </td>
-                  <td className="hidden lg:table-cell px-5 py-3.5 text-center text-zinc-500">
+                  <td className="hidden lg:table-cell px-5 py-3.5 text-center text-zinc-500 dark:text-zinc-500">
                     {t.difficulty ? `난이도 ${t.difficulty}` : '—'}
                   </td>
                   <td className="px-5 py-3.5 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Link
                         href={`/admin/scores/${t.id}`}
-                        className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors"
+                        className="text-xs text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
                       >
                         상세
                       </Link>
-                      <span className="text-zinc-200">|</span>
+                      <span className="text-zinc-200 dark:text-zinc-800">|</span>
                       <button
                         type="button"
                         onClick={() => handleDelete(t.id, t.title)}
                         disabled={pending}
-                        className="text-xs text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                        className="text-xs text-zinc-400 dark:text-zinc-600 hover:text-red-500 transition-colors disabled:opacity-50"
                       >
                         삭제
                       </button>
@@ -340,13 +340,13 @@ export function ScoresClient({ classOptions, selectedClassId, selectedDate, test
 
           {needsGradeCuts && (
             <div>
-              <p className="mb-2 text-xs font-medium text-zinc-600">
-                등급컷 <span className="text-zinc-400 font-normal">(각 등급 최저 점수)</span>
+              <p className="mb-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                등급컷 <span className="text-zinc-400 dark:text-zinc-600 font-normal">(각 등급 최저 점수)</span>
               </p>
               <div className="grid grid-cols-9 gap-1.5">
                 {GRADE_NUMS.map((g) => (
                   <div key={g}>
-                    <p className="text-center text-[11px] text-zinc-400 mb-1">{g}등급</p>
+                    <p className="text-center text-[11px] text-zinc-400 dark:text-zinc-600 mb-1">{g}등급</p>
                     <input
                       type="number"
                       min={0}
@@ -358,7 +358,7 @@ export function ScoresClient({ classOptions, selectedClassId, selectedDate, test
                           gradeCuts: { ...f.gradeCuts, [g]: e.target.value },
                         }))
                       }
-                      className="w-full rounded border border-zinc-200 bg-zinc-50 px-1 py-1.5 text-center text-xs focus:outline-none focus:border-zinc-400"
+                      className="w-full rounded border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-1 py-1.5 text-center text-xs focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                       placeholder="0"
                     />
                   </div>
@@ -373,7 +373,7 @@ export function ScoresClient({ classOptions, selectedClassId, selectedDate, test
             <button
               type="button"
               onClick={() => setCreateOpen(false)}
-              className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+              className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors"
             >
               취소
             </button>
@@ -381,7 +381,7 @@ export function ScoresClient({ classOptions, selectedClassId, selectedDate, test
               type="button"
               onClick={handleCreate}
               disabled={pending}
-              className="flex-1 rounded-lg bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 transition-colors disabled:opacity-50"
+              className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50"
             >
               {pending ? '생성 중…' : '생성'}
             </button>

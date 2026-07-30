@@ -42,22 +42,22 @@ export function ContactRequestQueue({ initial }: { initial: PendingRequest[] }) 
       </p>
       <ul className="space-y-2">
         {requests.map((r) => (
-          <li key={r.id} className="flex flex-wrap items-center gap-2 rounded-xl bg-white border border-amber-100 px-3.5 py-2.5">
+          <li key={r.id} className="flex flex-wrap items-center gap-2 rounded-xl bg-white dark:bg-zinc-900 border border-amber-100 px-3.5 py-2.5">
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-zinc-800">
+              <p className="text-sm text-zinc-800 dark:text-zinc-200">
                 <span className="font-medium">{r.requesterName}</span>
-                <span className="text-zinc-400"> ({ROLE_LABEL[r.requesterRole] ?? r.requesterRole})</span>
-                <span className="text-zinc-400"> → </span>
+                <span className="text-zinc-400 dark:text-zinc-600"> ({ROLE_LABEL[r.requesterRole] ?? r.requesterRole})</span>
+                <span className="text-zinc-400 dark:text-zinc-600"> → </span>
                 <span className="font-medium">{r.studentName}</span> 학생
               </p>
-              <p className="text-xs text-zinc-400 mt-0.5">{formatDatetime(r.requestedAt)}</p>
+              <p className="text-xs text-zinc-400 dark:text-zinc-600 mt-0.5">{formatDatetime(r.requestedAt)}</p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 disabled={pending}
                 onClick={() => handleDecide(r.id, true)}
-                className="rounded-lg bg-zinc-950 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 disabled:opacity-50 transition-colors"
+                className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-3 py-1.5 text-xs font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 transition-colors"
               >
                 승인
               </button>
@@ -65,7 +65,7 @@ export function ContactRequestQueue({ initial }: { initial: PendingRequest[] }) 
                 type="button"
                 disabled={pending}
                 onClick={() => handleDecide(r.id, false)}
-                className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50 disabled:opacity-50 transition-colors"
+                className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950 disabled:opacity-50 transition-colors"
               >
                 거절
               </button>

@@ -66,8 +66,8 @@ const STATUS_LABEL: Record<string, string> = {
 }
 const STATUS_BADGE: Record<string, string> = {
   open: 'bg-red-50 text-red-600',
-  in_progress: 'bg-zinc-900 text-white',
-  answered: 'bg-zinc-100 text-zinc-500',
+  in_progress: 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900',
+  answered: 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-500',
 }
 
 const mdPlugins = { remark: [remarkMath], rehype: [rehypeKatex] }
@@ -114,7 +114,7 @@ function AnswerEditor({
   return (
     <div className="space-y-3">
       {/* 탭 + AI 버튼 */}
-      <div className="flex items-center justify-between border-b border-zinc-100">
+      <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-900">
         <div className="flex">
           {(['write', 'preview'] as const).map((t) => (
             <button
@@ -124,8 +124,8 @@ function AnswerEditor({
               className={[
                 'px-4 py-2 text-sm transition-colors border-b-2 -mb-px',
                 tab === t
-                  ? 'border-zinc-950 text-zinc-950 font-medium'
-                  : 'border-transparent text-zinc-400 hover:text-zinc-700',
+                  ? 'border-zinc-950 dark:border-zinc-50 text-zinc-950 dark:text-zinc-50 font-medium'
+                  : 'border-transparent text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300',
               ].join(' ')}
             >
               {t === 'write' ? '입력' : '미리보기'}
@@ -134,13 +134,13 @@ function AnswerEditor({
         </div>
         {onAiDraft && (
           <div className="flex items-center gap-3 mb-1">
-            <label className="flex items-center gap-1.5 text-xs text-zinc-500 cursor-pointer select-none">
+            <label className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-500 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={aiFullAnswer ?? false}
                 onChange={(e) => onAiFullAnswerChange?.(e.target.checked)}
                 disabled={aiLoading}
-                className="h-3.5 w-3.5 rounded border-zinc-300 accent-zinc-950"
+                className="h-3.5 w-3.5 rounded border-zinc-300 dark:border-zinc-700 accent-zinc-950 dark:accent-zinc-50"
               />
               최종 답까지 풀이
             </label>
@@ -148,7 +148,7 @@ function AnswerEditor({
               type="button"
               onClick={onAiDraft}
               disabled={aiLoading}
-              className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors disabled:opacity-50"
             >
             {aiLoading ? (
               <>
@@ -179,10 +179,10 @@ function AnswerEditor({
           value={content}
           onChange={(e) => onContentChange(e.target.value)}
           placeholder={`답변 내용을 입력하세요.\n\n마크다운: **굵게**, *기울임*, \`코드\`, - 목록\nLaTeX 수식: $x^2$ (인라인), $$\\frac{a}{b}$$ (블록)`}
-          className="w-full resize-none rounded-xl border border-zinc-200 bg-white px-4 py-3 font-mono text-sm leading-relaxed text-zinc-900 placeholder:text-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 focus:outline-none transition-all"
+          className="w-full resize-none rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 font-mono text-sm leading-relaxed text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 focus:border-zinc-950 dark:focus:border-zinc-50 focus:ring-1 focus:ring-zinc-950 dark:focus:ring-zinc-50 focus:outline-none transition-all"
         />
       ) : (
-        <div className="min-h-[280px] rounded-xl border border-zinc-200 bg-white px-5 py-4">
+        <div className="min-h-[280px] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-5 py-4">
           {content.trim() ? (
             <div className="prose prose-sm prose-zinc max-w-none text-sm leading-relaxed">
               <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
@@ -190,19 +190,19 @@ function AnswerEditor({
               </ReactMarkdown>
             </div>
           ) : (
-            <p className="text-sm italic text-zinc-400">미리보기가 없습니다.</p>
+            <p className="text-sm italic text-zinc-400 dark:text-zinc-600">미리보기가 없습니다.</p>
           )}
         </div>
       )}
 
       {/* 첨부 파일 */}
       <div className="space-y-2">
-        <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400">파일 첨부 (이미지 · 영상 · 문서 등)</label>
+        <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-600">파일 첨부 (이미지 · 영상 · 문서 등)</label>
         <input
           type="file"
           multiple
           onChange={onFileChange}
-          className="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200 cursor-pointer transition-all"
+          className="block w-full text-sm text-zinc-500 dark:text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-zinc-100 dark:file:bg-zinc-900 file:text-zinc-700 dark:file:text-zinc-300 hover:file:bg-zinc-200 dark:hover:file:bg-zinc-800 cursor-pointer transition-all"
           disabled={isPending}
         />
 
@@ -212,28 +212,28 @@ function AnswerEditor({
             {files.map((file, i) => (
               <div key={i} className="relative group">
                 {file.type.startsWith('image/') ? (
-                  <div className="h-16 w-16 rounded-xl border border-zinc-200 overflow-hidden bg-zinc-50">
+                  <div className="h-16 w-16 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-zinc-50 dark:bg-zinc-950">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={URL.createObjectURL(file)} alt="preview" className="h-full w-full object-cover" />
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 max-w-[180px]">
+                  <div className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 max-w-[180px]">
                     {file.type.startsWith('video/') ? (
-                      <svg className="h-4 w-4 shrink-0 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="h-4 w-4 shrink-0 text-zinc-400 dark:text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
                     ) : (
-                      <svg className="h-4 w-4 shrink-0 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="h-4 w-4 shrink-0 text-zinc-400 dark:text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                     )}
-                    <span className="text-xs text-zinc-600 truncate">{file.name}</span>
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400 truncate">{file.name}</span>
                   </div>
                 )}
                 <button
                   type="button"
                   onClick={() => onRemoveFile(i)}
-                  className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -248,9 +248,9 @@ function AnswerEditor({
         {mediaUrls.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
             {mediaUrls.map((url, i) => (
-              <div key={i} className="flex items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-[11px] font-medium text-white group">
+              <div key={i} className="flex items-center gap-2 rounded-full bg-zinc-900 dark:bg-zinc-100 px-3 py-1.5 text-[11px] font-medium text-white dark:text-zinc-900 group">
                 <span className="max-w-[150px] truncate">{url.split('/').pop()}</span>
-                <button type="button" onClick={() => onRemoveMedia(i)} className="text-zinc-400 hover:text-white transition-colors">
+                <button type="button" onClick={() => onRemoveMedia(i)} className="text-zinc-400 dark:text-zinc-600 hover:text-white transition-colors">
                   <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -263,7 +263,7 @@ function AnswerEditor({
 
       {/* 난이도 — 필수 (답변 통계·추천 난이도의 기반 데이터) */}
       <div className="space-y-1.5">
-        <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400">
+        <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-600">
           난이도 (1–8, <span className="text-red-500">필수</span>) · 하 1–4 / 중 5–6 / 상 7–8
         </label>
         <div className="flex flex-wrap items-center gap-3">
@@ -275,16 +275,16 @@ function AnswerEditor({
             value={difficulty ?? 4}
             onChange={(e) => onDifficultyChange(parseInt(e.target.value, 10))}
             disabled={isPending || difficulty === null}
-            className="h-1.5 w-48 accent-zinc-950 disabled:opacity-50"
+            className="h-1.5 w-48 accent-zinc-950 dark:accent-zinc-50 disabled:opacity-50"
           />
-          <span className="min-w-10 text-sm font-medium text-zinc-700">
+          <span className="min-w-10 text-sm font-medium text-zinc-700 dark:text-zinc-300">
             {difficulty !== null ? difficulty : '—'}
           </span>
           {difficulty !== null && (
             <button
               type="button"
               onClick={() => onDifficultyChange(null)}
-              className="text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+              className="text-xs text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
             >
               초기화
             </button>
@@ -293,23 +293,23 @@ function AnswerEditor({
             <button
               type="button"
               onClick={() => onDifficultyChange(4)}
-              className="text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+              className="text-xs text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
             >
               설정
             </button>
           )}
           {/* 추천 난이도 — 주관 편차를 줄이기 위한 참고 근거 */}
           {(relatedDifficulty != null || (difficultyHint?.textbookAvg != null)) && (
-            <span className="flex items-center gap-2 rounded-lg bg-zinc-50 px-2.5 py-1 text-[11px] text-zinc-500">
+            <span className="flex items-center gap-2 rounded-lg bg-zinc-50 dark:bg-zinc-950 px-2.5 py-1 text-[11px] text-zinc-500 dark:text-zinc-500">
               추천:
-              {relatedDifficulty != null && <span>같은 문항 이전 <b className="text-zinc-800">{relatedDifficulty}</b></span>}
+              {relatedDifficulty != null && <span>같은 문항 이전 <b className="text-zinc-800 dark:text-zinc-200">{relatedDifficulty}</b></span>}
               {difficultyHint?.textbookAvg != null && (
-                <span>교재 평균 <b className="text-zinc-800">{difficultyHint.textbookAvg}</b> ({difficultyHint.count}건)</span>
+                <span>교재 평균 <b className="text-zinc-800 dark:text-zinc-200">{difficultyHint.textbookAvg}</b> ({difficultyHint.count}건)</span>
               )}
               <button
                 type="button"
                 onClick={() => onDifficultyChange(relatedDifficulty ?? Math.round(difficultyHint!.textbookAvg!))}
-                className="rounded-md bg-zinc-950 px-2 py-0.5 text-[10px] font-medium text-white hover:bg-zinc-700"
+                className="rounded-md bg-zinc-950 dark:bg-zinc-50 px-2 py-0.5 text-[10px] font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300"
               >
                 적용
               </button>
@@ -323,12 +323,12 @@ function AnswerEditor({
       <div className="flex items-center justify-end gap-3">
         {onCancel && (
           <button type="button" onClick={onCancel} disabled={isPending}
-            className="rounded-xl border border-zinc-200 px-5 py-2.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50 transition-colors disabled:opacity-50">
+            className="rounded-xl border border-zinc-200 dark:border-zinc-800 px-5 py-2.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors disabled:opacity-50">
             취소
           </button>
         )}
         <button type="button" onClick={onSubmit} disabled={isPending || !content.trim()}
-          className="inline-flex items-center gap-2 rounded-xl bg-zinc-950 px-6 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 disabled:opacity-50 transition-colors">
+          className="inline-flex items-center gap-2 rounded-xl bg-zinc-950 dark:bg-zinc-50 px-6 py-2.5 text-sm font-bold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 transition-colors">
           {isPending ? (
             <>
               <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -520,36 +520,36 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
   return (
     <div className="space-y-5">
       {/* 질문 카드 */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-5">
+      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[question.status]}`}>
               {STATUS_LABEL[question.status]}
             </span>
-            <span className="text-xs text-zinc-400">{formatDatetime(question.created_at)}</span>
+            <span className="text-xs text-zinc-400 dark:text-zinc-600">{formatDatetime(question.created_at)}</span>
           </div>
-          <div className="flex items-center gap-3 text-sm text-zinc-500">
+          <div className="flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-500">
             {question.assignedTaName ? (
-              <span>담당: <strong className="text-zinc-800">{question.assignedTaName}</strong></span>
+              <span>담당: <strong className="text-zinc-800 dark:text-zinc-200">{question.assignedTaName}</strong></span>
             ) : (
-              <span className="text-zinc-400">담당 조교 없음</span>
+              <span className="text-zinc-400 dark:text-zinc-600">담당 조교 없음</span>
             )}
             {canAnswer && !isAssigned && (
               <button type="button" onClick={handleAssign} disabled={pending}
-                className="rounded-lg bg-zinc-950 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-700 transition-colors disabled:opacity-50">
+                className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-3 py-1.5 text-xs font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 transition-colors disabled:opacity-50">
                 내가 담당하기
               </button>
             )}
           </div>
         </div>
-        <div className="whitespace-pre-wrap text-sm text-zinc-800 leading-relaxed">{question.content}</div>
+        <div className="whitespace-pre-wrap text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed">{question.content}</div>
         {question.image_urls.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
             {question.image_urls.map((url, i) => (
               <a key={i} href={url} target="_blank" rel="noopener noreferrer">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={url} alt={`첨부 이미지 ${i + 1}`}
-                  className="h-32 w-auto rounded-lg border border-zinc-200 object-cover hover:opacity-80 transition-opacity"
+                  className="h-32 w-auto rounded-lg border border-zinc-200 dark:border-zinc-800 object-cover hover:opacity-80 transition-opacity"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
               </a>
             ))}
@@ -564,7 +564,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
         <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-5">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold text-emerald-800">연결된 기존 답변 {related.length}건</span>
-            <span className="text-[11px] text-zinc-400">
+            <span className="text-[11px] text-zinc-400 dark:text-zinc-600">
               같은 교재·문항 또는 제목·내용이 비슷한 질문의 답변입니다. 내용을 확인한 뒤 채택하거나 참고해서 답변하세요.
             </span>
           </div>
@@ -573,7 +573,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
             {related.map((ra) => {
               const expanded = expandedRelatedId === ra.questionId
               return (
-                <div key={ra.questionId} className="rounded-lg border border-emerald-100 bg-white">
+                <div key={ra.questionId} className="rounded-lg border border-emerald-100 bg-white dark:bg-zinc-900">
                   <button
                     type="button"
                     onClick={() => setExpandedRelatedId(expanded ? null : ra.questionId)}
@@ -582,34 +582,34 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
                     <span
                       className={[
                         'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                        ra.matchType === 'same_problem' ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-100 text-zinc-500',
+                        ra.matchType === 'same_problem' ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-500',
                       ].join(' ')}
                     >
                       {ra.matchType === 'same_problem' ? '같은 문항' : '유사'}
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-zinc-800">
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-zinc-800 dark:text-zinc-200">
                       {ra.questionTitle || '(제목 없음)'}
                     </span>
-                    <span className="hidden shrink-0 text-xs text-zinc-400 sm:block">
+                    <span className="hidden shrink-0 text-xs text-zinc-400 dark:text-zinc-600 sm:block">
                       {ra.taName}
                       {ra.difficulty != null && ` · 난이도 ${ra.difficulty}`}
                       {` · ${formatDatetime(ra.answeredAt)}`}
                     </span>
                     <svg
-                      className={`h-4 w-4 shrink-0 text-zinc-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+                      className={`h-4 w-4 shrink-0 text-zinc-400 dark:text-zinc-600 transition-transform ${expanded ? 'rotate-180' : ''}`}
                       fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
                   {expanded && (
-                    <div className="border-t border-zinc-100 px-4 py-3">
+                    <div className="border-t border-zinc-100 dark:border-zinc-900 px-4 py-3">
                       {ra.matchType === 'similar' && (
-                        <p className="mb-2 text-[11px] text-zinc-400">
+                        <p className="mb-2 text-[11px] text-zinc-400 dark:text-zinc-600">
                           제목·내용 기반 자동 추천 — 다른 문항일 수 있으니 확인 후 사용하세요
                         </p>
                       )}
-                      <div className="prose prose-sm max-w-none rounded-lg bg-zinc-50 p-4 text-zinc-800 max-h-64 overflow-y-auto">
+                      <div className="prose prose-sm max-w-none rounded-lg bg-zinc-50 dark:bg-zinc-950 p-4 text-zinc-800 dark:text-zinc-200 max-h-64 overflow-y-auto">
                         <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
                           {ra.content}
                         </ReactMarkdown>
@@ -619,7 +619,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
                           href={`/admin/qna/${ra.questionId}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-zinc-500 underline hover:text-zinc-800"
+                          className="text-xs text-zinc-500 dark:text-zinc-500 underline hover:text-zinc-800 dark:hover:text-zinc-200"
                         >
                           원 질문 열기
                         </a>
@@ -656,13 +656,13 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
       {/* 답변 목록 */}
       {answers.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-zinc-500">답변 기록 ({answers.length})</h2>
+          <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-500">답변 기록 ({answers.length})</h2>
           {answers.map((a) =>
             editingAnswerId === a.id ? (
-              <div key={a.id} className="rounded-xl border border-zinc-300 bg-white p-5">
+              <div key={a.id} className="rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5">
                 <div className="mb-4 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-zinc-900">답변 수정</h3>
-                  <span className="text-xs text-zinc-400">{a.taName}</span>
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">답변 수정</h3>
+                  <span className="text-xs text-zinc-400 dark:text-zinc-600">{a.taName}</span>
                 </div>
                 <AnswerEditor
                   content={editContent} onContentChange={setEditContent}
@@ -684,13 +684,13 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
                 />
               </div>
             ) : (
-              <div key={a.id} className="rounded-xl border border-zinc-200 bg-zinc-50 p-5">
+              <div key={a.id} className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-5">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-zinc-800">{a.taName}</span>
-                    <span className="text-xs text-zinc-400">{formatDatetime(a.answered_at)}</span>
+                    <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{a.taName}</span>
+                    <span className="text-xs text-zinc-400 dark:text-zinc-600">{formatDatetime(a.answered_at)}</span>
                     {a.difficulty !== null && a.difficulty !== undefined && (
-                      <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-600">
+                      <span className="rounded-full bg-zinc-200 dark:bg-zinc-800 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
                         난이도 {a.difficulty}
                       </span>
                     )}
@@ -704,8 +704,8 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
                   {(a.taId === currentUserId || currentUserRole === 'teacher') && (
                     <div className="flex items-center gap-2">
                       <button type="button" onClick={() => startEdit(a)} disabled={pending}
-                        className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors disabled:opacity-50">수정</button>
-                      <span className="text-zinc-300">|</span>
+                        className="text-xs text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors disabled:opacity-50">수정</button>
+                      <span className="text-zinc-300 dark:text-zinc-700">|</span>
                       <button type="button" onClick={() => handleCancelAnswer(a.id)} disabled={pending}
                         className="text-xs text-red-400 hover:text-red-600 transition-colors disabled:opacity-50">답변 취소</button>
                     </div>
@@ -715,7 +715,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
                   <div className="mb-3 flex flex-wrap gap-2">
                     {a.media_urls.map((url, i) => (
                       <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                        className="rounded-md bg-zinc-200 px-2.5 py-1 text-xs text-zinc-700 hover:bg-zinc-300 transition-colors">
+                        className="rounded-md bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors">
                         미디어 {i + 1}
                       </a>
                     ))}
@@ -737,8 +737,8 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
 
       {/* 답변 작성 */}
       {canAnswer && (
-        <div className="rounded-xl border border-zinc-200 bg-white p-5">
-          <h2 className="mb-4 text-sm font-semibold text-zinc-900">
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5">
+          <h2 className="mb-4 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
             {answers.length > 0 ? '추가 답변 작성' : '답변 작성'}
           </h2>
           <AnswerEditor
@@ -764,7 +764,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
       )}
 
       {question.status === 'answered' && answers.length > 0 && (
-        <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-5 py-4 text-sm text-zinc-500 text-center">
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-5 py-4 text-sm text-zinc-500 dark:text-zinc-500 text-center">
           답변이 완료된 질문입니다.
         </div>
       )}

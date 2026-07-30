@@ -85,24 +85,24 @@ export default async function TestDetailPage({
       <div className="mb-4">
         <Link
           href="/admin/scores"
-          className="text-sm text-zinc-400 hover:text-zinc-700 transition-colors"
+          className="text-sm text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
         >
           ← 테스트 목록
         </Link>
       </div>
 
       {/* 테스트 정보 헤더 */}
-      <div className="mb-6 rounded-2xl border border-zinc-200 bg-white px-6 py-5">
+      <div className="mb-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-6 py-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-zinc-950">{test.title as string}</h1>
-            <p className="mt-1 text-sm text-zinc-500">
+            <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">{test.title as string}</h1>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
               {className} · {test.test_date as string}
             </p>
           </div>
           <span
             className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${
-              examType === '일반' ? 'bg-zinc-100 text-zinc-600' : 'bg-zinc-900 text-white'
+              examType === '일반' ? 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400' : 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
             }`}
           >
             {examType}
@@ -110,12 +110,12 @@ export default async function TestDetailPage({
         </div>
 
         {(totalQ || objQ || subjQ || difficulty || maxScore !== 100) && (
-          <div className="mt-4 flex flex-wrap gap-4 text-sm text-zinc-600">
-            {totalQ     && <span>총문항 <b className="text-zinc-900">{totalQ}</b></span>}
-            {objQ       && <span>객관식 <b className="text-zinc-900">{objQ}</b></span>}
-            {subjQ      && <span>주관식 <b className="text-zinc-900">{subjQ}</b></span>}
-            {difficulty && <span>난이도 <b className="text-zinc-900">{difficulty}</b></span>}
-            <span>만점 <b className="text-zinc-900">{maxScore}</b></span>
+          <div className="mt-4 flex flex-wrap gap-4 text-sm text-zinc-600 dark:text-zinc-400">
+            {totalQ     && <span>총문항 <b className="text-zinc-900 dark:text-zinc-100">{totalQ}</b></span>}
+            {objQ       && <span>객관식 <b className="text-zinc-900 dark:text-zinc-100">{objQ}</b></span>}
+            {subjQ      && <span>주관식 <b className="text-zinc-900 dark:text-zinc-100">{subjQ}</b></span>}
+            {difficulty && <span>난이도 <b className="text-zinc-900 dark:text-zinc-100">{difficulty}</b></span>}
+            <span>만점 <b className="text-zinc-900 dark:text-zinc-100">{maxScore}</b></span>
           </div>
         )}
       </div>

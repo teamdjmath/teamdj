@@ -6,7 +6,7 @@ interface FieldProps {
   required?: boolean
 }
 
-const inputCls = 'w-full rounded-2xl border border-zinc-200 bg-zinc-50/50 px-5 py-3.5 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 placeholder:font-normal focus:border-zinc-900 focus:bg-white focus:outline-none transition-all disabled:opacity-50'
+const inputCls = 'w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50 px-5 py-3.5 text-sm font-medium text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 placeholder:font-normal focus:border-zinc-900 dark:focus:border-zinc-100 focus:bg-white dark:focus:bg-zinc-900 focus:outline-none transition-all disabled:opacity-50'
 
 export function InputField({
   label,
@@ -17,7 +17,7 @@ export function InputField({
   return (
     <div className="space-y-1.5">
       {label && (
-        <label className="block text-xs font-medium text-zinc-600">
+        <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
           {label}{required && <span className="ml-0.5 text-red-500">*</span>}
         </label>
       )}
@@ -37,7 +37,7 @@ export function SelectField({
   return (
     <div className="space-y-1.5">
       {label && (
-        <label className="block text-xs font-medium text-zinc-600">
+        <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
           {label}{required && <span className="ml-0.5 text-red-500">*</span>}
         </label>
       )}
@@ -58,7 +58,7 @@ export function TextareaField({
   return (
     <div className="space-y-1.5">
       {label && (
-        <label className="block text-xs font-medium text-zinc-600">
+        <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
           {label}{required && <span className="ml-0.5 text-red-500">*</span>}
         </label>
       )}

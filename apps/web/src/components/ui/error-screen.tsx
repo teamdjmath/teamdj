@@ -34,35 +34,35 @@ export function ErrorScreen({ error, reset, scope, homeHref = '/' }: Props) {
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
-      <div className="rounded-3xl border border-zinc-200 bg-white p-8 max-w-sm w-full shadow-sm">
+      <div className="rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-8 max-w-sm w-full shadow-sm">
         <div className="mb-5 flex justify-center">
-          <div className="w-14 h-14 rounded-full bg-zinc-100 flex items-center justify-center">
-            <svg className="w-7 h-7 text-zinc-500" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24">
+          <div className="w-14 h-14 rounded-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center">
+            <svg className="w-7 h-7 text-zinc-500 dark:text-zinc-500" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
             </svg>
           </div>
         </div>
-        <h2 className="text-base font-bold text-zinc-900">일시적인 오류가 발생했습니다</h2>
-        <p className="mt-2 text-sm text-zinc-500 leading-relaxed">
+        <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">일시적인 오류가 발생했습니다</h2>
+        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-500 leading-relaxed">
           오류가 자동으로 접수되었습니다.
           <br />잠시 후 다시 시도해주세요.
         </p>
         {code && (
-          <p className="mt-3 text-xs text-zinc-400">
-            문제가 계속되면 오류 코드 <span className="font-mono font-semibold text-zinc-600">{code}</span>를 알려주세요.
+          <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-600">
+            문제가 계속되면 오류 코드 <span className="font-mono font-semibold text-zinc-600 dark:text-zinc-400">{code}</span>를 알려주세요.
           </p>
         )}
         <div className="mt-6 flex flex-col gap-2">
           <button
             type="button"
             onClick={reset}
-            className="w-full rounded-xl bg-zinc-950 px-4 py-3 text-sm font-bold text-white hover:bg-zinc-800 transition-colors"
+            className="w-full rounded-xl bg-zinc-950 dark:bg-zinc-50 px-4 py-3 text-sm font-bold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
           >
             다시 시도
           </button>
           <Link
             href={homeHref}
-            className="w-full rounded-xl py-3 text-sm font-medium text-zinc-500 hover:text-zinc-800 transition-colors"
+            className="w-full rounded-xl py-3 text-sm font-medium text-zinc-500 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
           >
             홈으로 이동
           </Link>

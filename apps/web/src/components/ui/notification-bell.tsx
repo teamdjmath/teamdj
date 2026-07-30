@@ -41,7 +41,7 @@ export function NotificationBell({ placement = 'down' }: { placement?: 'up' | 'd
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="relative p-1.5 rounded-xl text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
+        className="relative p-1.5 rounded-xl text-zinc-500 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
         aria-label="알림"
         aria-expanded={open}
       >
@@ -49,7 +49,7 @@ export function NotificationBell({ placement = 'down' }: { placement?: 'up' | 'd
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V5a2 2 0 1 0-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9" />
         </svg>
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-zinc-950 px-1 text-[9px] font-bold text-white leading-none">
+          <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-zinc-950 dark:bg-zinc-50 px-1 text-[9px] font-bold text-white dark:text-zinc-900 leading-none">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -59,21 +59,21 @@ export function NotificationBell({ placement = 'down' }: { placement?: 'up' | 'd
         <div
           className={
             placement === 'up'
-              ? 'absolute w-80 z-50 rounded-2xl border border-zinc-200 bg-white shadow-xl overflow-hidden bottom-full mb-2 left-0'
+              ? 'absolute w-80 z-50 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl overflow-hidden bottom-full mb-2 left-0'
               // 'down'은 헤더 안 어디에 벨이 있든(이름 등 다른 요소가 오른쪽에 더 있어도) 항상 화면
               // 우상단 안쪽에 고정 — absolute+ancestor 기준으로 두면 벨이 화면 우측 끝이 아닐 때
               // 패널이 왼쪽으로 화면 밖까지 밀려나가 잘렸음
-              : 'fixed z-50 top-14 right-4 w-[calc(100vw-2rem)] max-w-80 rounded-2xl border border-zinc-200 bg-white shadow-xl overflow-hidden'
+              : 'fixed z-50 top-14 right-4 w-[calc(100vw-2rem)] max-w-80 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl overflow-hidden'
           }
         >
           {/* 헤더 */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
-            <h3 className="text-sm font-semibold text-zinc-900">알림</h3>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-zinc-900">
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">알림</h3>
             {unreadCount > 0 && (
               <button
                 type="button"
                 onClick={() => { markAllAsRead(); }}
-                className="text-xs text-zinc-400 hover:text-zinc-800 transition-colors"
+                className="text-xs text-zinc-400 dark:text-zinc-600 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
               >
                 모두 읽음
               </button>
@@ -83,29 +83,29 @@ export function NotificationBell({ placement = 'down' }: { placement?: 'up' | 'd
           {/* 목록 */}
           <div className="max-h-[360px] overflow-y-auto">
             {notifications.length === 0 ? (
-              <p className="py-10 text-center text-sm text-zinc-400">새 알림이 없습니다</p>
+              <p className="py-10 text-center text-sm text-zinc-400 dark:text-zinc-600">새 알림이 없습니다</p>
             ) : (
-              <ul className="divide-y divide-zinc-100">
+              <ul className="divide-y divide-zinc-100 dark:divide-zinc-900">
                 {notifications.map((n) => (
                   <li
                     key={n.id}
                     onClick={() => handleItemClick(n)}
-                    className={`px-4 py-3 cursor-pointer hover:bg-zinc-50 transition-colors ${
-                      !n.is_read ? 'bg-zinc-50/60' : ''
+                    className={`px-4 py-3 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors ${
+                      !n.is_read ? 'bg-zinc-50/60 dark:bg-zinc-950/60' : ''
                     }`}
                   >
                     <div className="flex items-start gap-2.5">
                       {!n.is_read && (
-                        <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-zinc-950 shrink-0" />
+                        <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-zinc-950 dark:bg-zinc-50 shrink-0" />
                       )}
                       <div className={!n.is_read ? '' : 'ml-4'}>
-                        <p className={`text-xs font-semibold leading-snug ${n.is_read ? 'text-zinc-500' : 'text-zinc-900'}`}>
+                        <p className={`text-xs font-semibold leading-snug ${n.is_read ? 'text-zinc-500 dark:text-zinc-500' : 'text-zinc-900 dark:text-zinc-100'}`}>
                           {n.title}
                         </p>
-                        <p className="text-xs text-zinc-400 mt-0.5 line-clamp-2 leading-relaxed">
+                        <p className="text-xs text-zinc-400 dark:text-zinc-600 mt-0.5 line-clamp-2 leading-relaxed">
                           {n.body}
                         </p>
-                        <p className="text-[10px] text-zinc-300 mt-1">{relativeTime(n.created_at)}</p>
+                        <p className="text-[10px] text-zinc-300 dark:text-zinc-700 mt-1">{relativeTime(n.created_at)}</p>
                       </div>
                     </div>
                   </li>

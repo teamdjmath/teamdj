@@ -13,7 +13,7 @@ export function MobileNav({ items, badges }: { items: readonly NavItem[]; badges
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100"
+        className="rounded-lg p-1.5 text-zinc-500 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900"
         aria-label="메뉴 열기"
       >
         <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -32,16 +32,16 @@ export function MobileNav({ items, badges }: { items: readonly NavItem[]; badges
       {/* 드로어 */}
       <div
         className={[
-          'fixed inset-y-0 right-0 z-50 w-64 bg-white shadow-xl transition-transform duration-300',
+          'fixed inset-y-0 right-0 z-50 w-64 bg-white dark:bg-zinc-900 shadow-xl transition-transform duration-300',
           open ? 'translate-x-0' : 'translate-x-full',
         ].join(' ')}
       >
-        <div className="flex h-14 items-center justify-between border-b border-zinc-100 px-5">
-          <span className="text-sm font-semibold text-zinc-900">메뉴</span>
+        <div className="flex h-14 items-center justify-between border-b border-zinc-100 dark:border-zinc-900 px-5">
+          <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">메뉴</span>
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100"
+            className="rounded-lg p-1.5 text-zinc-400 dark:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-900"
             aria-label="메뉴 닫기"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -57,12 +57,12 @@ export function MobileNav({ items, badges }: { items: readonly NavItem[]; badges
                 key={href}
                 href={href}
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100"
               >
                 {icon}
                 <span className="flex-1">{label}</span>
                 {badge > 0 && (
-                  <span className="rounded-full bg-zinc-900 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                  <span className="rounded-full bg-zinc-900 dark:bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white dark:text-zinc-900">
                     {badge}
                   </span>
                 )}

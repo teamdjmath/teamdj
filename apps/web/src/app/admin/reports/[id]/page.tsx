@@ -49,7 +49,7 @@ export default async function ReportDetailPage({
       <div className="mb-6">
         <Link
           href="/admin/reports"
-          className="mb-3 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 transition-colors"
+          className="mb-3 inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
@@ -57,12 +57,12 @@ export default async function ReportDetailPage({
           리포트 목록
         </Link>
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold text-zinc-950">학습 리포트</h1>
-          <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-600">
+          <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">학습 리포트</h1>
+          <span className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2.5 py-0.5 text-xs text-zinc-600 dark:text-zinc-400">
             {report.studentName} · {report.school} {report.grade} {report.className}
           </span>
         </div>
-        <p className="mt-1 text-sm text-zinc-500">{report.report_date}</p>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">{report.report_date}</p>
       </div>
 
       <ReportDetailClient report={report} />

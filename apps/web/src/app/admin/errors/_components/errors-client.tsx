@@ -29,7 +29,7 @@ const CATEGORY_BADGE: Record<string, string> = {
   validation: 'bg-blue-50 text-blue-600',
   db:         'bg-purple-50 text-purple-600',
   network:    'bg-cyan-50 text-cyan-700',
-  unknown:    'bg-zinc-100 text-zinc-600',
+  unknown:    'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400',
 }
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -49,8 +49,8 @@ export function ErrorsClient({ errors, categoryFilter }: { errors: ErrorRow[]; c
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-zinc-950">오류 로그</h1>
-        <p className="mt-0.5 text-sm text-zinc-400">웹 전반의 오류 수집 (최근 200건 · 1개월 보관 · Slack 실시간 알림)</p>
+        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">오류 로그</h1>
+        <p className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-600">웹 전반의 오류 수집 (최근 200건 · 1개월 보관 · Slack 실시간 알림)</p>
       </div>
 
       {/* 분류 필터 */}
@@ -59,7 +59,7 @@ export function ErrorsClient({ errors, categoryFilter }: { errors: ErrorRow[]; c
           type="button"
           onClick={() => router.push('/admin/errors')}
           className={`rounded-full px-3.5 py-1.5 text-xs font-medium border transition-colors ${
-            !categoryFilter ? 'bg-zinc-950 text-white border-zinc-950' : 'bg-white text-zinc-500 border-zinc-200 hover:border-zinc-400'
+            !categoryFilter ? 'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900 border-zinc-950 dark:border-zinc-50' : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-500 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600'
           }`}
         >
           전체
@@ -70,7 +70,7 @@ export function ErrorsClient({ errors, categoryFilter }: { errors: ErrorRow[]; c
             type="button"
             onClick={() => router.push(`/admin/errors?category=${key}`)}
             className={`rounded-full px-3.5 py-1.5 text-xs font-medium border transition-colors ${
-              categoryFilter === key ? 'bg-zinc-950 text-white border-zinc-950' : 'bg-white text-zinc-500 border-zinc-200 hover:border-zinc-400'
+              categoryFilter === key ? 'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900 border-zinc-950 dark:border-zinc-50' : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-500 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600'
             }`}
           >
             {label}
@@ -78,13 +78,13 @@ export function ErrorsClient({ errors, categoryFilter }: { errors: ErrorRow[]; c
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         {errors.length === 0 ? (
-          <div className="py-16 text-center text-sm text-zinc-400">기록된 오류가 없습니다. 🎉</div>
+          <div className="py-16 text-center text-sm text-zinc-400 dark:text-zinc-600">기록된 오류가 없습니다. 🎉</div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-100 text-left text-xs text-zinc-400">
+              <tr className="border-b border-zinc-100 dark:border-zinc-900 text-left text-xs text-zinc-400 dark:text-zinc-600">
                 <th className="px-4 py-3 font-medium whitespace-nowrap">시각</th>
                 <th className="px-4 py-3 font-medium whitespace-nowrap">분류</th>
                 <th className="px-4 py-3 font-medium whitespace-nowrap">출처</th>
@@ -92,10 +92,10 @@ export function ErrorsClient({ errors, categoryFilter }: { errors: ErrorRow[]; c
                 <th className="px-4 py-3 font-medium whitespace-nowrap hidden lg:table-cell">경로</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-50">
+            <tbody className="divide-y divide-zinc-50 dark:divide-zinc-950">
               {errors.map((e) => (
-                <tr key={e.id} className="hover:bg-zinc-50 transition-colors align-top">
-                  <td className="px-4 py-3 text-zinc-500 whitespace-nowrap tabular-nums">
+                <tr key={e.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors align-top">
+                  <td className="px-4 py-3 text-zinc-500 dark:text-zinc-500 whitespace-nowrap tabular-nums">
                     {formatDatetime(e.createdAt)}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
@@ -103,17 +103,17 @@ export function ErrorsClient({ errors, categoryFilter }: { errors: ErrorRow[]; c
                       {CATEGORY_LABELS[e.category] ?? e.category}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-zinc-500 whitespace-nowrap">
+                  <td className="px-4 py-3 text-xs text-zinc-500 dark:text-zinc-500 whitespace-nowrap">
                     {SOURCE_LABELS[e.source] ?? e.source}
-                    {e.userRole && <span className="block text-zinc-400">{e.userRole}</span>}
+                    {e.userRole && <span className="block text-zinc-400 dark:text-zinc-600">{e.userRole}</span>}
                   </td>
-                  <td className="px-4 py-3 text-zinc-700">
+                  <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
                     <p className="line-clamp-2 break-all max-w-md">{e.message}</p>
                     {e.digest && (
-                      <span className="mt-0.5 inline-block font-mono text-[11px] text-zinc-400">{e.digest.slice(0, 8)}</span>
+                      <span className="mt-0.5 inline-block font-mono text-[11px] text-zinc-400 dark:text-zinc-600">{e.digest.slice(0, 8)}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs text-zinc-400 hidden lg:table-cell">
+                  <td className="px-4 py-3 text-xs text-zinc-400 dark:text-zinc-600 hidden lg:table-cell">
                     <span className="line-clamp-1 break-all max-w-[200px]">
                       {e.url ? e.url.replace(/^https?:\/\/[^/]+/, '') : '—'}
                     </span>

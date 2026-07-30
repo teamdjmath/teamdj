@@ -13,7 +13,7 @@ export function NewReportButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 rounded-lg bg-zinc-950 px-3.5 py-2 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
+        className="flex items-center gap-1.5 rounded-lg bg-zinc-950 dark:bg-zinc-50 px-3.5 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -27,29 +27,29 @@ export function NewReportButton() {
           onClick={() => setOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl"
+            className="w-full max-w-md rounded-3xl bg-white dark:bg-zinc-900 p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-base font-bold text-zinc-950">어떤 리포트를 만들까요?</h2>
-              <button type="button" onClick={() => setOpen(false)} className="text-sm text-zinc-400 hover:text-zinc-700">닫기</button>
+              <h2 className="text-base font-bold text-zinc-950 dark:text-zinc-50">어떤 리포트를 만들까요?</h2>
+              <button type="button" onClick={() => setOpen(false)} className="text-sm text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300">닫기</button>
             </div>
 
             <div className="space-y-3">
               <button
                 type="button"
                 onClick={() => router.push('/admin/reports/new')}
-                className="w-full rounded-2xl border border-zinc-200 p-5 text-left hover:border-zinc-400 hover:bg-zinc-50 transition-all group"
+                className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 text-left hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-all group"
               >
                 <div className="flex items-center gap-3 mb-1.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-950 text-white shrink-0">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900 shrink-0">
                     <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
-                  <span className="text-sm font-bold text-zinc-900">학습 리포트</span>
+                  <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">학습 리포트</span>
                 </div>
-                <p className="text-xs text-zinc-500 leading-relaxed">
+                <p className="text-xs text-zinc-500 dark:text-zinc-500 leading-relaxed">
                   분반·날짜를 선택하면 출석·테스트·과제 데이터로 자동 생성됩니다. 카카오톡 발송 가능.
                 </p>
               </button>
@@ -57,7 +57,7 @@ export function NewReportButton() {
               <button
                 type="button"
                 onClick={() => router.push('/admin/reports/clinic')}
-                className="w-full rounded-2xl border border-zinc-200 p-5 text-left hover:border-zinc-400 hover:bg-zinc-50 transition-all group"
+                className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 text-left hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-all group"
               >
                 <div className="flex items-center gap-3 mb-1.5">
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white shrink-0">
@@ -65,9 +65,9 @@ export function NewReportButton() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
-                  <span className="text-sm font-bold text-zinc-900">클리닉 리포트</span>
+                  <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">클리닉 리포트</span>
                 </div>
-                <p className="text-xs text-zinc-500 leading-relaxed">
+                <p className="text-xs text-zinc-500 dark:text-zinc-500 leading-relaxed">
                   구글 스프레드시트(엑셀) 파일을 업로드하면 학생별 클리닉 리포트 이미지를 만듭니다.
                 </p>
               </button>

@@ -104,8 +104,8 @@ export default async function ExamResultsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-bold text-zinc-950">특별 시험 관리</h1>
-        <p className="mt-0.5 text-sm text-zinc-400">
+        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">특별 시험 관리</h1>
+        <p className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-600">
           특별시험 레포트로 관리할 시험만 등록하세요 — 등급·등수·예측등급처럼 개별 분석이 필요한 모의고사·중간고사·기말고사 등의 경우입니다.
         </p>
       </div>

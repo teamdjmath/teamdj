@@ -199,7 +199,7 @@ function SpartaCard({ course }: { course: (typeof SPARTA_COURSES)[number] }) {
         </h4>
         <span className="text-emerald-400 text-sm font-bold">7/21(화) ~ 8/7(금) · 3주간</span>
       </div>
-      <p className="text-zinc-400 text-sm mb-8">월·화·목·금 · 11강 진행 · 자체 제작 교재</p>
+      <p className="text-zinc-400 text-sm mb-8">월·화·목·금 · 11강 진행 · 전용 교재 DETERMINE</p>
 
       <div className="grid sm:grid-cols-3 gap-3 mb-8">
         {course.schedule.map((s, i) => (

@@ -31,7 +31,7 @@ const DOW_LIST   = [1, 2, 3, 4, 5, 6, 0]
 const STATUS_CONFIG: Record<StaffStatus, { label: string; dot: string; badge: string }> = {
   online:  { label: '온라인',   dot: 'bg-emerald-400', badge: 'bg-emerald-50 text-emerald-700' },
   busy:    { label: '바쁨',     dot: 'bg-amber-400',   badge: 'bg-amber-50 text-amber-700'   },
-  offline: { label: '오프라인', dot: 'bg-zinc-300',    badge: 'bg-zinc-100 text-zinc-400'    },
+  offline: { label: '오프라인', dot: 'bg-zinc-300 dark:bg-zinc-700',    badge: 'bg-zinc-100 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600'    },
 }
 
 // ── 헬퍼
@@ -478,8 +478,8 @@ export function DashboardScheduleClient({
       <div>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className="text-sm font-bold text-zinc-950">주간 시간표</h2>
-            <p className="text-xs text-zinc-400 mt-0.5">이번 주 {dateRange}</p>
+            <h2 className="text-sm font-bold text-zinc-950 dark:text-zinc-50">주간 시간표</h2>
+            <p className="text-xs text-zinc-400 dark:text-zinc-600 mt-0.5">이번 주 {dateRange}</p>
           </div>
         </div>
 
@@ -487,12 +487,12 @@ export function DashboardScheduleClient({
 
           {/* 왼쪽: 주간 시간표 */}
           <div className="flex-1 min-w-0">
-            <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
+            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
               <div className="overflow-x-auto">
                 <div className="min-w-[640px]">
                   {/* 요일 헤더 */}
                   <div
-                    className="border-b border-zinc-100 bg-zinc-50"
+                    className="border-b border-zinc-100 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950"
                     style={{ display: 'grid', gridTemplateColumns: '40px repeat(7, 1fr)' }}
                   >
                     <div className="py-2" />
@@ -503,11 +503,11 @@ export function DashboardScheduleClient({
                         <div
                           key={i}
                           className={`py-2 text-center text-xs font-semibold ${
-                            isToday ? 'text-zinc-950' : isWeekend ? 'text-zinc-300' : 'text-zinc-400'
+                            isToday ? 'text-zinc-950 dark:text-zinc-50' : isWeekend ? 'text-zinc-300 dark:text-zinc-700' : 'text-zinc-400 dark:text-zinc-600'
                           }`}
                         >
                           <div>{DAY_LABELS[i]}</div>
-                          <div className={`mt-0.5 text-[10px] ${isToday ? 'font-bold text-zinc-700' : 'text-zinc-300'}`}>
+                          <div className={`mt-0.5 text-[10px] ${isToday ? 'font-bold text-zinc-700 dark:text-zinc-300' : 'text-zinc-300 dark:text-zinc-700'}`}>
                             {d.getMonth() + 1}/{d.getDate()}
                           </div>
                         </div>
@@ -517,11 +517,11 @@ export function DashboardScheduleClient({
 
                   {/* 그리드 본문 */}
                   <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(7, 1fr)' }}>
-                    <div className="relative border-r border-zinc-100" style={{ height: totalH }}>
+                    <div className="relative border-r border-zinc-100 dark:border-zinc-900" style={{ height: totalH }}>
                       {hours.map((h) => (
                         <div
                           key={h}
-                          className="absolute right-1.5 text-[9px] text-zinc-300 leading-none select-none"
+                          className="absolute right-1.5 text-[9px] text-zinc-300 dark:text-zinc-700 leading-none select-none"
                           style={{ top: minToTop(h * 60) - 4 }}
                         >
                           {h}
@@ -557,15 +557,15 @@ export function DashboardScheduleClient({
                       return (
                         <div
                           key={dow}
-                          className={`relative border-l border-zinc-100 ${
-                            isToday ? 'bg-zinc-50/60' : isWeekend ? 'bg-zinc-50/40' : ''
+                          className={`relative border-l border-zinc-100 dark:border-zinc-900 ${
+                            isToday ? 'bg-zinc-50/60 dark:bg-zinc-950/60' : isWeekend ? 'bg-zinc-50/40 dark:bg-zinc-950/40' : ''
                           }`}
                           style={{ height: totalH }}
                         >
                           {hours.map((h) => (
                             <div
                               key={h}
-                              className="absolute inset-x-0 border-t border-zinc-100"
+                              className="absolute inset-x-0 border-t border-zinc-100 dark:border-zinc-900"
                               style={{ top: minToTop(h * 60) }}
                             />
                           ))}
@@ -625,20 +625,20 @@ export function DashboardScheduleClient({
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h2 className="text-sm font-bold text-zinc-950">추가 근무</h2>
-                  <p className="text-xs text-zinc-400 mt-0.5">{monthLabel}</p>
+                  <h2 className="text-sm font-bold text-zinc-950 dark:text-zinc-50">추가 근무</h2>
+                  <p className="text-xs text-zinc-400 dark:text-zinc-600 mt-0.5">{monthLabel}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => { setFormError(null); setAddOpen(true) }}
-                  className="rounded-lg bg-zinc-950 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 transition-colors"
+                  className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-3 py-1.5 text-xs font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
                 >
                   + 등록
                 </button>
               </div>
 
               {localExtras.length === 0 ? (
-                <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-6 text-center text-sm text-zinc-400">
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-6 text-center text-sm text-zinc-400 dark:text-zinc-600">
                   이번 달 등록된 추가 근무가 없습니다.
                 </div>
               ) : (
@@ -652,31 +652,31 @@ export function DashboardScheduleClient({
                     return (
                       <div
                         key={es.id}
-                        className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 flex items-center justify-between gap-3"
+                        className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 flex items-center justify-between gap-3"
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-semibold text-zinc-900">{es.title}</span>
+                            <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{es.title}</span>
                             {isThisWeek && (
                               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
                                 이번 주
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-zinc-400">
+                          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-zinc-400 dark:text-zinc-600">
                             <span>{dateLabel}</span>
                             <span>·</span>
                             <span>{es.start_time.slice(0, 5)}–{es.end_time.slice(0, 5)}</span>
                           </div>
                           {es.note && (
-                            <p className="text-xs text-zinc-400 truncate mt-0.5">{es.note}</p>
+                            <p className="text-xs text-zinc-400 dark:text-zinc-600 truncate mt-0.5">{es.note}</p>
                           )}
                         </div>
                         <button
                           type="button"
                           disabled={isPending}
                           onClick={() => handleDelete(es.id)}
-                          className="shrink-0 text-xs text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                          className="shrink-0 text-xs text-zinc-400 dark:text-zinc-600 hover:text-red-500 transition-colors disabled:opacity-50"
                         >
                           삭제
                         </button>
@@ -691,20 +691,20 @@ export function DashboardScheduleClient({
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h2 className="text-sm font-bold text-zinc-950">휴강 등록</h2>
-                  <p className="text-xs text-zinc-400 mt-0.5">{monthLabel} · 근무 시간에서 차감</p>
+                  <h2 className="text-sm font-bold text-zinc-950 dark:text-zinc-50">휴강 등록</h2>
+                  <p className="text-xs text-zinc-400 dark:text-zinc-600 mt-0.5">{monthLabel} · 근무 시간에서 차감</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => { setAbsError(null); setAbsDate(''); setAbsClassId(''); setAbsNote(''); setAbsOpen(true) }}
-                  className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
+                  className="rounded-lg border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors"
                 >
                   + 등록
                 </button>
               </div>
 
               {localAbsences.length === 0 ? (
-                <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-6 text-center text-sm text-zinc-400">
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-6 text-center text-sm text-zinc-400 dark:text-zinc-600">
                   이번 달 등록된 휴강이 없습니다.
                 </div>
               ) : (
@@ -718,13 +718,13 @@ export function DashboardScheduleClient({
                     return (
                       <div
                         key={ab.id}
-                        className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 flex items-center justify-between gap-3"
+                        className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 flex items-center justify-between gap-3"
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-zinc-500 line-through truncate">
+                          <p className="text-sm font-semibold text-zinc-500 dark:text-zinc-500 line-through truncate">
                             {cls?.name ?? '삭제된 분반'}
                           </p>
-                          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-zinc-400">
+                          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-zinc-400 dark:text-zinc-600">
                             <span>{dateLabel}</span>
                             {cls?.start_time && cls?.end_time && (
                               <>
@@ -733,13 +733,13 @@ export function DashboardScheduleClient({
                               </>
                             )}
                           </div>
-                          {ab.note && <p className="text-xs text-zinc-400 truncate mt-0.5">{ab.note}</p>}
+                          {ab.note && <p className="text-xs text-zinc-400 dark:text-zinc-600 truncate mt-0.5">{ab.note}</p>}
                         </div>
                         <button
                           type="button"
                           disabled={isPending}
                           onClick={() => handleDeleteAbsence(ab.id)}
-                          className="shrink-0 text-xs text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                          className="shrink-0 text-xs text-zinc-400 dark:text-zinc-600 hover:text-red-500 transition-colors disabled:opacity-50"
                         >
                           삭제
                         </button>
@@ -751,28 +751,28 @@ export function DashboardScheduleClient({
             </div>
 
             {/* 근무 시간 요약 */}
-            <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
+            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
+              <p className="text-xs font-semibold text-zinc-400 dark:text-zinc-600 uppercase tracking-wider mb-3">
                 근무 시간 · {monthLabel}
               </p>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-zinc-500">정규 수업</span>
-                  <span className="text-sm font-medium text-zinc-700">{regularHours.toFixed(1)}h</span>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-500">정규 수업</span>
+                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{regularHours.toFixed(1)}h</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-zinc-500">추가 근무</span>
-                  <span className="text-sm font-medium text-zinc-700">{extraHours.toFixed(1)}h</span>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-500">추가 근무</span>
+                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{extraHours.toFixed(1)}h</span>
                 </div>
                 {absenceHours > 0 && (
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-zinc-500">휴강 차감</span>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-500">휴강 차감</span>
                     <span className="text-sm font-medium text-red-500">-{absenceHours.toFixed(1)}h</span>
                   </div>
                 )}
-                <div className="border-t border-zinc-100 pt-2 flex justify-between items-center">
-                  <span className="text-xs font-semibold text-zinc-700">이번 달 합계</span>
-                  <span className="text-sm font-bold text-zinc-900">
+                <div className="border-t border-zinc-100 dark:border-zinc-900 pt-2 flex justify-between items-center">
+                  <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">이번 달 합계</span>
+                  <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
                     {(regularHours + extraHours - absenceHours).toFixed(1)}h
                   </span>
                 </div>
@@ -786,8 +786,8 @@ export function DashboardScheduleClient({
       <div className="space-y-4">
 
         {/* 내 상태 */}
-        <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">내 상태</p>
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5">
+          <p className="text-xs font-semibold text-zinc-400 dark:text-zinc-600 uppercase tracking-wider mb-3">내 상태</p>
           <div className="flex flex-wrap gap-2">
             {(['online', 'busy', 'offline'] as StaffStatus[]).map((s) => {
               const cfg    = STATUS_CONFIG[s]
@@ -801,25 +801,25 @@ export function DashboardScheduleClient({
                   className={[
                     'flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all',
                     active
-                      ? 'bg-zinc-950 text-white shadow-sm'
-                      : 'border border-zinc-200 text-zinc-600 hover:border-zinc-400 hover:text-zinc-900',
+                      ? 'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900 shadow-sm'
+                      : 'border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-400 dark:hover:border-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-100',
                     isPending ? 'opacity-50 cursor-not-allowed' : '',
                   ].join(' ')}
                 >
                   <span className={`h-2 w-2 rounded-full ${cfg.dot}`} />
                   {cfg.label}
-                  {active && <span className="ml-1 text-[10px] text-zinc-400">현재</span>}
+                  {active && <span className="ml-1 text-[10px] text-zinc-400 dark:text-zinc-600">현재</span>}
                 </button>
               )
             })}
           </div>
           {currentUserRole === 'teacher' && (
-            <div className="mt-4 pt-3 border-t border-zinc-100">
+            <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-900">
               <button
                 type="button"
                 onClick={handleWithdraw}
                 disabled={isPending}
-                className="text-xs font-medium text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                className="text-xs font-medium text-zinc-400 dark:text-zinc-600 hover:text-red-500 transition-colors disabled:opacity-50"
               >
                 계정 탈퇴
               </button>
@@ -828,18 +828,18 @@ export function DashboardScheduleClient({
         </div>
 
         {/* 스태프 현황 */}
-        <div className="rounded-2xl border border-zinc-200 bg-white">
-          <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-zinc-100">
-            <h2 className="text-sm font-semibold text-zinc-900">스태프 현황</h2>
-            <span className="text-xs text-zinc-400">실시간</span>
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+          <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-zinc-100 dark:border-zinc-900">
+            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">스태프 현황</h2>
+            <span className="text-xs text-zinc-400 dark:text-zinc-600">실시간</span>
           </div>
           {deleteErr && (
             <p className="px-5 pt-3 text-xs font-medium text-red-500">{deleteErr}</p>
           )}
           {staff.length === 0 ? (
-            <p className="px-5 py-6 text-center text-sm text-zinc-400">등록된 스태프가 없습니다.</p>
+            <p className="px-5 py-6 text-center text-sm text-zinc-400 dark:text-zinc-600">등록된 스태프가 없습니다.</p>
           ) : (
-            <ul className="divide-y divide-zinc-100">
+            <ul className="divide-y divide-zinc-100 dark:divide-zinc-900">
               {staff.map((member) => {
                 const s   = statusOf(member.status)
                 const cfg = STATUS_CONFIG[s]
@@ -851,18 +851,18 @@ export function DashboardScheduleClient({
                   <li key={member.userId} className="flex items-center gap-3 px-5 py-3.5">
                     <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${cfg.dot}`} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-zinc-900 flex items-center gap-1">
+                      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 flex items-center gap-1">
                         {member.name}
                         {(() => {
                           const roleTag = member.isSuperAdmin ? '관리자' : member.role === 'teacher' ? '선생님' : '조교'
                           return member.name === roleTag ? null : (
-                            <span className="text-xs font-normal text-zinc-500"> {roleTag}</span>
+                            <span className="text-xs font-normal text-zinc-500 dark:text-zinc-500"> {roleTag}</span>
                           )
                         })()}
-                        {isMe && <span className="text-[10px] font-normal text-zinc-400 ml-0.5">(나)</span>}
+                        {isMe && <span className="text-[10px] font-normal text-zinc-400 dark:text-zinc-600 ml-0.5">(나)</span>}
                       </p>
                       {isTa && (
-                        <p className="text-xs text-zinc-400">
+                        <p className="text-xs text-zinc-400 dark:text-zinc-600">
                           {member.role === 'ta_desk' ? '(사무)' : '(첨삭)'}
                         </p>
                       )}
@@ -875,7 +875,7 @@ export function DashboardScheduleClient({
                         type="button"
                         onClick={() => handleDeleteStaff(member)}
                         disabled={deletingId === member.userId}
-                        className="text-xs font-medium text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                        className="text-xs font-medium text-zinc-400 dark:text-zinc-600 hover:text-red-500 transition-colors disabled:opacity-50"
                       >
                         {deletingId === member.userId ? '삭제 중…' : '삭제'}
                       </button>
@@ -894,7 +894,7 @@ export function DashboardScheduleClient({
           <div className="fixed inset-0 z-40" onClick={() => setPopup(null)} />
           <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-4">
             <div
-              className="pointer-events-auto rounded-2xl bg-white shadow-2xl border border-zinc-100 p-5 min-w-[200px]"
+              className="pointer-events-auto rounded-2xl bg-white dark:bg-zinc-900 shadow-2xl border border-zinc-100 dark:border-zinc-900 p-5 min-w-[200px]"
               style={
                 popup.kind === 'class'
                   ? { borderLeft: `4px solid ${popup.color.border}` }
@@ -905,15 +905,15 @@ export function DashboardScheduleClient({
                 <div>
                   {popup.kind === 'class' ? (
                     <>
-                      <p className="font-bold text-zinc-900">{popup.cls.name}</p>
-                      <p className="text-xs text-zinc-400 mt-0.5">
+                      <p className="font-bold text-zinc-900 dark:text-zinc-100">{popup.cls.name}</p>
+                      <p className="text-xs text-zinc-400 dark:text-zinc-600 mt-0.5">
                         {popup.cls.subject}{popup.cls.grade ? ` · ${popup.cls.grade}` : ''}
                       </p>
                     </>
                   ) : (
                     <>
-                      <p className="font-bold text-zinc-900">{popup.es.title}</p>
-                      <p className="text-xs text-zinc-400 mt-0.5">
+                      <p className="font-bold text-zinc-900 dark:text-zinc-100">{popup.es.title}</p>
+                      <p className="text-xs text-zinc-400 dark:text-zinc-600 mt-0.5">
                         {new Date(popup.es.scheduled_date + 'T00:00:00').toLocaleDateString('ko-KR', {
                           month: 'long', day: 'numeric', weekday: 'short',
                         })}
@@ -924,18 +924,18 @@ export function DashboardScheduleClient({
                 <button
                   type="button"
                   onClick={() => setPopup(null)}
-                  className="text-zinc-300 hover:text-zinc-500 text-lg leading-none mt-0.5"
+                  className="text-zinc-300 dark:text-zinc-700 hover:text-zinc-500 dark:hover:text-zinc-500 text-lg leading-none mt-0.5"
                 >
                   ×
                 </button>
               </div>
-              <p className="text-sm font-semibold text-zinc-700 mt-3">
+              <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mt-3">
                 {popup.kind === 'class'
                   ? `${popup.cls.start_time?.slice(0, 5)} – ${popup.cls.end_time?.slice(0, 5)}`
                   : `${popup.es.start_time.slice(0, 5)} – ${popup.es.end_time.slice(0, 5)}`}
               </p>
               {popup.kind === 'extra' && popup.es.note && (
-                <p className="text-xs text-zinc-400 mt-1">{popup.es.note}</p>
+                <p className="text-xs text-zinc-400 dark:text-zinc-600 mt-1">{popup.es.note}</p>
               )}
             </div>
           </div>
@@ -952,10 +952,10 @@ export function DashboardScheduleClient({
             <InputField label="종료 시간" name="end_time"   type="time" required />
           </div>
           <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-zinc-600">메모</label>
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">메모</label>
             <textarea
               name="note" rows={2} placeholder="선택 사항"
-              className="w-full rounded-2xl border border-zinc-200 bg-zinc-50/50 px-5 py-3.5 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 placeholder:font-normal focus:border-zinc-900 focus:bg-white focus:outline-none transition-all resize-none"
+              className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50 px-5 py-3.5 text-sm font-medium text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 placeholder:font-normal focus:border-zinc-900 dark:focus:border-zinc-100 focus:bg-white dark:focus:bg-zinc-900 focus:outline-none transition-all resize-none"
             />
           </div>
           {formError && (
@@ -964,11 +964,11 @@ export function DashboardScheduleClient({
           <div className="flex justify-end gap-2 pt-1">
             <button
               type="button" onClick={() => setAddOpen(false)}
-              className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
+              className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950"
             >취소</button>
             <button
               type="submit" disabled={isPending}
-              className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+              className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50"
             >
               {isPending ? '등록 중…' : '등록'}
             </button>
@@ -987,9 +987,9 @@ export function DashboardScheduleClient({
 
           {absDate && (
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-zinc-600">휴강한 수업</label>
+              <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">휴강한 수업</label>
               {absDateClasses.length === 0 ? (
-                <p className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-400">
+                <p className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-4 py-3 text-sm text-zinc-400 dark:text-zinc-600">
                   이 날짜에 예정된 수업이 없습니다.
                 </p>
               ) : (
@@ -1004,12 +1004,12 @@ export function DashboardScheduleClient({
                         className={[
                           'w-full flex items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-colors',
                           selected
-                            ? 'border-zinc-950 bg-zinc-950 text-white'
-                            : 'border-zinc-200 bg-white text-zinc-800 hover:border-zinc-400',
+                            ? 'border-zinc-950 dark:border-zinc-50 bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900'
+                            : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 hover:border-zinc-400 dark:hover:border-zinc-600',
                         ].join(' ')}
                       >
                         <span className="font-medium truncate">{c.name}</span>
-                        <span className={`shrink-0 text-xs ${selected ? 'text-zinc-300' : 'text-zinc-400'}`}>
+                        <span className={`shrink-0 text-xs ${selected ? 'text-zinc-300 dark:text-zinc-700' : 'text-zinc-400 dark:text-zinc-600'}`}>
                           {c.start_time!.slice(0, 5)}–{c.end_time!.slice(0, 5)}
                         </span>
                       </button>
@@ -1021,12 +1021,12 @@ export function DashboardScheduleClient({
           )}
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-zinc-600">사유 (선택)</label>
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">사유 (선택)</label>
             <input
               value={absNote}
               onChange={(e) => setAbsNote(e.target.value)}
               placeholder="예: 학교 시험 기간 휴강"
-              className="w-full rounded-2xl border border-zinc-200 bg-zinc-50/50 px-5 py-3.5 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 placeholder:font-normal focus:border-zinc-900 focus:bg-white focus:outline-none transition-all"
+              className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50 px-5 py-3.5 text-sm font-medium text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 placeholder:font-normal focus:border-zinc-900 dark:focus:border-zinc-100 focus:bg-white dark:focus:bg-zinc-900 focus:outline-none transition-all"
             />
           </div>
 
@@ -1036,11 +1036,11 @@ export function DashboardScheduleClient({
           <div className="flex justify-end gap-2 pt-1">
             <button
               type="button" onClick={() => setAbsOpen(false)}
-              className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
+              className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950"
             >취소</button>
             <button
               type="submit" disabled={isPending || !absDate || !absClassId}
-              className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+              className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50"
             >
               {isPending ? '등록 중…' : '휴강 등록'}
             </button>

@@ -76,28 +76,28 @@ export function StudentFormModal({
 
         {/* 다중 분반 선택 */}
         <div>
-          <p className="mb-1.5 text-xs font-medium text-zinc-700">
+          <p className="mb-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300">
             소속 반{' '}
-            <span className="text-zinc-400 font-normal">
+            <span className="text-zinc-400 dark:text-zinc-600 font-normal">
               {selectedClassIds.length > 0 ? `${selectedClassIds.length}개 선택됨` : '(선택 사항)'}
             </span>
           </p>
-          <div className="max-h-36 overflow-y-auto rounded-xl border border-zinc-200 divide-y divide-zinc-100">
+          <div className="max-h-36 overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-800 divide-y divide-zinc-100 dark:divide-zinc-900">
             {classOptions.length === 0 ? (
-              <p className="px-3 py-2.5 text-xs text-zinc-400">등록된 분반이 없습니다.</p>
+              <p className="px-3 py-2.5 text-xs text-zinc-400 dark:text-zinc-600">등록된 분반이 없습니다.</p>
             ) : (
               classOptions.map((c) => (
                 <label
                   key={c.id}
-                  className="flex cursor-pointer items-center gap-2.5 px-3 py-2 hover:bg-zinc-50"
+                  className="flex cursor-pointer items-center gap-2.5 px-3 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-950"
                 >
                   <input
                     type="checkbox"
-                    className="accent-zinc-900"
+                    className="accent-zinc-900 dark:accent-zinc-100"
                     checked={selectedClassIds.includes(c.id)}
                     onChange={() => toggleClass(c.id)}
                   />
-                  <span className="text-sm text-zinc-700">{c.label}</span>
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">{c.label}</span>
                 </label>
               ))
             )}
@@ -110,9 +110,9 @@ export function StudentFormModal({
           type="tel"
           placeholder="01012345678"
         />
-        <p className="text-[11px] text-zinc-400">
-          로그인 ID: <span className="font-mono text-zinc-600">전화번호@teamdj.com</span>
-          &nbsp;·&nbsp;초기 비밀번호: <span className="font-mono text-zinc-600">teamdj1234</span>
+        <p className="text-[11px] text-zinc-400 dark:text-zinc-600">
+          로그인 ID: <span className="font-mono text-zinc-600 dark:text-zinc-400">전화번호@teamdj.com</span>
+          &nbsp;·&nbsp;초기 비밀번호: <span className="font-mono text-zinc-600 dark:text-zinc-400">teamdj1234</span>
         </p>
         {error && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>
@@ -121,14 +121,14 @@ export function StudentFormModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
+            className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950"
           >
             취소
           </button>
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+            className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50"
           >
             {isPending ? '등록 중…' : '등록'}
           </button>

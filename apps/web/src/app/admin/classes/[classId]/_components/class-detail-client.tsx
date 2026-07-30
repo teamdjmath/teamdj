@@ -39,47 +39,47 @@ export function ClassDetailClient({
   }
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
+    <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
       {/* 테이블 헤더 */}
-      <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
-        <span className="text-sm font-semibold text-zinc-900">
-          소속 학생 <span className="ml-1 text-zinc-400 font-normal">{students.length}명</span>
+      <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-900 px-5 py-4">
+        <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          소속 학생 <span className="ml-1 text-zinc-400 dark:text-zinc-600 font-normal">{students.length}명</span>
         </span>
         <input
           type="search"
           placeholder="이름 / 전화번호 검색"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none w-44"
+          className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 text-sm focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none w-44"
         />
       </div>
 
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-zinc-100 bg-zinc-50">
-            <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500">이름</th>
-            <th className="hidden sm:table-cell px-5 py-3 text-left text-xs font-semibold text-zinc-500">전화번호</th>
-            <th className="hidden md:table-cell px-5 py-3 text-left text-xs font-semibold text-zinc-500">등록일</th>
-            <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500">관리</th>
+          <tr className="border-b border-zinc-100 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950">
+            <th className="px-5 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-500">이름</th>
+            <th className="hidden sm:table-cell px-5 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-500">전화번호</th>
+            <th className="hidden md:table-cell px-5 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-500">등록일</th>
+            <th className="px-5 py-3 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-500">관리</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-100">
+        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-900">
           {filtered.length === 0 ? (
             <tr>
-              <td colSpan={4} className="py-10 text-center text-sm text-zinc-400">
+              <td colSpan={4} className="py-10 text-center text-sm text-zinc-400 dark:text-zinc-600">
                 {query ? '검색 결과가 없습니다.' : '소속 학생이 없습니다.'}
               </td>
             </tr>
           ) : (
             filtered.map((s) => (
-              <tr key={s.id} className="hover:bg-zinc-50 transition-colors">
+              <tr key={s.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors">
                 <td className="px-5 py-3.5">
-                  <Link href={`/admin/students/${s.id}`} className="font-medium text-zinc-900 hover:underline">
+                  <Link href={`/admin/students/${s.id}`} className="font-medium text-zinc-900 dark:text-zinc-100 hover:underline">
                     {s.name}
                   </Link>
                 </td>
-                <td className="hidden sm:table-cell px-5 py-3.5 text-zinc-500">{s.phone}</td>
-                <td className="hidden md:table-cell px-5 py-3.5 text-zinc-400 text-xs">
+                <td className="hidden sm:table-cell px-5 py-3.5 text-zinc-500 dark:text-zinc-500">{s.phone}</td>
+                <td className="hidden md:table-cell px-5 py-3.5 text-zinc-400 dark:text-zinc-600 text-xs">
                   {new Date(s.enrolledAt).toLocaleDateString('ko-KR')}
                 </td>
                 <td className="px-5 py-3.5 text-right">
@@ -87,7 +87,7 @@ export function ClassDetailClient({
                     type="button"
                     onClick={() => handleRemove(s.id, s.name)}
                     disabled={isPending}
-                    className="text-xs text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                    className="text-xs text-zinc-400 dark:text-zinc-600 hover:text-red-500 transition-colors disabled:opacity-50"
                   >
                     제거
                   </button>

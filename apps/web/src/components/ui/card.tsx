@@ -7,7 +7,7 @@ interface CardProps {
 
 export function Card({ children, className = '' }: CardProps) {
   return (
-    <div className={`rounded-[32px] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)] ${className}`}>
+    <div className={`rounded-[32px] bg-white dark:bg-zinc-900 shadow-[0_2px_10px_rgba(0,0,0,0.02)] ${className}`}>
       {children}
     </div>
   )
@@ -26,11 +26,11 @@ export function CardHeader({ title, subtitle, action, icon }: CardHeaderProps) {
       <div className="flex items-center gap-3">
         {icon && <div>{icon}</div>}
         <div>
-          <h2 className="text-lg font-bold text-zinc-900 tracking-tight">{title}</h2>
-          {subtitle && <p className="text-[11px] font-bold text-zinc-300 mt-0.5">{subtitle}</p>}
+          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">{title}</h2>
+          {subtitle && <p className="text-[11px] font-bold text-zinc-300 dark:text-zinc-700 mt-0.5">{subtitle}</p>}
         </div>
       </div>
-      {action && <div className="text-sm font-medium text-zinc-400">{action}</div>}
+      {action && <div className="text-sm font-medium text-zinc-400 dark:text-zinc-600">{action}</div>}
     </div>
   )
 }

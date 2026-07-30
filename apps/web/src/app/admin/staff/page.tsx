@@ -52,8 +52,8 @@ export default async function StaffPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-bold text-zinc-950">근무 상태</h1>
-        <p className="mt-0.5 text-sm text-zinc-400">현재 온라인 상태를 확인하고 변경하세요.</p>
+        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">근무 상태</h1>
+        <p className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-600">현재 온라인 상태를 확인하고 변경하세요.</p>
       </div>
       <StaffClient
         initialStaff={initialStaff}

@@ -219,7 +219,7 @@ export function ReportFormClient({
   return (
     <div className="space-y-6">
       {/* 분반 + 날짜 선택 */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 shadow-sm">
+      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 shadow-sm">
         <SelectField
           label="분반"
           required
@@ -241,21 +241,21 @@ export function ReportFormClient({
       </div>
 
       {!showForm && (
-        <p className="text-center text-sm text-zinc-400 py-10">분반과 날짜를 선택하면 입력 폼이 표시됩니다.</p>
+        <p className="text-center text-sm text-zinc-400 dark:text-zinc-600 py-10">분반과 날짜를 선택하면 입력 폼이 표시됩니다.</p>
       )}
 
       {showForm && (
         <>
           {/* 공통 입력 및 테스트 선택 */}
-          <div className="rounded-xl border border-zinc-200 bg-white p-6 space-y-6 shadow-sm">
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 space-y-6 shadow-sm">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-zinc-900">리포트 설정</h2>
+              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">리포트 설정</h2>
               <div className="flex items-center gap-3">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">리포트 표시 테스트</label>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-600">리포트 표시 테스트</label>
                 <select
                   value={selectedTestId}
                   onChange={(e) => setSelectedTestId(e.target.value)}
-                  className="min-w-[200px] rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-bold text-zinc-900 shadow-sm transition-all focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 cursor-pointer appearance-none"
+                  className="min-w-[200px] rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-sm font-bold text-zinc-900 dark:text-zinc-100 shadow-sm transition-all focus:border-zinc-900 dark:focus:border-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100 cursor-pointer appearance-none"
                   style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2371717a' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
                 >
                   <option value="">테스트 없음</option>
@@ -293,11 +293,11 @@ export function ReportFormClient({
           </div>
 
           {/* 학생별 입력 */}
-          <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden shadow-sm">
-            <div className="border-b border-zinc-100 bg-zinc-50 px-5 py-3 flex items-center justify-between">
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-sm">
+            <div className="border-b border-zinc-100 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950 px-5 py-3 flex items-center justify-between">
               <div>
-                <h2 className="text-sm font-semibold text-zinc-900">
-                  학생별 상세 <span className="text-zinc-400 font-normal">({students.length}명)</span>
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                  학생별 상세 <span className="text-zinc-400 dark:text-zinc-600 font-normal">({students.length}명)</span>
                 </h2>
               </div>
               <button
@@ -309,7 +309,7 @@ export function ReportFormClient({
                     ),
                   )
                 }
-                className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors shrink-0"
+                className="text-xs text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors shrink-0"
               >
                 전체 출석 처리
               </button>
@@ -318,23 +318,23 @@ export function ReportFormClient({
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-zinc-100 bg-zinc-50/30">
-                    <th className="px-5 py-3 text-left text-[11px] font-bold uppercase text-zinc-400">이름</th>
-                    <th className="px-5 py-3 text-center text-[11px] font-bold uppercase text-zinc-400">출석</th>
-                    <th className="px-5 py-3 text-center text-[11px] font-bold uppercase text-zinc-400">테스트 점수</th>
-                    <th className="px-5 py-3 text-left text-[11px] font-bold uppercase text-zinc-400">특이사항</th>
+                  <tr className="border-b border-zinc-100 dark:border-zinc-900 bg-zinc-50/30 dark:bg-zinc-950/30">
+                    <th className="px-5 py-3 text-left text-[11px] font-bold uppercase text-zinc-400 dark:text-zinc-600">이름</th>
+                    <th className="px-5 py-3 text-center text-[11px] font-bold uppercase text-zinc-400 dark:text-zinc-600">출석</th>
+                    <th className="px-5 py-3 text-center text-[11px] font-bold uppercase text-zinc-400 dark:text-zinc-600">테스트 점수</th>
+                    <th className="px-5 py-3 text-left text-[11px] font-bold uppercase text-zinc-400 dark:text-zinc-600">특이사항</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-50">
+                <tbody className="divide-y divide-zinc-50 dark:divide-zinc-950">
                   {students.map((s) => {
                     const sd = perStudent[s.id] ?? { att: '', notes: '' }
                     const scoreEntry = selectedTestId ? s.scores[selectedTestId] : undefined
                     const isAbsent   = scoreEntry?.absent === true
                     const score      = scoreEntry?.score ?? null  // undefined(미입력)도 null로 통일
                     return (
-                      <tr key={s.id} className="hover:bg-zinc-50/50 transition-colors">
+                      <tr key={s.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-950/50 transition-colors">
                         <td className="px-5 py-4">
-                          <span className="font-semibold text-zinc-900">{s.name}</span>
+                          <span className="font-semibold text-zinc-900 dark:text-zinc-100">{s.name}</span>
                         </td>
                         <td className="px-5 py-4 text-center">
                           <select
@@ -346,11 +346,11 @@ export function ReportFormClient({
                               }))
                             }
                             className={`min-w-[100px] rounded-full border px-3 py-1.5 text-[11px] font-bold transition-all focus:outline-none ${
-                              sd.att === 'present'      ? 'bg-zinc-900 text-white border-zinc-900' :
+                              sd.att === 'present'      ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100' :
                               sd.att === 'late'         ? 'bg-amber-500 text-white border-amber-500' :
                               sd.att === 'absent'       ? 'bg-red-500 text-white border-red-500' :
                               sd.att === 'absent_video' ? 'bg-orange-400 text-white border-orange-400' :
-                              'bg-white text-zinc-400 border-zinc-200'
+                              'bg-white dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600 border-zinc-200 dark:border-zinc-800'
                             }`}
                           >
                             <option value="">미입력</option>
@@ -362,9 +362,9 @@ export function ReportFormClient({
                         </td>
                         <td className="px-5 py-4 text-center">
                           {isAbsent ? (
-                            <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-[11px] font-bold text-zinc-500">미응시</span>
+                            <span className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2.5 py-0.5 text-[11px] font-bold text-zinc-500 dark:text-zinc-500">미응시</span>
                           ) : (
-                            <span className={`text-sm font-bold ${score === null ? 'text-zinc-300' : 'text-zinc-900'}`}>
+                            <span className={`text-sm font-bold ${score === null ? 'text-zinc-300 dark:text-zinc-700' : 'text-zinc-900 dark:text-zinc-100'}`}>
                               {score !== null ? `${score}점` : '—'}
                             </span>
                           )}
@@ -380,7 +380,7 @@ export function ReportFormClient({
                               }))
                             }
                             placeholder="특이사항 입력..."
-                                                         className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 focus:outline-none transition-all shadow-sm"
+                                                         className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:border-zinc-950 dark:focus:border-zinc-50 focus:ring-1 focus:ring-zinc-950 dark:focus:ring-zinc-50 focus:outline-none transition-all shadow-sm"
 
                           />
                         </td>
@@ -393,24 +393,24 @@ export function ReportFormClient({
           </div>
 
           {/* 저장 및 진행바 */}
-          <div className="sticky bottom-6 rounded-xl border border-zinc-200 bg-white p-4 shadow-xl flex items-center justify-between">
+          <div className="sticky bottom-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-xl flex items-center justify-between">
             <div>
               {progress ? (
                 <div className="flex items-center gap-3">
-                  <div className="h-2 w-48 overflow-hidden rounded-full bg-zinc-100">
+                  <div className="h-2 w-48 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-900">
                     <div
-                      className="h-full bg-zinc-900 transition-all duration-300"
+                      className="h-full bg-zinc-900 dark:bg-zinc-100 transition-all duration-300"
                       style={{ width: `${(progress.cur / progress.total) * 100}%` }}
                     />
                   </div>
-                  <span className="text-xs font-medium text-zinc-500">{progress.cur} / {progress.total}명 완료</span>
+                  <span className="text-xs font-medium text-zinc-500 dark:text-zinc-500">{progress.cur} / {progress.total}명 완료</span>
                 </div>
               ) : done !== null ? (
                 <div className="flex items-center gap-3">
-                  <p className="text-sm font-medium text-zinc-900">✓ {done}명의 리포트가 생성되었습니다.</p>
+                  <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">✓ {done}명의 리포트가 생성되었습니다.</p>
                   <Link
                     href={`/admin/reports?classId=${selectedClassId ?? ''}&date=${selectedSessionDate ?? ''}`}
-                    className="rounded-lg border border-zinc-200 bg-white px-3.5 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
+                    className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors"
                   >
                     리포트 보기 →
                   </Link>
@@ -418,14 +418,14 @@ export function ReportFormClient({
               ) : err ? (
                 <p className="text-sm font-medium text-red-500">{err}</p>
               ) : (
-                <p className="text-sm text-zinc-500">리포트 내용을 모두 확인하셨나요?</p>
+                <p className="text-sm text-zinc-500 dark:text-zinc-500">리포트 내용을 모두 확인하셨나요?</p>
               )}
             </div>
             <button
               type="button"
               onClick={handleSave}
               disabled={!!progress || students.length === 0}
-              className="rounded-lg bg-zinc-950 px-8 py-3 text-sm font-bold text-white hover:bg-zinc-800 transition-all disabled:opacity-50"
+              className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-8 py-3 text-sm font-bold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all disabled:opacity-50"
             >
               {progress ? '생성 중...' : '리포트 일괄 생성'}
             </button>

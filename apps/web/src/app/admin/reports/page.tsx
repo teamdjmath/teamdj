@@ -60,7 +60,7 @@ export default async function ReportsPage({
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-zinc-950">학습 리포트</h1>
+        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">학습 리포트</h1>
         <NewReportButton />
       </div>
 

@@ -68,8 +68,8 @@ export default async function MessagesPage({
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-bold text-zinc-950">쪽지 발송</h1>
-        <p className="mt-0.5 text-sm text-zinc-400">학생 또는 분반 전체에 쪽지를 보내세요.</p>
+        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">쪽지 발송</h1>
+        <p className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-600">학생 또는 분반 전체에 쪽지를 보내세요.</p>
       </div>
       <MessagesClient
         classes={classes}
