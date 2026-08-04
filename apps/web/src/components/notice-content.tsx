@@ -34,7 +34,7 @@ function UrlPreview({ url }: { url: string }) {
           title="동영상 미리보기"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
-          className="aspect-video w-full max-w-xl rounded-xl border border-zinc-200"
+          className="aspect-video w-full max-w-xl rounded-xl border border-zinc-200 dark:border-zinc-800"
         />
       </span>
     )
@@ -42,12 +42,12 @@ function UrlPreview({ url }: { url: string }) {
   if (IMAGE_RE.test(url)) {
     return (
       <a href={url} target="_blank" rel="noopener noreferrer" className="block my-2">
-        <img src={url} alt="첨부 이미지" className="max-h-96 w-auto max-w-full rounded-xl border border-zinc-200" />
+        <img src={url} alt="첨부 이미지" className="max-h-96 w-auto max-w-full rounded-xl border border-zinc-200 dark:border-zinc-800" />
       </a>
     )
   }
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline break-all">
+    <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 underline break-all">
       {url}
     </a>
   )
@@ -73,7 +73,7 @@ function NoticeLine({ line, first }: { line: string; first: boolean }) {
   const header = line.match(HEADER_RE)
   if (header) {
     return (
-      <p className={`font-black text-lg text-zinc-950 mb-2 ${first ? '' : 'mt-8 pt-6 border-t border-zinc-100'}`}>
+      <p className={`font-black text-lg text-zinc-950 dark:text-zinc-50 mb-2 ${first ? '' : 'mt-8 pt-6 border-t border-zinc-100 dark:border-zinc-900'}`}>
         <LineText text={header[1]} />
       </p>
     )
@@ -83,7 +83,7 @@ function NoticeLine({ line, first }: { line: string; first: boolean }) {
   if (cta) {
     return (
       <p className="mt-3">
-        <span className="font-bold text-emerald-600 underline underline-offset-2 decoration-emerald-300">
+        <span className="font-bold text-emerald-600 dark:text-emerald-400 underline underline-offset-2 decoration-emerald-300 dark:decoration-emerald-700">
           ☞ <LineText text={cta[1]} />
         </span>
       </p>
@@ -94,11 +94,11 @@ function NoticeLine({ line, first }: { line: string; first: boolean }) {
   if (subheader) {
     return (
       <p className="mt-7 mb-1">
-        <span className="inline-block rounded-full bg-zinc-900 text-white text-sm font-black px-3.5 py-1.5 tracking-wide">
+        <span className="inline-block rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-black px-3.5 py-1.5 tracking-wide">
           {subheader[1].toUpperCase()}
         </span>
         {subheader[2] && (
-          <span className="ml-2 text-sm text-zinc-500 font-medium">
+          <span className="ml-2 text-sm text-zinc-500 dark:text-zinc-500 font-medium">
             <LineText text={subheader[2]} />
           </span>
         )}
@@ -110,15 +110,15 @@ function NoticeLine({ line, first }: { line: string; first: boolean }) {
   if (bracket) {
     return (
       <p className="mt-2">
-        <span className="inline-block rounded bg-zinc-100 text-zinc-900 text-xs font-bold px-1.5 py-0.5 mr-1.5 align-middle">
+        <span className="inline-block rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-xs font-bold px-1.5 py-0.5 mr-1.5 align-middle">
           {bracket[1].slice(1, -1)}
         </span>
-        <span className="text-sm text-zinc-600"><LineText text={bracket[2]} /></span>
+        <span className="text-sm text-zinc-600 dark:text-zinc-400"><LineText text={bracket[2]} /></span>
       </p>
     )
   }
 
-  return <p><LineText text={line} /></p>
+  return <p className="text-zinc-900 dark:text-zinc-100"><LineText text={line} /></p>
 }
 
 export function NoticeContent({ content, imageUrls = [] }: { content: string; imageUrls?: string[] }) {
@@ -139,7 +139,7 @@ export function NoticeContent({ content, imageUrls = [] }: { content: string; im
               <img
                 src={url}
                 alt={`첨부 이미지 ${i + 1}`}
-                className="h-40 w-auto max-w-full rounded-xl border border-zinc-200 object-cover hover:opacity-90 transition-opacity"
+                className="h-40 w-auto max-w-full rounded-xl border border-zinc-200 dark:border-zinc-800 object-cover hover:opacity-90 transition-opacity"
               />
             </a>
           ))}

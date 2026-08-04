@@ -41,6 +41,182 @@ function formatDate(iso: string) {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
 }
 
+// 작성 가이드용 예시 — %ORIGIN%은 렌더링 시 실제 사이트 주소로 치환된다 (이미지 자동 삽입 데모용)
+const GUIDE_EXAMPLES = [
+  {
+    key: 'textbook',
+    label: '교재 안내',
+    content: `#2026학년도 1학기 교재 안내
+
+새 학기 교재가 아래와 같이 배정되었습니다. 확인 후 준비해주세요.
+
+[LEVEL 1] 기초를 다지는 단계
+[교재명]수학의 정석 기본편
+[교재명]개념원리 수학1
+
+[LEVEL 2] 실력 다지기
+[교재명]쎈 수학1
+[교재명]마플교과서 수학1
+
+[SPECIAL] 심화반 전용
+[교재명]일품 수학1
+
+☞ 교재 구매는 학원 데스크에서 일괄 진행합니다. 별도 구매하지 않으셔도 됩니다.`,
+  },
+  {
+    key: 'closure',
+    label: '휴원·일정 변경',
+    content: `#설 연휴 휴원 안내
+
+2/16(월)~2/18(수)은 설 연휴로 휴원합니다. 2/19(목)부터 정상 운영합니다.
+
+[대상]전체 재원생
+[기간]2/16(월) ~ 2/18(수)
+
+☞ 연휴 기간 질문은 Q&A 게시판에 남겨주시면 개강 후 순차적으로 답변드립니다.`,
+  },
+  {
+    key: 'event',
+    label: '특강·이벤트',
+    content: `#겨울방학 집중 특강 모집
+
+방학 동안 취약 단원을 집중적으로 보완하는 특강을 진행합니다.
+
+[대상]고1~고2
+[일시]1/6(화) ~ 1/17(금), 매일 14:00~16:00
+[장소]본관 3층 세미나실
+
+%ORIGIN%/teacher.png
+
+☞ 신청은 데스크 또는 문자로 접수해주세요. 선착순 마감되니 서둘러주세요.`,
+  },
+  {
+    key: 'video',
+    label: '수업 영상 안내',
+    content: `#1/13(월) 결석자 보강 영상
+
+당일 결석한 학생은 아래 영상으로 수업 내용을 확인해주세요.
+
+[분반]고2 수요반
+[범위]미적분 p.40~p.52
+
+https://youtu.be/sampleVide1
+
+☞ 영상 시청 후 궁금한 점은 Q&A로 남겨주세요.`,
+  },
+] as const
+
+const GUIDE_SYNTAX = [
+  { syntax: '#소제목', effect: '굵은 큰 소제목 (구분선 포함)' },
+  { syntax: '[LEVEL 1] 설명 / [SPECIAL] 설명', effect: '검은 알약 배지 — 교재 단계·묶음 구분' },
+  { syntax: '[라벨]본문', effect: '작은 회색 태그 — 교재명 등 한 줄 항목' },
+  { syntax: '☞ 안내문구', effect: '초록색 굵은 강조 문구' },
+  { syntax: '사진·유튜브 URL', effect: '자동으로 사진/영상 미리보기 삽입' },
+] as const
+
+function NoticeGuide() {
+  const [open, setOpen] = useState(false)
+  const [tab, setTab] = useState<'format' | 'preview'>('format')
+  const [exampleKey, setExampleKey] = useState<(typeof GUIDE_EXAMPLES)[number]['key']>('textbook')
+  const [origin] = useState(() => (typeof window !== 'undefined' ? window.location.origin : ''))
+
+  const example = GUIDE_EXAMPLES.find((e) => e.key === exampleKey) ?? GUIDE_EXAMPLES[0]
+  const content = example.content.replaceAll('%ORIGIN%', origin)
+
+  return (
+    <div className="mb-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500">공지 작성 가이드</span>
+          <span className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-[10px] font-bold text-zinc-400 dark:text-zinc-600">예시 {GUIDE_EXAMPLES.length}종</span>
+        </div>
+        <svg
+          className={`w-4 h-4 text-zinc-400 dark:text-zinc-600 transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="border-t border-zinc-100 dark:border-zinc-900 p-5 space-y-4">
+          {/* 예시 종류 선택 */}
+          <div className="flex flex-wrap gap-1.5">
+            {GUIDE_EXAMPLES.map((e) => (
+              <button
+                key={e.key}
+                type="button"
+                onClick={() => setExampleKey(e.key)}
+                className={[
+                  'rounded-full px-3 py-1.5 text-xs font-bold transition-colors',
+                  exampleKey === e.key
+                    ? 'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900'
+                    : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-800',
+                ].join(' ')}
+              >
+                {e.label}
+              </button>
+            ))}
+          </div>
+
+          {/* 형식 / 미리보기 탭 */}
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-600">작성 형식</p>
+            <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-900 rounded-lg p-0.5">
+              <button
+                type="button"
+                onClick={() => setTab('format')}
+                className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${tab === 'format' ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm' : 'text-zinc-500 dark:text-zinc-500'}`}
+              >
+                형식
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab('preview')}
+                className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${tab === 'preview' ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm' : 'text-zinc-500 dark:text-zinc-500'}`}
+              >
+                미리보기
+              </button>
+            </div>
+          </div>
+
+          {tab === 'format' ? (
+            <div className="rounded-xl bg-zinc-950 dark:bg-zinc-50 p-4">
+              <pre className="text-xs text-zinc-300 dark:text-zinc-700 leading-relaxed whitespace-pre-wrap font-mono overflow-x-auto">
+                {content}
+              </pre>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-4">
+              <NoticeContent content={content} />
+            </div>
+          )}
+
+          {/* 빠른 참조 */}
+          <div className="border-t border-zinc-100 dark:border-zinc-900 pt-4">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-600">빠른 참조</p>
+            <ul className="space-y-1.5">
+              {GUIDE_SYNTAX.map((s) => (
+                <li key={s.syntax} className="flex flex-wrap items-baseline gap-x-2 text-xs">
+                  <code className="rounded bg-zinc-100 dark:bg-zinc-900 px-1.5 py-0.5 font-mono text-zinc-700 dark:text-zinc-300">{s.syntax}</code>
+                  <span className="text-zinc-500 dark:text-zinc-500">{s.effect}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-[11px] text-zinc-400 dark:text-zinc-600 leading-relaxed">
+              <span className="font-bold text-zinc-500 dark:text-zinc-500">팁:</span> 사진은 아래 &ldquo;이미지 첨부&rdquo;로 올리는 편이 가장 안전합니다. 링크를 직접 붙여넣는 방식은 주소가 .jpg 등으로 끝나지 않으면(예: 카카오톡 공유 링크) 사진으로 바뀌지 않고 파란 링크로만 남습니다.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function NoticesClient({ classOptions, selectedClassId, notices }: Props) {
   const router = useRouter()
   const [modal, setModal] = useState<ModalState>(null)
@@ -156,6 +332,9 @@ export function NoticesClient({ classOptions, selectedClassId, notices }: Props)
           공지 작성
         </button>
       </div>
+
+      {/* 공지 작성 가이드 */}
+      <NoticeGuide />
 
       {/* 분반 필터 */}
       <div className="mb-6 max-w-xs space-y-1.5">

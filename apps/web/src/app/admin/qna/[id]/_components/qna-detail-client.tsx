@@ -184,7 +184,7 @@ function AnswerEditor({
       ) : (
         <div className="min-h-[280px] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-5 py-4">
           {content.trim() ? (
-            <div className="prose prose-sm prose-zinc max-w-none text-sm leading-relaxed">
+            <div className="prose prose-sm prose-zinc dark:prose-invert max-w-none text-sm leading-relaxed">
               <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
                 {content}
               </ReactMarkdown>
@@ -609,7 +609,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
                           제목·내용 기반 자동 추천 — 다른 문항일 수 있으니 확인 후 사용하세요
                         </p>
                       )}
-                      <div className="prose prose-sm max-w-none rounded-lg bg-zinc-50 dark:bg-zinc-950 p-4 text-zinc-800 dark:text-zinc-200 max-h-64 overflow-y-auto">
+                      <div className="prose prose-sm dark:prose-invert max-w-none rounded-lg bg-zinc-50 dark:bg-zinc-950 p-4 text-zinc-800 dark:text-zinc-200 max-h-64 overflow-y-auto">
                         <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
                           {ra.content}
                         </ReactMarkdown>
@@ -721,7 +721,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
                     ))}
                   </div>
                 )}
-                <div className="prose prose-sm prose-zinc max-w-none text-sm leading-relaxed">
+                <div className="prose prose-sm prose-zinc dark:prose-invert max-w-none text-sm leading-relaxed">
                   <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
                     {a.content}
                   </ReactMarkdown>

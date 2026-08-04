@@ -237,7 +237,7 @@ export function StudentQnaDetail({ question, answers, studentName, relatedAnswer
               }`}
             />
             <CardContent>
-              <div className="prose prose-zinc prose-sm max-w-none text-zinc-700 max-h-72 overflow-y-auto">
+              <div className="prose prose-zinc prose-sm dark:prose-invert max-w-none text-zinc-700 dark:text-zinc-300 max-h-72 overflow-y-auto">
                 <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
                   {relatedAnswer.content}
                 </ReactMarkdown>
@@ -330,7 +330,7 @@ export function StudentQnaDetail({ question, answers, studentName, relatedAnswer
                       })}
                     </div>
                   )}
-                  <div className="prose prose-sm prose-zinc max-w-none text-[15px] font-medium leading-relaxed">
+                  <div className="prose prose-sm prose-zinc dark:prose-invert max-w-none text-[15px] font-medium leading-relaxed">
                     <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
                       {buildStudentContent(a.content, studentName, a.taName, a.isAiDraft)}
                     </ReactMarkdown>
