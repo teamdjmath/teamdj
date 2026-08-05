@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { redirect } from 'next/navigation'
@@ -38,7 +39,7 @@ export default async function DashboardLayout({
         <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white px-5 py-3">
           <div className="flex items-center justify-between max-w-lg lg:max-w-5xl mx-auto">
             <div className="flex flex-col">
-              <span className="text-sm font-black tracking-tighter text-zinc-950 uppercase italic">TeamDJ</span>
+              <Link href="/dashboard" className="text-sm font-black tracking-tighter text-zinc-950 uppercase italic">TeamDJ</Link>
             </div>
 
             <div className="flex items-center gap-2">

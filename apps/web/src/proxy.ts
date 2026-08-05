@@ -68,7 +68,7 @@ async function slackNotifyOnce(key: string, text: string): Promise<void> {
 // ────────────────────────────────────────────────────────────────
 
 // 로그인 없이 접근 가능한 공개 경로
-const PUBLIC_PATHS = ['/', '/intro', '/login', '/register', '/consultation', '/privacy', '/terms']
+const PUBLIC_PATHS = ['/', '/intro', '/login', '/register', '/privacy', '/terms']
 
 // staff 전용 경로
 const ADMIN_PATH_PREFIX = '/admin'

@@ -41,7 +41,7 @@ export function ClosingSection() {
             transition={{ delay: 0.3, duration: 0.6 }}
           >
             <Link
-              href="/consultation"
+              href="#consultation"
               className="inline-flex items-center gap-3 h-14 md:h-16 px-8 md:px-12 rounded-full bg-zinc-950 text-white hover:bg-zinc-800 text-lg md:text-xl font-bold transition-all shadow-2xl"
             >
               상담 신청하기

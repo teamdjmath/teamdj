@@ -3,16 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { markConsultationRead, markInquiryRead } from '@/lib/actions/consultations'
-
-interface Consultation {
-  id: string
-  name: string
-  phone: string
-  content: string
-  is_read: boolean
-  created_at: string
-}
+import { markInquiryRead } from '@/lib/actions/consultations'
 
 interface Inquiry {
   id: string
@@ -42,28 +33,12 @@ function ReadBadge({ is_read }: { is_read: boolean }) {
   )
 }
 
-export function ConsultationsClient({
-  consultations,
-  inquiries,
-}: {
-  consultations: Consultation[]
-  inquiries: Inquiry[]
-}) {
+export function ConsultationsClient({ inquiries }: { inquiries: Inquiry[] }) {
   const router = useRouter()
-  const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null)
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const unreadConsultations = consultations.filter((c) => !c.is_read).length
-  const unreadInquiries     = inquiries.filter((i) => !i.is_read).length
-
-  function handleMarkConsultationRead(id: string) {
-    startTransition(async () => {
-      await markConsultationRead(id)
-      router.refresh()
-      setSelectedConsultation((prev) => prev?.id === id ? { ...prev, is_read: true } : prev)
-    })
-  }
+  const unreadInquiries = inquiries.filter((i) => !i.is_read).length
 
   function handleMarkInquiryRead(id: string) {
     startTransition(async () => {
@@ -76,59 +51,11 @@ export function ConsultationsClient({
   return (
     <div className="space-y-10">
       <div>
-        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">상담 & 문의</h1>
-        {(unreadConsultations + unreadInquiries) > 0 && (
-          <p className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-600">
-            미확인 {unreadConsultations + unreadInquiries}건
-            {unreadConsultations > 0 && ` (상담 ${unreadConsultations}건`}
-            {unreadConsultations > 0 && unreadInquiries > 0 && ` · 문의 ${unreadInquiries}건`}
-            {unreadConsultations === 0 && unreadInquiries > 0 && ` (문의 ${unreadInquiries}건`}
-            {(unreadConsultations + unreadInquiries) > 0 && ')'}
-          </p>
+        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">문의</h1>
+        {unreadInquiries > 0 && (
+          <p className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-600">미확인 {unreadInquiries}건</p>
         )}
       </div>
-
-      {/* ── 상담 신청 목록 ───────────────────────────── */}
-      <section>
-        <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-500 mb-3 uppercase tracking-wide">상담 신청</h2>
-        <div className="overflow-x-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-          {consultations.length === 0 ? (
-            <div className="py-16 text-center text-sm text-zinc-400 dark:text-zinc-600">접수된 상담이 없습니다.</div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-100 dark:border-zinc-900 text-left text-xs text-zinc-400 dark:text-zinc-600">
-                  <th className="px-4 py-3 font-medium">이름</th>
-                  <th className="px-4 py-3 font-medium hidden sm:table-cell">연락처</th>
-                  <th className="px-4 py-3 font-medium">내용</th>
-                  <th className="px-4 py-3 font-medium hidden md:table-cell">접수일</th>
-                  <th className="px-4 py-3 font-medium">상태</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-50 dark:divide-zinc-950">
-                {consultations.map((c) => (
-                  <tr
-                    key={c.id}
-                    onClick={() => setSelectedConsultation(c)}
-                    className={['cursor-pointer transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-950', !c.is_read ? 'bg-zinc-50/50 dark:bg-zinc-950/50' : ''].join(' ')}
-                  >
-                    <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">
-                      {!c.is_read && <UnreadDot />}
-                      {c.name}
-                    </td>
-                    <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300 hidden sm:table-cell">{c.phone}</td>
-                    <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300 max-w-xs">
-                      <span className="line-clamp-1">{c.content.slice(0, 30)}{c.content.length > 30 ? '…' : ''}</span>
-                    </td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 hidden md:table-cell">{formatDate(c.created_at)}</td>
-                    <td className="px-4 py-3"><ReadBadge is_read={c.is_read} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </section>
 
       {/* ── 1:1 문의 목록 ────────────────────────────── */}
       <section>
@@ -173,54 +100,6 @@ export function ConsultationsClient({
           )}
         </div>
       </section>
-
-      {/* ── 상담 상세 모달 ───────────────────────────── */}
-      {selectedConsultation && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-          onClick={() => setSelectedConsultation(null)}
-        >
-          <div
-            className="w-full max-w-lg rounded-3xl bg-white dark:bg-zinc-900 p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-bold text-zinc-950 dark:text-zinc-50">상담 내용</h2>
-              <button type="button" onClick={() => setSelectedConsultation(null)} className="text-sm text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300">닫기</button>
-            </div>
-            <div className="space-y-3 mb-6">
-              <div className="flex justify-between text-sm">
-                <span className="text-zinc-400 dark:text-zinc-600">이름</span>
-                <span className="font-medium text-zinc-900 dark:text-zinc-100">{selectedConsultation.name}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-zinc-400 dark:text-zinc-600">연락처</span>
-                <span className="font-medium text-zinc-900 dark:text-zinc-100">{selectedConsultation.phone}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-zinc-400 dark:text-zinc-600">접수일</span>
-                <span className="text-zinc-600 dark:text-zinc-400">{formatDate(selectedConsultation.created_at)}</span>
-              </div>
-              <div className="pt-2">
-                <p className="mb-1.5 text-xs font-medium text-zinc-400 dark:text-zinc-600">상담 내용</p>
-                <p className="rounded-xl bg-zinc-50 dark:bg-zinc-950 px-4 py-3 text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap leading-relaxed">
-                  {selectedConsultation.content}
-                </p>
-              </div>
-            </div>
-            {!selectedConsultation.is_read && (
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={() => handleMarkConsultationRead(selectedConsultation.id)}
-                className="w-full rounded-xl bg-zinc-950 dark:bg-zinc-50 py-3 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 transition-colors"
-              >
-                {isPending ? '처리 중…' : '읽음 처리'}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* ── 문의 상세 모달 ───────────────────────────── */}
       {selectedInquiry && (

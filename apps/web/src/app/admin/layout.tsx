@@ -22,192 +22,24 @@ import { getUnreadConsultationCount } from '@/lib/actions/consultations'
 type NavVisibility = 'all' | 'senior' | 'teacher' | 'assistant'
 
 const NAV_ITEMS = [
-  {
-    href: '/admin/dashboard',
-    label: '홈',
-    visibility: 'all' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-        <polyline strokeLinecap="round" strokeLinejoin="round" points="9 22 9 12 15 12 15 22" />
-      </svg>
-    ),
-  },
-  {
-    href: '/admin/classes',
-    label: '분반 관리',
-    visibility: 'senior' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-      </svg>
-    ),
-  },
-  {
-    href: '/admin/students',
-    label: '학생 관리',
-    visibility: 'senior' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-      </svg>
-    ),
-  },
-  {
-    href: '/admin/roster',
-    label: '학생 조회',
-    visibility: 'assistant' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <circle cx="10" cy="10" r="6" strokeLinecap="round" strokeLinejoin="round" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="m20 20-4.35-4.35" />
-      </svg>
-    ),
-  },
-  {
-    href: '/admin/attendance',
-    label: '출석 체크',
-    visibility: 'senior' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 11l3 3L22 4" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-      </svg>
-    ),
-  },
-  {
-    href: '/admin/assignments',
-    label: '과제 관리',
-    visibility: 'senior' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" />
-      </svg>
-    ),
-  },
-  {
-    href: '/admin/scores',
-    label: '테스트 점수',
-    visibility: 'senior' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2zm0 0V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10m-6 0a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m0 0V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z" />
-      </svg>
-    ),
-  },
-  {
-    href: '/admin/exam-results',
-    label: '특별 시험',
-    visibility: 'senior' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9 2 2 4-4" />
-      </svg>
-    ),
-  },
-  {
-    href: '/admin/reports',
-    label: '학습 리포트',
-    visibility: 'senior' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
-      </svg>
-    ),
-  },
-  {
-    href: '/admin/notices',
-    label: '공지사항',
-    visibility: 'senior' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V5a2 2 0 1 0-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9" />
-      </svg>
-    ),
-  },
-  {
-    href: '/admin/lectures',
-    label: '강의 영상',
-    visibility: 'senior' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <polygon strokeLinecap="round" strokeLinejoin="round" points="23 7 16 12 23 17 23 7" />
-        <rect strokeLinecap="round" strokeLinejoin="round" x="1" y="5" width="15" height="14" rx="2" ry="2" />
-      </svg>
-    ),
-  },
-  {
-    href: '/admin/qna',
-    label: '질의응답',
-    visibility: 'all' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-      </svg>
-    ),
-  },
-  {
-    href: '/admin/consultations',
-    label: '상담 & 문의',
-    visibility: 'teacher' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
-      </svg>
-    ),
-  },
-  {
-    href: '/admin/messages',
-    label: '쪽지 발송',
-    visibility: 'all' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
-      </svg>
-    ),
-  },
-  {
-    href: '/admin/qna/stats',
-    label: '답변 통계',
-    visibility: 'teacher' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-      </svg>
-    ),
-  },
-  {
-    href: '/admin/monitoring',
-    label: '모니터링',
-    visibility: 'teacher' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-      </svg>
-    ),
-  },
-  {
-    href: '/admin/audit',
-    label: '감사 로그',
-    visibility: 'teacher' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-      </svg>
-    ),
-  },
-  {
-    href: '/admin/errors',
-    label: '오류 로그',
-    visibility: 'teacher' as NavVisibility,
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0 3h.008v.008H12v-.008zm9-3.75a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-  },
+  { href: '/admin/dashboard', label: '홈', visibility: 'all' as NavVisibility, icon: 'dashboard' as const },
+  { href: '/admin/classes', label: '분반 관리', visibility: 'senior' as NavVisibility, icon: 'classes' as const },
+  { href: '/admin/students', label: '학생 관리', visibility: 'senior' as NavVisibility, icon: 'students' as const },
+  { href: '/admin/roster', label: '학생 조회', visibility: 'assistant' as NavVisibility, icon: 'roster' as const },
+  { href: '/admin/attendance', label: '출석 체크', visibility: 'senior' as NavVisibility, icon: 'attendance' as const },
+  { href: '/admin/assignments', label: '과제 관리', visibility: 'senior' as NavVisibility, icon: 'assignments' as const },
+  { href: '/admin/scores', label: '테스트 점수', visibility: 'senior' as NavVisibility, icon: 'scores' as const },
+  { href: '/admin/exam-results', label: '특별 시험', visibility: 'senior' as NavVisibility, icon: 'exam-results' as const },
+  { href: '/admin/reports', label: '학습 리포트', visibility: 'senior' as NavVisibility, icon: 'reports' as const },
+  { href: '/admin/notices', label: '공지사항', visibility: 'senior' as NavVisibility, icon: 'notices' as const },
+  { href: '/admin/lectures', label: '강의 영상', visibility: 'senior' as NavVisibility, icon: 'lectures' as const },
+  { href: '/admin/qna', label: '질의응답', visibility: 'all' as NavVisibility, icon: 'qna' as const },
+  { href: '/admin/consultations', label: '문의', visibility: 'teacher' as NavVisibility, icon: 'consultations' as const },
+  { href: '/admin/messages', label: '쪽지 발송', visibility: 'all' as NavVisibility, icon: 'messages' as const },
+  { href: '/admin/qna/stats', label: '답변 통계', visibility: 'teacher' as NavVisibility, icon: 'qna-stats' as const },
+  { href: '/admin/monitoring', label: '모니터링', visibility: 'teacher' as NavVisibility, icon: 'monitoring' as const },
+  { href: '/admin/audit', label: '감사 로그', visibility: 'teacher' as NavVisibility, icon: 'audit' as const },
+  { href: '/admin/errors', label: '오류 로그', visibility: 'teacher' as NavVisibility, icon: 'errors' as const },
 ] as const
 
 export type NavItem = (typeof NAV_ITEMS)[number]
@@ -287,7 +119,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             <ThemeToggle className="w-7 h-7" />
             <NotificationBell />
             <span className="text-sm text-zinc-500 dark:text-zinc-500">{displayName}</span>
-            <MobileNav items={visibleItems} badges={badges} />
+            {/* TEMP DISABLED <MobileNav items={visibleItems} badges={badges} /> */}
           </div>
         </div>
 

@@ -542,10 +542,15 @@ export function DashboardScheduleClient({
                       // 같은 날 시간대가 겹치는 분반(클리닉 등)·추가근무 카드를 나란히 배치 —
                       // 총괄(선생님/관리자) 화면에서만. 조교 개인 화면은 애초에 한 조교가 같은
                       // 시간에 두 곳에 배정될 수 없으므로 나누지 않는다(겹쳐 보이면 배정 실수).
+                      //
+                      // slotKey: 한 분반이 time_slots로 같은 요일에 시간대가 다른 슬롯을 두 개
+                      // 이상 가지면(예: 월요일 오전반+오후반), expandClassSlots()가 같은 id를 가진
+                      // 가상 행을 여러 개 만들어낸다 — id만으로 키를 잡으면 React key 충돌이 난다.
+                      const classSlotKey = (c: ClassRow) => `${c.id}:${c.start_time}`
                       const overlapLayout = isOverseer
                         ? layoutOverlaps([
                             ...dayClasses.map((c) => ({
-                              key: `c:${c.id}`, start: timeToMin(c.start_time!), end: timeToMin(c.end_time!),
+                              key: `c:${classSlotKey(c)}`, start: timeToMin(c.start_time!), end: timeToMin(c.end_time!),
                             })),
                             ...dayExtra.map((es) => ({
                               key: `e:${es.id}`, start: timeToMin(es.start_time), end: timeToMin(es.end_time),
@@ -581,10 +586,10 @@ export function DashboardScheduleClient({
                           )}
 
                           {dayClasses.map((cls) => {
-                            const { col, totalCols } = layoutOf(`c:${cls.id}`)
+                            const { col, totalCols } = layoutOf(`c:${classSlotKey(cls)}`)
                             return (
                               <ClassCard
-                                key={cls.id}
+                                key={classSlotKey(cls)}
                                 cls={cls}
                                 color={colorMap[cls.id]}
                                 isActive={isActive(cls)}

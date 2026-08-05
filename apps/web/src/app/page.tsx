@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { AcmeHero } from "@/components/landing/acme-hero";
 import { TeacherIntro } from "@/components/landing/teacher-intro";
-import { SpecialLectureSection } from "@/components/landing/special-lecture-section";
+import { TimetableSection } from "@/components/landing/timetable-section";
+import { ClinicTimetableSection } from "@/components/landing/clinic-timetable-section";
 import { CurriculumSection } from "@/components/landing/curriculum-section";
+import { OpenClassesSection } from "@/components/landing/open-classes-section";
 import { SystemSection } from "@/components/landing/system-section";
 import { TestimonialSection } from "@/components/landing/testimonial-section";
 import { SeminarSection } from "@/components/landing/seminar-section";
+import { ConsultationSection } from "@/components/landing/consultation-section";
 import { ClosingSection } from "@/components/landing/closing-section";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { SiteFooter } from "@/components/landing/site-footer";
@@ -56,30 +59,38 @@ export default function LandingPage() {
       />
       <LandingNav />
 
-      {/* 1. 상단: AcmeHero */}
+      {/* 1. 인삿말 */}
       <div id="intro">
         <AcmeHero />
       </div>
-
-      {/* 2. 중앙: TeacherIntro */}
       <TeacherIntro />
 
-      {/* 3. 특강 안내 */}
-      <SpecialLectureSection />
+      {/* 2. 시간표 (주간 타임테이블형) */}
+      <TimetableSection />
+
+      {/* 3. 클리닉 시간표 */}
+      <ClinicTimetableSection />
 
       {/* 4. 커리큘럼 라인업 */}
       <CurriculumSection />
 
-      {/* 4-1. 교재 체계 & 관리 시스템 */}
+      {/* 5. 이번학기 개설반 안내 */}
+      <OpenClassesSection />
+
+      {/* 6. 교재 & 관리체계 시스템 안내 */}
       <SystemSection />
 
-      {/* 5. 검증된 내용 (후기) */}
+      {/* 7. 후기 (카카오톡 이미지 캡처본) */}
       <TestimonialSection />
 
-      {/* 6. 설명회 안내 */}
+      {/* 8. 비공개설명회 (연4회) — 추후 오픈 */}
       <SeminarSection />
 
-      {/* 7. 마무리: ClosingSection */}
+      {/* 9. 상담신청 (클릭 시 번호 노출) */}
+      <div id="consultation">
+        <ConsultationSection />
+      </div>
+
       <ClosingSection />
 
       <SiteFooter />

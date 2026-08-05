@@ -28,7 +28,7 @@ export async function LandingNav() {
             공지사항
           </Link>
           <Link
-            href="/consultation"
+            href="/#consultation"
             className="whitespace-nowrap rounded-full bg-zinc-950 px-2.5 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold text-white hover:bg-zinc-800 transition-colors"
           >
             상담 신청

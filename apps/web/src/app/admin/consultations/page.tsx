@@ -9,31 +9,13 @@ export default async function ConsultationsPage() {
 
   const admin = createAdminClient()
 
-  const [consultationsRes, inquiriesRes] = await Promise.all([
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (admin as any)
-      .from('consultations')
-      .select('id, name, phone, content, is_read, created_at')
-      .order('created_at', { ascending: false }),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (admin as any)
-      .from('student_inquiries')
-      .select('id, user_id, student_name, content, is_read, created_at, users!user_id(school, grade)')
-      .order('created_at', { ascending: false }),
-  ])
+  const { data } = await (admin as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+    .from('student_inquiries')
+    .select('id, user_id, student_name, content, is_read, created_at, users!user_id(school, grade)')
+    .order('created_at', { ascending: false })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const consultations = (consultationsRes.data ?? []).map((r: any) => ({
-    id:         r.id         as string,
-    name:       r.name       as string,
-    phone:      r.phone      as string,
-    content:    r.content    as string,
-    is_read:    r.is_read    as boolean,
-    created_at: r.created_at as string,
-  }))
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const inquiries = (inquiriesRes.data ?? []).map((r: any) => ({
+  const inquiries = (data ?? []).map((r: any) => ({
     id:           r.id           as string,
     user_id:      r.user_id      as string,
     student_name: r.student_name as string,
@@ -45,6 +27,6 @@ export default async function ConsultationsPage() {
   }))
 
   return (
-    <ConsultationsClient consultations={consultations} inquiries={inquiries} />
+    <ConsultationsClient inquiries={inquiries} />
   )
 }

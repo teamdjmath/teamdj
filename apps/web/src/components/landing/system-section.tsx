@@ -1,83 +1,48 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "motion/react";
-
-const LEVELS = [
-  {
-    tag: "LEVEL 1",
-    audience: "처음 배우는 학생 ~ 2회독 대상 · 방학교재",
-    accent: false,
-    books: [
-      { name: "DEEP", role: "수업용 주교재 · 개념 완성", desc: "깊이가 다른 시작, 올바른 개념의 본질을 마주하다. 공식은 증명까지 다뤄 서술형까지 대비합니다" },
-      { name: "DETAIL", role: "과제용 숙제장 (A·B형)", desc: "개념을 깊게 훈련하는 가장 확실한 반복. 회독 수에 맞춰 A·B형으로 훈련 강도를 나눕니다" },
-    ],
-  },
-  {
-    tag: "LEVEL 2",
-    audience: "1회독 이상 학생 대상 · 개학교재",
-    accent: false,
-    books: [
-      { name: "DEVELOP", role: "수업용 주교재 · 내신대비 핵심", desc: "개념의 확장, 낯선 심화 문항을 풀어내는 정교한 논리. 내신 기출 중 꼭 필요한 문항만 빅데이터로 엄선했습니다" },
-      { name: "DERIVE", role: "과제용 숙제장 (A·B형)", desc: "논리의 흐름을 파고드는 단계별 심화학습. 숙제 소요시간까지 계산해 문항 수를 조절합니다" },
-    ],
-  },
-  {
-    tag: "LEVEL 3",
-    audience: "내신대비 · 시험 3~4주 전 시작",
-    accent: false,
-    books: [
-      { name: "DECISIVE", role: "공용 내신대비 교재", desc: "완벽한 역전의 순간을 결정짓다. 학교 내신 기출 최다빈출 유형만 유형·난이도별로 정리했습니다" },
-      { name: "DEVOTE", role: "학교별 내신대비 숙제장", desc: "반복과 훈련으로 완벽에 몰입하다. 재원생이 있는 모든 학교의 기출·부교재를 반영해 학교별로 제작합니다" },
-    ],
-  },
-  {
-    tag: "SPECIAL",
-    audience: "스파르타 특강 전용",
-    accent: true,
-    books: [
-      { name: "DETERMINE", role: "스파르타 특강 전용 교재", desc: "결심하는 순간, 결과는 달라진다. 실시간 첨삭이 가능한 만큼 정규반보다 살짝 높은 난이도로, DEEP과 DEVELOP 사이 수준입니다" },
-    ],
-  },
-];
+import { MATERIAL_LEVELS } from "@/lib/materials-data";
 
 const SYSTEMS = [
   {
     title: "출결관리",
     icon: "attendance" as const,
     points: [
-      "등원 시 강의실 입구 패드에 번호를 입력하면 접수 완료",
-      "등원 여부는 학부모님께 바로 문자로 발송",
-      "수업 시작 15분이 지나도 학생이 없으면, 사무팀이 직접 연락해 결석 여부를 확인합니다",
+      <>등원 시 강의실 입구 패드에 번호를 입력하면 출결 체크 완료!</>,
+      <>등원 여부는 학부모님께 바로 문자로 발송</>,
+      <>수업 시작 15분이 지나도 학생이 없으면, 사무팀이 직접 연락해 결석 여부를 확인합니다</>,
     ],
   },
   {
     title: "과제 관리 & 학습결과 발송",
     icon: "homework" as const,
+    img: "/report-sample.png",
     points: [
-      "매 수업 누적 과제 검사 — 밀린 과제는 완료할 때까지 끝까지 확인합니다",
-      "숙제장을 잃어버려도 걱정 마세요, 다시 챙겨드립니다",
-      "그날의 학습내용과 테스트 문항 수·점수·평균·표준편차까지 담아 발송",
-      "특이사항과 공지사항도 함께 전달됩니다",
+      <>매 수업 누적 과제 검사. 밀린 과제는 <b className="text-zinc-900 font-bold">완료할 때까지 끝까지</b> 확인합니다</>,
+      <>숙제장을 잃어버려도 걱정 마세요, 다시 챙겨드립니다</>,
+      <>그날의 학습내용과 테스트 문항 수·점수·평균·표준편차까지 담아 발송</>,
+      <>특이사항과 공지사항도 함께 전달됩니다</>,
     ],
   },
   {
     title: "클리닉",
     icon: "clinic" as const,
     points: [
-      "월·화·목·금 17:30~22:00, 토·일 12:00~19:00 상시 운영",
-      "정규반 학생은 주 1회 필참 — 과제에서 막힌 문항을 바로 첨삭받는 시간",
-      "횟수 제한 없이, 필요한 만큼 등원하면 됩니다",
-      "내신대비 기간에는 본 강의실에서 자료 배부와 질문 첨삭이 함께 진행되며, 등하원 시간과 학습내용은 동일하게 발송됩니다",
+      <>월·화·목·금 17:30~22:00, 토·일 12:00~19:00 상시 운영</>,
+      <>정규반 학생은 주 1회 필참. 과제에서 막힌 문항을 바로 첨삭받는 시간입니다</>,
+      <>횟수 제한 없이, 필요한 만큼 등원하면 됩니다</>,
+      <>내신대비 기간에는 본 강의실에서 자료 배부와 질문 첨삭이 함께 진행되며, 등하원 시간과 학습내용은 동일하게 발송됩니다</>,
     ],
   },
   {
     title: "내신대비 기간",
     icon: "exam" as const,
     points: [
-      "시험 치는 주를 포함해 약 3주 전부터 시작됩니다",
-      "참여 여부는 학생이 직접 선택하며, 내신대비 교재는 참여 학생만 구매할 수 있습니다",
-      "참여 학생에게는 DECISIVE(공용 내신대비 교재)와 DEVOTE(학교별 내신대비 숙제장)가 배부되고, 평소보다 많은 조교진과 이동재T가 직접 첨삭합니다",
-      "학교별 작년 시험지의 난이도·문항 수를 그대로 재현하고 올해 부교재·프린트물까지 반영한 학교별 모의기말고사로 실전 감각까지 훈련합니다",
+      <>시험 치는 주를 포함해 약 3주 전부터 시작됩니다</>,
+      <>참여 여부는 학생이 직접 선택하며, 내신대비 교재는 참여 학생만 구매할 수 있습니다</>,
+      <>참여 학생에게는 DECISIVE(공용 내신대비 교재)와 DEVOTE(학교별 내신대비 숙제장)가 배부되고, 평소보다 많은 조교진과 이동재T가 직접 첨삭합니다</>,
+      <>학교별 작년 시험지의 난이도·문항 수를 그대로 재현하고 올해 부교재·프린트물까지 반영한 학교별 모의기말고사로 실전 감각까지 훈련합니다</>,
     ],
   },
 ];
@@ -153,8 +118,8 @@ export function SystemSection() {
         </motion.div>
 
         {/* 교재 체계 */}
-        <div className="grid sm:grid-cols-2 gap-4 md:gap-5 mb-16 md:mb-24">
-          {LEVELS.map((lvl, idx) => (
+        <div className="grid sm:grid-cols-2 gap-4 md:gap-5 mb-10">
+          {MATERIAL_LEVELS.map((lvl, idx) => (
             <motion.div
               key={lvl.tag}
               className={`rounded-2xl border p-6 md:p-7 ${
@@ -197,6 +162,23 @@ export function SystemSection() {
           ))}
         </div>
 
+        <motion.div
+          className="flex justify-center mb-16 md:mb-24"
+          initial={{ opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          <Link
+            href="/materials"
+            className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 px-5 py-2.5 text-sm font-bold text-zinc-700 hover:border-zinc-950 hover:text-zinc-950 transition-colors"
+          >
+            교재 더 알아보기
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+            </svg>
+          </Link>
+        </motion.div>
+
         {/* 관리 시스템 */}
         <motion.h3
           className="text-2xl md:text-3xl font-black tracking-tighter text-zinc-950 mb-8 text-center break-keep"
@@ -221,9 +203,20 @@ export function SystemSection() {
             >
               {/* 사진 (실제 사진 준비되면 이 자리에 교체) */}
               <div className="w-full md:w-2/5 shrink-0">
-                <div className="aspect-4/3 rounded-3xl bg-zinc-50 border border-zinc-200 flex items-center justify-center">
-                  <SystemIcon type={sys.icon} className="w-14 h-14 md:w-16 md:h-16 text-zinc-300" />
-                </div>
+                {"img" in sys && sys.img ? (
+                  <div className="flex justify-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={sys.img}
+                      alt={`${sys.title} 예시`}
+                      className="max-h-[420px] w-auto rounded-3xl border border-zinc-200 object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="aspect-4/3 rounded-3xl bg-zinc-50 border border-zinc-200 flex items-center justify-center">
+                    <SystemIcon type={sys.icon} className="w-14 h-14 md:w-16 md:h-16 text-zinc-300" />
+                  </div>
+                )}
               </div>
 
               {/* 설명 */}

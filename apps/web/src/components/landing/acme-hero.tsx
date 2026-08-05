@@ -51,10 +51,10 @@ export function AcmeHero() {
               transition={{ delay: 0.4, duration: 0.5 }}
             >
               <Link
-                href="#special-lecture"
+                href="#curriculum"
                 className="inline-flex items-center gap-2 h-12 md:h-14 px-6 md:px-8 rounded-full bg-zinc-950 text-white hover:bg-zinc-800 text-sm md:text-base font-bold transition-all shadow-lg"
               >
-                2026 여름방학 특강 바로가기
+                커리큘럼 확인하기
                 <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                 </svg>

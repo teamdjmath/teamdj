@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { NavItem } from '../layout'
+import { NavIcon } from './nav-icons'
 
 export function MobileNav({ items, badges }: { items: readonly NavItem[]; badges?: Record<string, number> }) {
   const [open, setOpen] = useState(false)
@@ -59,7 +60,7 @@ export function MobileNav({ items, badges }: { items: readonly NavItem[]; badges
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100"
               >
-                {icon}
+                <NavIcon type={icon} />
                 <span className="flex-1">{label}</span>
                 {badge > 0 && (
                   <span className="rounded-full bg-zinc-900 dark:bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white dark:text-zinc-900">
