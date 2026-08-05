@@ -73,15 +73,25 @@ export default async function AdminDashboardPage() {
         return expandClassSlots((data ?? []) as ClassRow[])
       }
       const { data: access } = await adminDb
-        .from('ta_class_access').select('class_id')
+        .from('ta_class_access').select('class_id, days')
         .eq('ta_id', user.id).not('class_id', 'is', null)
-      const ids = (access ?? []).map((a: { class_id: string }) => a.class_id)
+      type AccessRow = { class_id: string; days: number[] | null }
+      const accessRows = (access ?? []) as AccessRow[]
+      const ids = accessRows.map((a) => a.class_id)
+      // 조교별 담당 요일(days) — null/빈 배열이면 그 분반의 모든 요일 담당, 값이 있으면 해당 요일만
+      const daysByClass = new Map(accessRows.map((a) => [a.class_id, a.days]))
       if (ids.length > 0) {
         const { data } = await adminDb
           .from('class_groups')
           .select(CLASS_COLS)
           .in('id', ids).eq('is_active', true).not('day_of_week', 'is', null).order('name')
         return expandClassSlots((data ?? []) as ClassRow[])
+          .map((row) => {
+            const taDays = daysByClass.get(row.id)
+            if (!taDays || taDays.length === 0) return row
+            return { ...row, day_of_week: (row.day_of_week ?? []).filter((d) => taDays.includes(d)) }
+          })
+          .filter((row) => (row.day_of_week?.length ?? 0) > 0)
       }
     }
     return []

@@ -33,8 +33,9 @@ export function LearningClient({ courses, weekGroups, sortedWeeks, progressMap, 
     const content = newTodo.trim()
     setNewTodo('')
     
-    // Optimistic UI
-    const tempId = Math.random().toString()
+    // Optimistic UI — 서버가 실제 id를 돌려주면 임시 id를 교체한다 (교체 전에 토글/삭제하면
+    // 임시 id가 그대로 서버에 넘어가 uuid 캐스팅 에러가 났던 문제)
+    const tempId = `temp-${Math.random().toString(36).slice(2)}`
     setTodos([{ id: tempId, content, is_completed: false }, ...todos])
 
     startTransition(async () => {
@@ -42,12 +43,15 @@ export function LearningClient({ courses, weekGroups, sortedWeeks, progressMap, 
       if (!res.success) {
         alert(res.error)
         setTodos(prev => prev.filter(t => t.id !== tempId))
+      } else {
+        setTodos(prev => prev.map(t => t.id === tempId ? { ...t, id: res.data!.id } : t))
       }
     })
   }
 
   async function handleToggle(id: string, completed: boolean) {
     setTodos(todos.map(t => t.id === id ? { ...t, is_completed: !completed } : t))
+    if (id.startsWith('temp-')) return // 아직 서버에 생성 중인 항목 — 실제 id로 교체된 뒤 다시 시도
     startTransition(async () => {
       await toggleTodo(id, !completed)
     })
@@ -55,6 +59,7 @@ export function LearningClient({ courses, weekGroups, sortedWeeks, progressMap, 
 
   async function handleDelete(id: string) {
     setTodos(todos.filter(t => t.id !== id))
+    if (id.startsWith('temp-')) return // 아직 서버에 생성 중인 항목 — 생성 완료 후 목록에서 사라지므로 별도 처리 불필요
     startTransition(async () => {
       await deleteTodo(id)
     })

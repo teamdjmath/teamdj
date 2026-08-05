@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react'
+import Link from 'next/link'
 import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
@@ -257,7 +258,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         <aside className="hidden md:flex md:w-56 md:flex-col md:fixed md:inset-y-0 md:z-30 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
           {/* 로고 */}
           <div className="flex h-14 items-center px-5 border-b border-zinc-100 dark:border-zinc-900">
-            <span className="text-base font-bold tracking-tight text-zinc-950 dark:text-zinc-50">TeamDJ</span>
+            <Link href="/admin/dashboard" className="text-base font-bold tracking-tight text-zinc-950 dark:text-zinc-50">TeamDJ</Link>
             <span className="ml-2 rounded bg-zinc-100 dark:bg-zinc-900 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 dark:text-zinc-500 uppercase">
               {badgeLabel}
             </span>
@@ -281,7 +282,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
         {/* 모바일 헤더 */}
         <div className="md:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 h-14">
-          <span className="text-base font-bold text-zinc-950 dark:text-zinc-50">TeamDJ</span>
+          <Link href="/admin/dashboard" className="text-base font-bold text-zinc-950 dark:text-zinc-50">TeamDJ</Link>
           <div className="flex items-center gap-2">
             <ThemeToggle className="w-7 h-7" />
             <NotificationBell />

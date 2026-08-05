@@ -5,18 +5,22 @@ import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
 
-export async function createTodo(content: string): Promise<ActionResult> {
+export async function createTodo(content: string): Promise<ActionResult<{ id: string }>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   return withAction('createTodo', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
 
-    const { error } = await supabase.from('student_todos').insert({ student_id: user.id, content })
+    const { data, error } = await supabase
+      .from('student_todos')
+      .insert({ student_id: user.id, content })
+      .select('id')
+      .single()
     if (error) throw error
 
     revalidatePath('/dashboard/learning')
-    return { success: true }
+    return { success: true, data: { id: data.id as string } }
   })
 }
 

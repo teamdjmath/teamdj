@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { GoogleGenAI } from '@google/genai'
 import { logger } from '@/lib/logger'
 import { createNotification } from '@/lib/actions/notifications'
+import { checkSuspension } from '@/lib/suspension'
 
 export async function assignQuestion(questionId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
@@ -189,12 +190,16 @@ export async function cancelAnswer(data: {
   const role = user.user_metadata?.role as string | undefined
   if (!['teacher', 'ta_desk', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
 
+  // .select()로 실제 삭제된 행을 받아야 한다 — ta_desk·ta_assistant가 남의 답변을 취소하려 하면
+  // ta_id 필터에 안 걸려 delete가 0건 처리되는데, select 없이는 이것도 "성공"으로 보여
+  // 질문 상태만 미답변으로 되돌아가고 원본 답변은 그대로 남는 불일치가 생겼다.
   const baseDeleteQuery = supabase.from('qna_answers').delete().eq('id', data.answerId)
-  const { error: deleteError } = await (
+  const { data: deleted, error: deleteError } = await (
     role === 'teacher' ? baseDeleteQuery : baseDeleteQuery.eq('ta_id', user.id)
-  )
+  ).select('id')
 
   if (deleteError) return { error: '답변 취소에 실패했습니다.' }
+  if (!deleted || deleted.length === 0) return { error: '본인이 등록한 답변만 취소할 수 있습니다.' }
 
   await supabase
     .from('qna_questions')
@@ -441,6 +446,9 @@ export async function createQuestion(data: {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) return { error: '인증이 필요합니다.' }
+
+  const { suspended } = await checkSuspension(user.id)
+  if (suspended) return { error: '휴원 중에는 질문 등록이 제한됩니다.' }
 
   const studentName = (user.user_metadata?.name as string | undefined) ?? '학생'
 

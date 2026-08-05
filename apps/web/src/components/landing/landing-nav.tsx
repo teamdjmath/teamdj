@@ -1,10 +1,17 @@
 import Link from 'next/link'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 
-export function LandingNav() {
+const STAFF_ROLES = ['teacher', 'ta_desk', 'ta_assistant']
+
+export async function LandingNav() {
+  const user = await getVerifiedUser()
+  const role = user?.user_metadata?.role
+  const logoHref = !user ? '/' : STAFF_ROLES.includes(role ?? '') ? '/admin/dashboard' : '/dashboard'
+
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-100 bg-white/90 backdrop-blur-sm">
       <div className="container max-w-5xl mx-auto px-3 sm:px-4 flex h-14 items-center justify-between gap-2">
-        <Link href="/" className="text-sm font-black tracking-tighter text-zinc-950 uppercase italic shrink-0">
+        <Link href={logoHref} className="text-sm font-black tracking-tighter text-zinc-950 uppercase italic shrink-0">
           TeamDJ
         </Link>
         <nav className="flex items-center gap-1.5 sm:gap-4">
