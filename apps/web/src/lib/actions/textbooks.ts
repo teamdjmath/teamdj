@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { revalidatePath } from 'next/cache'
 
 export type Textbook = { id: string; name: string }
@@ -16,7 +17,7 @@ export async function getTextbooks(): Promise<{ data?: Textbook[]; error?: strin
 
 export async function createTextbook(name: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) return { error: '인증이 필요합니다.' }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,7 +35,7 @@ export async function createTextbook(name: string): Promise<{ error?: string }> 
 
 export async function deleteTextbook(id: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) return { error: '인증이 필요합니다.' }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

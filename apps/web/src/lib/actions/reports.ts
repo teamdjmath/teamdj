@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { logger } from '@/lib/logger'
@@ -10,8 +11,7 @@ export type { ReportContent } from '@/types/db'
 import type { ReportContent } from '@/types/db' // used in function signatures below
 
 async function assertStaff() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) return { ok: false as const, error: '인증이 필요합니다.' }
   const role = user.user_metadata?.role as string | undefined
   if (!['teacher', 'ta_desk'].includes(role ?? '')) return { ok: false as const, error: '권한이 없습니다.' }
@@ -52,8 +52,7 @@ export async function saveReport(data: {
   contentJson: ReportContent
   imageBase64: string
 }): Promise<{ error?: string; id?: string; imageUrl?: string }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) return { error: '인증이 필요합니다.' }
 
   const role = user.user_metadata?.role as string | undefined
@@ -229,7 +228,7 @@ export async function sendKakaoReport(
   if (!apiKey) return { error: '카카오 API 키가 설정되지 않았습니다.' }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) return { error: '인증이 필요합니다.' }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

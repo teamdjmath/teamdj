@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
+vi.mock('@/lib/supabase/verified-user', () => ({ getVerifiedUser: vi.fn() }))
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: vi.fn() }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), revalidateTag: vi.fn() }))
 vi.mock('@/lib/logger', async (importOriginal) => {
@@ -11,7 +11,7 @@ vi.mock('@/lib/logger', async (importOriginal) => {
   }
 })
 
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClass } from '@/lib/actions/classes'
 
@@ -29,14 +29,6 @@ function makeAdminMock(insertResult: { data?: { id: string } | null; error: unkn
   }
 }
 
-function makeAuthMock(user: typeof mockTeacher | null) {
-  return {
-    auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user }, error: null }),
-    },
-  }
-}
-
 describe('createClass', () => {
   let formData: FormData
 
@@ -50,7 +42,7 @@ describe('createClass', () => {
     formData.set('subject', '수학')
     formData.set('grade', '중1')
 
-    vi.mocked(createClient).mockResolvedValue(makeAuthMock(mockTeacher) as any)
+    vi.mocked(getVerifiedUser).mockResolvedValue(mockTeacher as any)
   })
 
   afterEach(() => {
@@ -116,7 +108,7 @@ describe('createClass', () => {
   })
 
   it('미인증 상태 → 인증이 필요합니다 반환', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAuthMock(null) as any)
+    vi.mocked(getVerifiedUser).mockResolvedValue(null)
     vi.mocked(createAdminClient).mockReturnValue(makeAdminMock({ error: null }) as any)
 
     const result = await createClass(formData)
@@ -128,9 +120,7 @@ describe('createClass', () => {
   })
 
   it('ta_desk 역할도 분반 생성 가능', async () => {
-    vi.mocked(createClient).mockResolvedValue(
-      makeAuthMock({ id: 'ta-1', user_metadata: { role: 'ta_desk' } }) as any,
-    )
+    vi.mocked(getVerifiedUser).mockResolvedValue({ id: 'ta-1', user_metadata: { role: 'ta_desk' } } as any)
     vi.mocked(createAdminClient).mockReturnValue(
       makeAdminMock({ data: { id: 'class-1' }, error: null }) as any,
     )

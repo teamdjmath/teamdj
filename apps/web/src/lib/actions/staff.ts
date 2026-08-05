@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
@@ -12,7 +13,7 @@ export type StaffStatus = 'online' | 'busy' | 'offline'
 
 export async function updateStaffStatus(status: StaffStatus): Promise<ActionResult> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('updateStaffStatus', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
@@ -32,8 +33,7 @@ export async function updateStaffStatus(status: StaffStatus): Promise<ActionResu
 
 // 조교(ta_desk/ta_assistant) 계정 삭제 — 선생님만 가능, 선생님 계정은 이 함수로 삭제할 수 없음
 export async function deleteTaAccount(taId: string): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user: caller } } = await supabase.auth.getUser()
+  const caller = await getVerifiedUser()
 
   return withAction('deleteTaAccount', caller?.id, async () => {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
@@ -84,8 +84,7 @@ async function isLastTeacher(adminSupabase: ReturnType<typeof createAdminClient>
 
 // 선생님 본인 탈퇴 — teacher 본인만 자신의 계정을 삭제할 수 있음 (다른 선생님은 삭제 불가)
 export async function withdrawOwnTeacherAccount(): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user: caller } } = await supabase.auth.getUser()
+  const caller = await getVerifiedUser()
 
   return withAction('withdrawOwnTeacherAccount', caller?.id, async () => {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
@@ -117,8 +116,7 @@ export async function withdrawOwnTeacherAccount(): Promise<ActionResult> {
 
 // 다른 선생님 계정 삭제 — 관리자(is_super_admin)만 가능
 export async function deleteTeacherAccount(teacherId: string): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user: caller } } = await supabase.auth.getUser()
+  const caller = await getVerifiedUser()
 
   return withAction('deleteTeacherAccount', caller?.id, async () => {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }

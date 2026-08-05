@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
+vi.mock('@/lib/supabase/verified-user', () => ({ getVerifiedUser: vi.fn() }))
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: vi.fn() }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('@/lib/logger', async (importOriginal) => {
@@ -11,7 +11,7 @@ vi.mock('@/lib/logger', async (importOriginal) => {
   }
 })
 
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createStudent } from '@/lib/actions/students'
 
@@ -66,11 +66,7 @@ describe('createStudent', () => {
     formData.set('phone', '01012345678')
     formData.set('password', 'pass1234')
 
-    vi.mocked(createClient).mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({ data: { user: mockCaller }, error: null }),
-      },
-    } as any)
+    vi.mocked(getVerifiedUser).mockResolvedValue(mockCaller as any)
   })
 
   afterEach(() => {
@@ -152,9 +148,7 @@ describe('createStudent', () => {
   })
 
   it('미인증 상태 → 인증이 필요합니다 반환', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }) },
-    } as any)
+    vi.mocked(getVerifiedUser).mockResolvedValue(null)
     const admin = makeAdminMock()
     vi.mocked(createAdminClient).mockReturnValue(admin as any)
 

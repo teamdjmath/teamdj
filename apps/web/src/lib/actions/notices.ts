@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { withAction } from '@/lib/actions'
@@ -16,8 +16,7 @@ export async function createNotice(data: {
   isPublic?: boolean
   imageUrls?: string[]
 }): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('createNotice', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
@@ -99,8 +98,7 @@ export async function updateNotice(
   id: string,
   data: { title: string; content: string; classId?: string; isPinned: boolean; isPublic?: boolean; imageUrls?: string[] },
 ): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('updateNotice', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
@@ -127,8 +125,7 @@ export async function updateNotice(
 }
 
 export async function deleteNotice(id: string): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('deleteNotice', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }

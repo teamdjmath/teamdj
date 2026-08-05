@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { withAction } from '@/lib/actions'
@@ -38,8 +38,7 @@ function parseTaDays(formData: FormData, taId: string): number[] | null {
 }
 
 export async function createClass(formData: FormData): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('createClass', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
@@ -81,8 +80,7 @@ export async function createClass(formData: FormData): Promise<ActionResult> {
 }
 
 export async function updateClass(formData: FormData): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('updateClass', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
@@ -128,8 +126,7 @@ export async function updateClass(formData: FormData): Promise<ActionResult> {
 }
 
 export async function deleteClass(classId: string): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('deleteClass', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
@@ -151,8 +148,7 @@ export async function deleteClass(classId: string): Promise<ActionResult> {
 }
 
 export async function hardDeleteClass(classId: string): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('hardDeleteClass', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }

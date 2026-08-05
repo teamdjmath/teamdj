@@ -73,7 +73,7 @@ export default async function DashboardLayout({
         </main>
 
         {/* 하단 네비게이션 (클라이언트 — usePathname으로 활성 상태 처리) */}
-        <BottomNav />
+        <BottomNav userId={user.id} />
         <ToastContainer />
         <InactivityGuard />
       </div>

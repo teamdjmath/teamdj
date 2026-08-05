@@ -1,13 +1,14 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
 
 export async function createTodo(content: string): Promise<ActionResult<{ id: string }>> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('createTodo', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
@@ -26,7 +27,7 @@ export async function createTodo(content: string): Promise<ActionResult<{ id: st
 
 export async function toggleTodo(id: string, isCompleted: boolean): Promise<ActionResult> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('toggleTodo', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
@@ -45,7 +46,7 @@ export async function toggleTodo(id: string, isCompleted: boolean): Promise<Acti
 
 export async function deleteTodo(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('deleteTodo', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }

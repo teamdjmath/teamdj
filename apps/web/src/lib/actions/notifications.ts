@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export type NotificationType =
@@ -41,7 +42,7 @@ export async function createNotification(
 
 export async function getNotifications(): Promise<NotificationRow[]> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) return []
 
   const { data } = await supabase
@@ -56,7 +57,7 @@ export async function getNotifications(): Promise<NotificationRow[]> {
 
 export async function markNotificationRead(id: string): Promise<void> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) return
   await supabase
     .from('notifications')
@@ -67,7 +68,7 @@ export async function markNotificationRead(id: string): Promise<void> {
 
 export async function markAllNotificationsRead(): Promise<void> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) return
   await supabase
     .from('notifications')

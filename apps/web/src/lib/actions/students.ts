@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
@@ -34,9 +34,8 @@ function getInitialPassword() {
 }
 
 export async function createStudent(formData: FormData): Promise<ActionResult> {
-  const supabase      = await createClient()
   const adminSupabase = createAdminClient()
-  const { data: { user: caller } } = await supabase.auth.getUser()
+  const caller = await getVerifiedUser()
 
   return withAction('createStudent', caller?.id, async () => {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
@@ -132,9 +131,8 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
 
 // bulkCreateStudents는 복잡한 BulkResult 타입이라 withAction 외부 처리
 export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkResult> {
-  const supabase      = await createClient()
   const adminSupabase = createAdminClient()
-  const { data: { user: caller } } = await supabase.auth.getUser()
+  const caller = await getVerifiedUser()
 
   if (!caller) {
     return { succeeded: 0, merged: 0, failed: rows.map((r) => ({ name: r.name, phone: r.phone, reason: '인증 필요' })) }
@@ -300,8 +298,7 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
 }
 
 export async function updateStudent(formData: FormData): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user: caller } } = await supabase.auth.getUser()
+  const caller = await getVerifiedUser()
 
   return withAction('updateStudent', caller?.id, async () => {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
@@ -360,8 +357,7 @@ export async function updateStudent(formData: FormData): Promise<ActionResult> {
 export async function changeStudentClass(
   studentId: string, oldClassId: string | null, newClassId: string,
 ): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user: caller } } = await supabase.auth.getUser()
+  const caller = await getVerifiedUser()
 
   return withAction('changeStudentClass', caller?.id, async () => {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
@@ -388,8 +384,7 @@ export async function changeStudentClass(
 }
 
 export async function addStudentToClass(studentId: string, classId: string): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user: caller } } = await supabase.auth.getUser()
+  const caller = await getVerifiedUser()
 
   return withAction('addStudentToClass', caller?.id, async () => {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
@@ -413,8 +408,7 @@ export async function addStudentToClass(studentId: string, classId: string): Pro
 }
 
 export async function removeStudentFromClass(studentId: string, classId: string): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user: caller } } = await supabase.auth.getUser()
+  const caller = await getVerifiedUser()
 
   return withAction('removeStudentFromClass', caller?.id, async () => {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
@@ -435,8 +429,7 @@ export async function bulkRemoveStudentsFromClass(
   studentIds: string[],
   classId: string,
 ): Promise<ActionResult<{ removedCount: number }>> {
-  const supabase = await createClient()
-  const { data: { user: caller } } = await supabase.auth.getUser()
+  const caller = await getVerifiedUser()
 
   return withAction('bulkRemoveStudentsFromClass', caller?.id, async () => {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
@@ -456,8 +449,7 @@ export async function bulkRemoveStudentsFromClass(
 }
 
 export async function linkParent(formData: FormData): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user: caller } } = await supabase.auth.getUser()
+  const caller = await getVerifiedUser()
 
   return withAction('linkParent', caller?.id, async () => {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
@@ -486,8 +478,7 @@ export async function linkParent(formData: FormData): Promise<ActionResult> {
 }
 
 export async function unlinkParent(linkId: string, studentId: string): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user: caller } } = await supabase.auth.getUser()
+  const caller = await getVerifiedUser()
 
   return withAction('unlinkParent', caller?.id, async () => {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
@@ -502,8 +493,7 @@ export async function unlinkParent(linkId: string, studentId: string): Promise<A
 }
 
 export async function deleteStudent(studentId: string): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user: caller } } = await supabase.auth.getUser()
+  const caller = await getVerifiedUser()
 
   return withAction('deleteStudent', caller?.id, async () => {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
@@ -540,8 +530,7 @@ export async function setSuspension(
   from: string,
   until: string,
 ): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user: caller } } = await supabase.auth.getUser()
+  const caller = await getVerifiedUser()
 
   return withAction('setSuspension', caller?.id, async () => {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
@@ -563,8 +552,7 @@ export async function setSuspension(
 }
 
 export async function clearSuspension(studentId: string): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user: caller } } = await supabase.auth.getUser()
+  const caller = await getVerifiedUser()
 
   return withAction('clearSuspension', caller?.id, async () => {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
@@ -599,8 +587,7 @@ export type StudentExportRow = {
 export async function getStudentsForExport(
   classId: string,
 ): Promise<{ error?: string; rows?: StudentExportRow[]; className?: string }> {
-  const supabase = await createClient()
-  const { data: { user: caller } } = await supabase.auth.getUser()
+  const caller = await getVerifiedUser()
   if (!caller) return { error: '인증이 필요합니다.' }
 
   const role = caller.user_metadata?.role as string | undefined
@@ -653,8 +640,7 @@ export async function getStudentsForExport(
 }
 
 export async function resetStudentPassword(studentId: string): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user: caller } } = await supabase.auth.getUser()
+  const caller = await getVerifiedUser()
 
   return withAction('resetStudentPassword', caller?.id, async () => {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }

@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
@@ -11,8 +11,7 @@ const CONTACT_DAYS = 7 // 승인 유효기간 — 기간제 (7일 후 자동 만
 
 // 학생 연락처(전화번호) 열람 요청 — 클리닉 조교 등 학생 관리 권한이 없는 스태프용
 export async function requestStudentContact(studentId: string, reason?: string): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('requestStudentContact', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
@@ -57,8 +56,7 @@ export async function requestStudentContact(studentId: string, reason?: string):
 
 // 선생님의 승인/거절 — "선생님 이상급 승인"
 export async function decideContactRequest(requestId: string, approve: boolean): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('decideContactRequest', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
@@ -107,8 +105,7 @@ export async function decideContactRequest(requestId: string, approve: boolean):
 
 // 승인된 연락처를 실제로 열람할 때 — 조회 자체를 감사 로그에 남긴다 (PII 열람 추적)
 export async function viewStudentContact(studentId: string): Promise<ActionResult<{ phone: string; parentPhones: string[] }>> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('viewStudentContact', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }

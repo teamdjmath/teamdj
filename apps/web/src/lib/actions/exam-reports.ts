@@ -1,12 +1,11 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
 async function assertStaff() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) return { ok: false as const, error: '인증이 필요합니다.' }
   const role = user.user_metadata?.role as string | undefined
   if (!['teacher', 'ta_desk', 'ta_assistant'].includes(role ?? '')) return { ok: false as const, error: '권한이 없습니다.' }

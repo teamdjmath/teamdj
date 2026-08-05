@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
@@ -19,8 +19,7 @@ export async function saveAttendance(
   sessionDate: string,
   entries: AttendanceEntry[],
 ): Promise<ActionResult<{ savedCount: number }>> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('saveAttendance', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }

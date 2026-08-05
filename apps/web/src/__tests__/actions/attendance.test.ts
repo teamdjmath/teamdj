@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
+vi.mock('@/lib/supabase/verified-user', () => ({ getVerifiedUser: vi.fn() }))
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: vi.fn() }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('@/lib/logger', async (importOriginal) => {
@@ -11,7 +11,7 @@ vi.mock('@/lib/logger', async (importOriginal) => {
   }
 })
 
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { saveAttendance } from '@/lib/actions/attendance'
 import type { AttendanceEntry } from '@/lib/actions/attendance'
@@ -38,11 +38,7 @@ describe('saveAttendance', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    vi.mocked(createClient).mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({ data: { user: mockTeacher }, error: null }),
-      },
-    } as any)
+    vi.mocked(getVerifiedUser).mockResolvedValue(mockTeacher as any)
   })
 
   afterEach(() => {
@@ -109,14 +105,7 @@ describe('saveAttendance', () => {
   })
 
   it('권한 없는 역할 (parent) → 권한이 없습니다 반환', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: 'parent-1', user_metadata: { role: 'parent' } } },
-          error: null,
-        }),
-      },
-    } as any)
+    vi.mocked(getVerifiedUser).mockResolvedValue({ id: 'parent-1', user_metadata: { role: 'parent' } } as any)
     vi.mocked(createAdminClient).mockReturnValue(
       makeUpsertMock({ error: null, count: 0 }) as any,
     )
@@ -130,14 +119,7 @@ describe('saveAttendance', () => {
   })
 
   it('ta_desk 역할도 출결 저장 가능', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: 'ta-1', user_metadata: { role: 'ta_desk' } } },
-          error: null,
-        }),
-      },
-    } as any)
+    vi.mocked(getVerifiedUser).mockResolvedValue({ id: 'ta-1', user_metadata: { role: 'ta_desk' } } as any)
     vi.mocked(createAdminClient).mockReturnValue(
       makeUpsertMock({ error: null, count: sampleEntries.length }) as any,
     )
@@ -148,11 +130,7 @@ describe('saveAttendance', () => {
   })
 
   it('미인증 상태 → 인증이 필요합니다 반환', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
-      },
-    } as any)
+    vi.mocked(getVerifiedUser).mockResolvedValue(null)
     vi.mocked(createAdminClient).mockReturnValue(
       makeUpsertMock({ error: null, count: 0 }) as any,
     )

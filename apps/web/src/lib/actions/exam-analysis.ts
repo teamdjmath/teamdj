@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { GoogleGenAI } from '@google/genai'
 import { logger } from '@/lib/logger'
 
@@ -22,8 +22,7 @@ export async function generateExamAnalysis(data: {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'Gemini API 키가 설정되지 않았습니다.' }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) return { error: '인증이 필요합니다.' }
 
   const role = user.user_metadata?.role as string | undefined

@@ -1,5 +1,3 @@
-// 서버 전용 — 서버 액션에서만 import할 것
-import type { User } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logger } from '@/lib/logger'
 
@@ -11,8 +9,10 @@ export type AuditEntry = {
   detail?: Record<string, unknown>
 }
 
+type AuditActor = { id: string; user_metadata?: { name?: string; role?: string } }
+
 // 감사 로그 기록 — 실패해도 원래 액션을 막지 않는다 (fire-and-forget)
-export async function logAudit(actor: User, entry: AuditEntry): Promise<void> {
+export async function logAudit(actor: AuditActor, entry: AuditEntry): Promise<void> {
   try {
     const admin = createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

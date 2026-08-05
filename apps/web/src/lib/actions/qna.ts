@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { GoogleGenAI } from '@google/genai'
@@ -10,7 +11,7 @@ import { checkSuspension } from '@/lib/suspension'
 
 export async function assignQuestion(questionId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) return { error: '인증이 필요합니다.' }
 
   const role = user.user_metadata?.role as string | undefined
@@ -79,7 +80,7 @@ export async function submitAnswer(data: {
   difficulty?: number | null
 }): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) return { error: '인증이 필요합니다.' }
 
   const role = user.user_metadata?.role as string | undefined
@@ -110,7 +111,7 @@ export async function adoptRelatedAnswer(data: {
   sourceQuestionId: string
 }): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) return { error: '인증이 필요합니다.' }
 
   const role = user.user_metadata?.role as string | undefined
@@ -152,7 +153,7 @@ export async function updateAnswer(data: {
   difficulty?: number | null
 }): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) return { error: '인증이 필요합니다.' }
 
   const role = user.user_metadata?.role as string | undefined
@@ -184,7 +185,7 @@ export async function cancelAnswer(data: {
   answerId: string
 }): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) return { error: '인증이 필요합니다.' }
 
   const role = user.user_metadata?.role as string | undefined
@@ -216,8 +217,7 @@ export async function cancelAnswer(data: {
 export async function rateAnswer(answerId: string, rating: number): Promise<{ error?: string }> {
   if (rating < 1 || rating > 5) return { error: '1~5점 사이의 값을 입력해주세요.' }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) return { error: '인증이 필요합니다.' }
 
   // 학생 본인의 질문에 달린 답변인지 확인
@@ -257,8 +257,7 @@ export async function generateAiDraft(
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'Gemini API 키가 설정되지 않았습니다.' }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   if (!user) return { error: '인증이 필요합니다.' }
 
   const role = user.user_metadata?.role as string | undefined
@@ -443,7 +442,7 @@ export async function createQuestion(data: {
   problemNumber?: string | null
 }): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   if (!user) return { error: '인증이 필요합니다.' }
 
@@ -506,7 +505,7 @@ export async function createQuestion(data: {
 
 export async function deleteQuestion(id: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   if (!user) return { error: '인증이 필요합니다.' }
 

@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
@@ -43,8 +43,7 @@ export type BulkResult = {
 }
 
 export async function createTest(data: TestFormData): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('createTest', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
@@ -73,8 +72,7 @@ export async function createTest(data: TestFormData): Promise<ActionResult> {
 }
 
 export async function deleteTest(id: string): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('deleteTest', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
@@ -91,8 +89,7 @@ export async function deleteTest(id: string): Promise<ActionResult> {
 }
 
 export async function saveTestScores(testId: string, entries: ScoreEntry[]): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('saveTestScores', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
@@ -134,8 +131,7 @@ export async function saveTestScores(testId: string, entries: ScoreEntry[]): Pro
 
 // bulkSaveTestScores는 복잡한 BulkResult 타입이라 withAction 외부에서 로깅 처리
 export async function bulkSaveTestScores(testId: string, rows: BulkScoreRow[]): Promise<BulkResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   if (!user) {
     return { succeeded: 0, failed: [{ name: '전체', reason: '인증이 필요합니다.' }] }

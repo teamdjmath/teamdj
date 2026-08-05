@@ -61,19 +61,18 @@ const NAV_ITEMS = [
   },
 ] as const
 
-export function BottomNav() {
+export function BottomNav({ userId }: { userId: string }) {
   const pathname = usePathname()
   const [hasUnanswered, setHasUnanswered] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
-    let channel: ReturnType<typeof supabase.channel> | null = null
-    // StrictMode 이중 실행 대비: 언마운트 후 완료되는 async 작업이 채널을 만들거나
+    // StrictMode 이중 실행 대비: 언마운트 후 완료되는 async 작업이
     // state를 건드리지 않도록 가드. (Date.now() 이름이 밀리초 단위로 충돌해서
     // 이미 subscribe()된 채널에 .on()을 다시 호출하다 터지던 버그의 원인)
     let cancelled = false
 
-    const fetchCount = async (userId: string) => {
+    const fetchCount = async () => {
       const { count } = await supabase
         .from('qna_questions')
         .select('*', { count: 'exact', head: true })
@@ -82,33 +81,23 @@ export function BottomNav() {
       if (!cancelled) setHasUnanswered((count ?? 0) > 0)
     }
 
-    const checkUnanswered = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user || cancelled) return
+    void fetchCount()
 
-      await fetchCount(user.id)
-      if (cancelled) return
-
-      // Realtime subscription — 이름은 실행마다 고유하게
-      channel = supabase
-        .channel(`qna_changes_${user.id}_${Math.random().toString(36).slice(2)}`)
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'qna_questions', filter: `student_id=eq.${user.id}` },
-          () => { void fetchCount(user.id) },
-        )
-        .subscribe()
-    }
-
-    void checkUnanswered()
+    // Realtime subscription — 이름은 실행마다 고유하게
+    const channel = supabase
+      .channel(`qna_changes_${userId}_${Math.random().toString(36).slice(2)}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'qna_questions', filter: `student_id=eq.${userId}` },
+        () => { void fetchCount() },
+      )
+      .subscribe()
 
     return () => {
       cancelled = true
-      if (channel) {
-        supabase.removeChannel(channel)
-      }
+      supabase.removeChannel(channel)
     }
-  }, [])
+  }, [userId])
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-zinc-200 bg-white pb-safe">

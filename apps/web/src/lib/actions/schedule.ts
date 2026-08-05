@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
@@ -12,7 +13,7 @@ type ExtraScheduleRow = {
 
 export async function createExtraSchedule(formData: FormData): Promise<ActionResult<ExtraScheduleRow>> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('createExtraSchedule', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
@@ -42,7 +43,7 @@ export async function createExtraSchedule(formData: FormData): Promise<ActionRes
 
 export async function deleteExtraSchedule(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('deleteExtraSchedule', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
@@ -70,7 +71,7 @@ export async function createScheduleAbsence(
   note?: string,
 ): Promise<ActionResult<ScheduleAbsenceRow>> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('createScheduleAbsence', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
@@ -107,7 +108,7 @@ export async function createScheduleAbsence(
 
 export async function deleteScheduleAbsence(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('deleteScheduleAbsence', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }

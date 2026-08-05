@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
@@ -23,7 +24,7 @@ export async function createExamResult(data: {
   autoRank?: boolean
 }): Promise<ActionResult> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('createExamResult', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
@@ -66,7 +67,7 @@ export async function createExamResult(data: {
 
 export async function autoRankExam(examName: string, examDate: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('autoRankExam', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }
@@ -120,7 +121,7 @@ export async function autoRankExam(examName: string, examDate: string): Promise<
 
 export async function deleteExamResult(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
 
   return withAction('deleteExamResult', user?.id, async () => {
     if (!user) return { success: false, error: '인증이 필요합니다.' }

@@ -8,7 +8,6 @@ import { OpenClassesSection } from "@/components/landing/open-classes-section";
 import { SystemSection } from "@/components/landing/system-section";
 import { TestimonialSection } from "@/components/landing/testimonial-section";
 import { SeminarSection } from "@/components/landing/seminar-section";
-import { ConsultationSection } from "@/components/landing/consultation-section";
 import { ClosingSection } from "@/components/landing/closing-section";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { SiteFooter } from "@/components/landing/site-footer";
@@ -86,11 +85,7 @@ export default function LandingPage() {
       {/* 8. 비공개설명회 (연4회) — 추후 오픈 */}
       <SeminarSection />
 
-      {/* 9. 상담신청 (클릭 시 번호 노출) */}
-      <div id="consultation">
-        <ConsultationSection />
-      </div>
-
+      {/* 9. 상담신청 (클릭 시 번호 노출, 클로징 섹션에 통합) */}
       <ClosingSection />
 
       <SiteFooter />
