@@ -13,7 +13,7 @@ import { LandingNav } from "@/components/landing/landing-nav";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { SITE_CONFIG } from "@/lib/site-config";
 
-const TITLE = "TeamDJ — 이동재T 수학 전문 학원";
+const TITLE = "TeamDJ - 다원MDS 이동재T";
 const DESCRIPTION =
   "고1 공통수학부터 고3·N수 수능 대비까지, TeamDJ 이동재T와 함께하는 1등급 역전 전략. 2026 여름방학 특강 및 정규반 안내.";
 

@@ -1,5 +1,5 @@
-/* eslint-disable @next/next/no-img-element */
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { SiteFooter } from "@/components/landing/site-footer";
@@ -15,11 +15,15 @@ function BookHero({ book, reverse }: { book: MaterialBook; reverse: boolean }) {
     <div className={`flex flex-col ${reverse ? "md:flex-row-reverse" : "md:flex-row"} items-center gap-8 md:gap-14`}>
       <div className="shrink-0">
         {book.img ? (
-          <img
-            src={book.img}
-            alt={`${book.name} 교재 표지`}
-            className="w-44 md:w-56 aspect-[3/4] object-cover rounded-xl shadow-xl shadow-zinc-200"
-          />
+          <div className="relative w-44 md:w-56 aspect-[3/4] rounded-xl shadow-xl shadow-zinc-200 overflow-hidden">
+            <Image
+              src={book.img}
+              alt={`${book.name} 교재 표지`}
+              fill
+              sizes="(min-width: 768px) 224px, 176px"
+              className="object-cover"
+            />
+          </div>
         ) : (
           <div className="w-44 md:w-56 aspect-[3/4] rounded-xl border border-zinc-200 bg-zinc-50 flex items-center justify-center">
             <span className="text-xs font-medium text-zinc-300 text-center px-4 leading-relaxed">

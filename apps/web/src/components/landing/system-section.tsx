@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { MATERIAL_LEVELS } from "@/lib/materials-data";
@@ -18,6 +19,8 @@ const SYSTEMS = [
     title: "과제 관리 & 학습결과 발송",
     icon: "homework" as const,
     img: "/report-sample.png",
+    imgWidth: 840,
+    imgHeight: 1584,
     points: [
       <>매 수업 누적 과제 검사. 밀린 과제는 <b className="text-zinc-900 font-bold">완료할 때까지 끝까지</b> 확인합니다</>,
       <>숙제장을 잃어버려도 걱정 마세요, 다시 챙겨드립니다</>,
@@ -28,6 +31,9 @@ const SYSTEMS = [
   {
     title: "클리닉",
     icon: "clinic" as const,
+    img: "/clinic.jpg",
+    imgWidth: 4032,
+    imgHeight: 3024,
     points: [
       <>월·화·목·금 17:30~22:00, 토·일 12:00~19:00 상시 운영</>,
       <>정규반 학생은 주 1회 필참. 과제에서 막힌 문항을 바로 첨삭받는 시간입니다</>,
@@ -205,10 +211,12 @@ export function SystemSection() {
               <div className="w-full md:w-2/5 shrink-0">
                 {"img" in sys && sys.img ? (
                   <div className="flex justify-center">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                       src={sys.img}
                       alt={`${sys.title} 예시`}
+                      width={sys.imgWidth}
+                      height={sys.imgHeight}
+                      sizes="(min-width: 768px) 40vw, 90vw"
                       className="max-h-[420px] w-auto rounded-3xl border border-zinc-200 object-contain"
                     />
                   </div>
