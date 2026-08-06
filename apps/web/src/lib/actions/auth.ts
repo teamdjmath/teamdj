@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
 
 export type AuthState = {
   error: string | null
@@ -175,7 +176,7 @@ export async function signOut(): Promise<void> {
   const supabase = await createClient()
 
   // 스태프면 근무 상태를 오프라인으로 전환 (세션이 살아있을 때 먼저 처리)
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser()
   const role = user?.user_metadata?.role as string | undefined
   if (user?.id && STAFF_ROLES.includes(role ?? '')) {
     await setStaffStatus(user.id, 'offline')

@@ -104,6 +104,15 @@ https://youtu.be/sampleVide1
 
 ☞ 영상 시청 후 궁금한 점은 Q&A로 남겨주세요.`,
   },
+  {
+    key: 'blog',
+    label: '블로그 연동',
+    content: `#고2 수요반 2학기 안내
+
+이번 학기 타임테이블과 학습 방식을 블로그에 자세히 정리했습니다.
+
+▶타임테이블, 난이도, 과제 안내까지|이 반의 자세한 수업 안내는 아래 블로그 글에서 확인하실 수 있어요.|https://blog.naver.com/example/1234|블로그에서 확인하기`,
+  },
 ] as const
 
 const GUIDE_SYNTAX = [
@@ -111,6 +120,7 @@ const GUIDE_SYNTAX = [
   { syntax: '[LEVEL 1] 설명 / [SPECIAL] 설명', effect: '검은 알약 배지 — 교재 단계·묶음 구분' },
   { syntax: '[라벨]본문', effect: '작은 회색 태그 — 교재명 등 한 줄 항목' },
   { syntax: '☞ 안내문구', effect: '초록색 굵은 강조 문구' },
+  { syntax: '▶제목|부제|URL|버튼문구', effect: '검은 카드 + 흰 버튼 (부제·버튼문구는 생략 가능)' },
   { syntax: '사진·유튜브 URL', effect: '자동으로 사진/영상 미리보기 삽입' },
 ] as const
 

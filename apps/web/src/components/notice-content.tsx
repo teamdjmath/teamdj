@@ -4,6 +4,7 @@
 //  - "[LEVEL n]", "[SPECIAL]" 로 시작하는 줄 → 큰 배지 (교재 묶음 구분용, 한 단계 더 굵고 큼)
 //  - "[라벨]본문" 으로 시작하는 줄 → 작은 배지 + 본문 (교재명 등 하위 태그)
 //  - "☞ 안내" 로 시작하는 줄 → 강조 CTA 링크 스타일
+//  - "▶제목|부제|URL" 로 시작하는 줄 → 카드형 버튼 (제목/부제 + 검은 카드 + 흰 버튼)
 //  - 그 외 줄 속 URL → 이미지/유튜브 임베드 또는 새 탭 링크로 자동 변환
 // 첨부 이미지(imageUrls)는 본문 아래에 나열한다.
 // 관리자 모달·학생 공지 상세·공개 공지 페이지에서 공용.
@@ -12,6 +13,7 @@ const URL_RE = /(https?:\/\/[^\s<>"']+)/g
 const IMAGE_RE = /\.(png|jpe?g|gif|webp)(\?.*)?$/i
 const HEADER_RE = /^#{1,3}\s*(.+)$/
 const CTA_RE = /^☞\s*(.+)$/
+const LINKCARD_RE = /^▶\s*(.+)$/
 const SUBHEADER_RE = /^\[(LEVEL\s*\d+|SPECIAL)\]\s*(.*)$/i
 const BRACKET_RE = /^(\[[^\]]+\])(.*)$/
 
@@ -76,6 +78,29 @@ function NoticeLine({ line, first }: { line: string; first: boolean }) {
       <p className={`font-black text-lg text-zinc-950 dark:text-zinc-50 mb-2 ${first ? '' : 'mt-8 pt-6 border-t border-zinc-100 dark:border-zinc-900'}`}>
         <LineText text={header[1]} />
       </p>
+    )
+  }
+
+  const linkCard = line.match(LINKCARD_RE)
+  if (linkCard) {
+    const parts = linkCard[1].split('|').map((p) => p.trim())
+    const url = parts.find((p) => /^https?:\/\//.test(p)) ?? ''
+    const [title, subtitle, label] = parts.filter((p) => p !== url)
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-zinc-900 dark:bg-zinc-800 px-5 py-4 hover:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors"
+      >
+        <div>
+          {title && <p className="font-bold text-white text-[15px]">{title}</p>}
+          {subtitle && <p className="mt-1 text-sm text-zinc-400">{subtitle}</p>}
+        </div>
+        <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-white text-zinc-900 text-sm font-bold px-4 py-2 whitespace-nowrap">
+          {label || '확인하기'} <span aria-hidden>→</span>
+        </span>
+      </a>
     )
   }
 
