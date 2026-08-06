@@ -100,7 +100,7 @@ export default async function AdminDashboardPage() {
   const isTeacher = role === 'teacher'
 
   // ── 병렬 fetch ──
-  const [noticesRes, openQnaRes, staffUsersRes, extraSchedulesRes, taAccessRes, contactRequestsRes] = await Promise.all([
+  const [noticesRes, openQnaRes, staffUsersRes, extraSchedulesRes, taAccessRes, contactRequestsRes, absenceRowsRes] = await Promise.all([
     db.from('notices')
       .select('id, title, created_at, is_pinned, class_id, class_groups!class_id(name)')
       .order('is_pinned', { ascending: false })
@@ -134,6 +134,14 @@ export default async function AdminDashboardPage() {
           .eq('status', 'pending')
           .order('requested_at', { ascending: true })
       : Promise.resolve({ data: [] }),
+    // 이번 달 휴강 기록 (본인) — 근무 시간 차감용
+    adminDb
+      .from('schedule_absences')
+      .select('id, class_id, absence_date, note')
+      .eq('user_id', user.id)
+      .gte('absence_date', monthStart)
+      .lte('absence_date', monthEnd)
+      .order('absence_date'),
   ])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -147,14 +155,7 @@ export default async function AdminDashboardPage() {
     requestedAt: r.requested_at as string,
   }))
 
-  // 이번 달 휴강 기록 (본인) — 근무 시간 차감용
-  const { data: absenceRows } = await adminDb
-    .from('schedule_absences')
-    .select('id, class_id, absence_date, note')
-    .eq('user_id', user.id)
-    .gte('absence_date', monthStart)
-    .lte('absence_date', monthEnd)
-    .order('absence_date')
+  const absenceRows = absenceRowsRes.data
 
   const currentUserIsSuperAdmin =
     ((staffUsersRes.data ?? []).find((u) => u.id === user.id)?.is_super_admin ?? false) as boolean

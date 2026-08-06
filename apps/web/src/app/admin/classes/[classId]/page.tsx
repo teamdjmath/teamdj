@@ -11,25 +11,26 @@ export default async function ClassDetailPage({
   const { classId } = await params
   const supabase = await createClient()
 
-  const { data: cls } = await supabase
-    .from('class_groups')
-    .select('id, name, subject, grade, schedule, is_active')
-    .eq('id', classId)
-    .single()
+  const [{ data: cls }, { data: members }] = await Promise.all([
+    supabase
+      .from('class_groups')
+      .select('id, name, subject, grade, schedule, is_active')
+      .eq('id', classId)
+      .single(),
+    supabase
+      .from('class_members')
+      .select(`
+        id,
+        is_active,
+        enrolled_at,
+        users!student_id(id, name, phone)
+      `)
+      .eq('class_id', classId)
+      .eq('is_active', true)
+      .order('enrolled_at', { ascending: false }),
+  ])
 
   if (!cls) notFound()
-
-  const { data: members } = await supabase
-    .from('class_members')
-    .select(`
-      id,
-      is_active,
-      enrolled_at,
-      users!student_id(id, name, phone)
-    `)
-    .eq('class_id', classId)
-    .eq('is_active', true)
-    .order('enrolled_at', { ascending: false })
 
   type MemberUser = { id: string; name: string; phone: string }
   const students = (members ?? []).map((m) => ({

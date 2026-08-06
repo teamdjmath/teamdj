@@ -10,8 +10,6 @@ export default async function AssignmentsPage({
   const { classId: selectedClassId } = await searchParams
   const adminSupabase = createAdminClient()
 
-  const classes = await getVisibleClassOptions()
-
   type AssignmentRow = {
     id: string; title: string; category: string | null
     issue_date: string | null; due_date: string | null
@@ -19,19 +17,25 @@ export default async function AssignmentsPage({
     class_groups: { name: string } | null
   }
 
-  let rows: AssignmentRow[] | null = null
-  if (selectedClassId) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await (adminSupabase as any)
-      .from('assignments')
-      .select('id, title, category, issue_date, due_date, week_num, class_id, created_at, class_groups!class_id(name)')
-      .eq('class_id', selectedClassId)
-      .order('week_num', { ascending: false })
-      .order('created_at', { ascending: false }) as { data: AssignmentRow[] | null }
-    rows = result.data
-  }
+  const [classes, rows, { data: catRows }] = await Promise.all([
+    getVisibleClassOptions(),
+    selectedClassId
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ? (adminSupabase as any)
+          .from('assignments')
+          .select('id, title, category, issue_date, due_date, week_num, class_id, created_at, class_groups!class_id(name)')
+          .eq('class_id', selectedClassId)
+          .order('week_num', { ascending: false })
+          .order('created_at', { ascending: false })
+          .then((result: { data: AssignmentRow[] | null }) => result.data)
+      : Promise.resolve(null),
+    adminSupabase
+      .from('assignment_categories')
+      .select('name')
+      .order('name'),
+  ])
 
-  const assignments = (rows ?? []).map((a) => ({
+  const assignments = ((rows ?? []) as AssignmentRow[]).map((a) => ({
     id:         a.id,
     title:      a.title,
     category:   a.category   ?? '',
@@ -42,11 +46,6 @@ export default async function AssignmentsPage({
     className:  a.class_groups?.name ?? '',
   }))
 
-  const { data: catRows } = await adminSupabase
-    .from('assignment_categories')
-    .select('name')
-    .order('name')
-  
   const categoryOptions = (catRows ?? []).map(r => r.name as string)
 
   return (

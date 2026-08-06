@@ -68,15 +68,16 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const staffRole = role as StaffRole
   const displayName = user.user_metadata?.name ?? user.email ?? ''
 
-  let isSuperAdmin = false
-  if (staffRole === 'teacher') {
+  async function checkSuperAdmin(userId: string) {
     const supabase = await createClient()
-    const { data } = await supabase.from('users').select('is_super_admin').eq('id', user.id).maybeSingle()
-    isSuperAdmin = data?.is_super_admin ?? false
+    const { data } = await supabase.from('users').select('is_super_admin').eq('id', userId).maybeSingle()
+    return data?.is_super_admin ?? false
   }
-  const badgeLabel = isSuperAdmin ? 'admin' : staffRole
 
-  const unreadConsultations = staffRole === 'teacher' ? await getUnreadConsultationCount() : 0
+  const [isSuperAdmin, unreadConsultations] = staffRole === 'teacher'
+    ? await Promise.all([checkSuperAdmin(user.id), getUnreadConsultationCount()])
+    : [false, 0]
+  const badgeLabel = isSuperAdmin ? 'admin' : staffRole
   const badges: Record<string, number> = unreadConsultations > 0 ? { '/admin/consultations': unreadConsultations } : {}
 
   const visibleItems = filterNavByRole(staffRole)
@@ -119,7 +120,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             <ThemeToggle className="w-7 h-7" />
             <NotificationBell />
             <span className="text-sm text-zinc-500 dark:text-zinc-500">{displayName}</span>
-            {/* TEMP DISABLED <MobileNav items={visibleItems} badges={badges} /> */}
+            <MobileNav items={visibleItems} badges={badges} />
           </div>
         </div>
 
