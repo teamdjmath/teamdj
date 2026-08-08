@@ -1,9 +1,11 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: vi.fn() }))
+vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
+vi.mock('@/lib/supabase/verified-user', () => ({ getVerifiedUser: vi.fn() }))
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { purgeOldReports } from '@/lib/actions/reports'
+import { purgeOldReports, sendKakaoReport, sendBatchKakaoReports } from '@/lib/actions/reports'
 
 function makeAdminMock(rows: Array<{ image_url: string | null }>) {
   const removeMock = vi.fn().mockResolvedValue({ error: null })
@@ -45,5 +47,31 @@ describe('purgeOldReports', () => {
 
     expect(removeMock).not.toHaveBeenCalled()
     expect(deleteLtMock).not.toHaveBeenCalled()
+  })
+})
+
+// Solapi 연동 전(사업자번호/채널 준비 전) 지금 상태 — 환경변수가 없으면 실제 발송을
+// 시도하지 않고 안전하게 에러만 반환해야 한다. 나중에 SOLAPI_* 값만 채우면 이 가드를
+// 그대로 통과해서 실제 발송 경로로 들어간다.
+describe('sendKakaoReport / sendBatchKakaoReports — Solapi 미설정 시 안전 가드', () => {
+  beforeEach(() => {
+    vi.stubEnv('SOLAPI_API_KEY', '')
+    vi.stubEnv('SOLAPI_API_SECRET', '')
+    vi.stubEnv('SOLAPI_PF_ID', '')
+    vi.stubEnv('SOLAPI_SENDER_PHONE', '')
+    vi.mocked(createAdminClient).mockClear()
+  })
+
+  it('sendKakaoReport: 환경변수 없으면 DB/네트워크 호출 없이 에러를 반환한다', async () => {
+    const result = await sendKakaoReport('report-1')
+    expect(result.error).toBeTruthy()
+    expect(createAdminClient).not.toHaveBeenCalled()
+  })
+
+  it('sendBatchKakaoReports: 환경변수 없으면 DB/네트워크 호출 없이 에러를 반환한다', async () => {
+    const result = await sendBatchKakaoReports('class-1', '2026-01-01')
+    expect(result.error).toBeTruthy()
+    expect(result.sent).toBe(0)
+    expect(createAdminClient).not.toHaveBeenCalled()
   })
 })

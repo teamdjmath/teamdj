@@ -9,6 +9,11 @@ import { logAudit } from '@/lib/audit'
 import { asJson } from '@/types/db'
 export type { ReportContent } from '@/types/db'
 import type { ReportContent } from '@/types/db' // used in function signatures below
+import { SolapiMessageService } from 'solapi'
+import { writeFile, unlink } from 'fs/promises'
+import { randomUUID } from 'crypto'
+import { tmpdir } from 'os'
+import { join } from 'path'
 
 async function assertStaff() {
   const user = await getVerifiedUser()
@@ -250,12 +255,76 @@ export async function purgeOldReports(days: number): Promise<void> {
   await admin.from('reports').delete().lt('report_date', cutoff)
 }
 
-// ── 카카오톡 친구톡 발송
+// ── 카카오 친구톡(브랜드메시지) 발송 — Solapi 연동
+// 알림톡은 템플릿당 고정 이미지 1장만 허용돼 학생마다 다른 리포트 이미지를 못
+// 보내므로, 채널 친구에게 자유형 이미지(BMS_FREE)로 발송한다. 사업자번호로 카카오
+// 채널을 개설하고 Solapi에 연동해 pfId를 발급받은 뒤, 아래 4개 환경변수만 채우면
+// 바로 동작한다: SOLAPI_API_KEY, SOLAPI_API_SECRET, SOLAPI_PF_ID, SOLAPI_SENDER_PHONE
+// (SOLAPI_SENDER_PHONE은 Solapi 콘솔에 사전 등록해둔 발신번호).
+function getSolapiConfig() {
+  const apiKey       = process.env.SOLAPI_API_KEY
+  const apiSecret    = process.env.SOLAPI_API_SECRET
+  const pfId         = process.env.SOLAPI_PF_ID
+  const senderPhone  = process.env.SOLAPI_SENDER_PHONE
+  if (!apiKey || !apiSecret || !pfId || !senderPhone) return null
+  return { apiKey, apiSecret, pfId, senderPhone }
+}
+
+// Storage에 있는 리포트 이미지를 Solapi에 업로드해 fileId를 발급받는다.
+// uploadFile()이 로컬 파일 경로만 받아서 임시 파일을 거쳐야 한다.
+async function uploadImageToSolapi(
+  messageService: SolapiMessageService,
+  imageUrl: string,
+): Promise<string> {
+  const res = await fetch(imageUrl)
+  if (!res.ok) throw new Error(`이미지 다운로드 실패: ${res.status}`)
+  const buffer  = Buffer.from(await res.arrayBuffer())
+  const ext     = imageUrl.match(/\.(\w+)(?:\?|$)/)?.[1] ?? 'png'
+  const tmpPath = join(tmpdir(), `kakao-report-${randomUUID()}.${ext}`)
+  await writeFile(tmpPath, buffer)
+  try {
+    const { fileId } = await messageService.uploadFile(tmpPath, 'BMS')
+    return fileId
+  } finally {
+    await unlink(tmpPath).catch(() => {})
+  }
+}
+
+function buildKakaoMessage(opts: {
+  pfId: string
+  senderPhone: string
+  phone: string
+  fileId: string
+  studentName: string
+  reportLabel: string
+  reportDate: string
+  imageUrl: string
+}) {
+  return {
+    to:   opts.phone,
+    from: opts.senderPhone,
+    text: `[TeamDJ] ${opts.studentName} ${opts.reportLabel}\n${opts.reportDate} ${opts.reportLabel}가 도착했습니다.`,
+    type: 'BMS_FREE' as const,
+    kakaoOptions: {
+      pfId: opts.pfId,
+      bms: {
+        targeting:      'I' as const,
+        chatBubbleType: 'IMAGE' as const,
+        imageId:        opts.fileId,
+        imageLink:      opts.imageUrl,
+        buttons: [
+          { linkType: 'WL' as const, name: '리포트 보기', linkMobile: opts.imageUrl, linkPc: opts.imageUrl },
+        ],
+      },
+    },
+  }
+}
+
 export async function sendKakaoReport(
   reportId: string,
 ): Promise<{ error?: string; sentCount?: number }> {
-  const apiKey = process.env.KAKAO_API_KEY
-  if (!apiKey) return { error: '카카오 API 키가 설정되지 않았습니다.' }
+  const config = getSolapiConfig()
+  if (!config) return { error: '카카오 발송 설정(Solapi)이 아직 준비되지 않았습니다.' }
 
   const supabase = await createClient()
   const user = await getVerifiedUser()
@@ -283,53 +352,38 @@ export async function sendKakaoReport(
   const studentName = ((r.student as { name?: string } | null)?.name ?? '학생') as string
   const imageUrl    = r.image_url as string
   const reportDate  = r.report_date as string
-  const isClinic    = r.report_type === 'clinic'
-  const reportLabel = isClinic ? '클리닉 리포트' : '학습 리포트'
+  const reportLabel = r.report_type === 'clinic' ? '클리닉 리포트' : '학습 리포트'
 
-  const kakaoBody = (phone: string) => JSON.stringify({
-    receiver_type: 'phone',
-    receiver_phone: phone,
-    template_object: {
-      object_type: 'feed',
-      content: {
-        title:       `[TeamDJ] ${studentName} ${reportLabel}`,
-        description: isClinic ? `${reportDate} 클리닉 리포트입니다.` : `${reportDate} 수업 학습 리포트입니다.`,
-        image_url:   imageUrl,
-        link: { web_url: imageUrl, mobile_web_url: imageUrl },
-      },
-      buttons: [
-        { title: '리포트 보기', link: { web_url: imageUrl, mobile_web_url: imageUrl } },
-      ],
-    },
-  })
+  const phones = parentLinks
+    .map((link) => {
+      const lr     = link as Record<string, unknown>
+      const parent = lr.parent as { phone?: string } | null
+      return parent?.phone ? parent.phone.replace(/\D/g, '') : null
+    })
+    .filter((phone): phone is string => !!phone)
+
+  const messageService = new SolapiMessageService(config.apiKey, config.apiSecret)
+
+  let fileId: string
+  try {
+    fileId = await uploadImageToSolapi(messageService, imageUrl)
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : '이미지 업로드에 실패했습니다.' }
+  }
 
   const sendResults = await Promise.allSettled(
-    parentLinks
-      .map((link) => {
-        const lr     = link as Record<string, unknown>
-        const parent = lr.parent as { phone?: string } | null
-        return parent?.phone ? parent.phone.replace(/-/g, '') : null
-      })
-      .filter((phone): phone is string => !!phone)
-      .map((phone) =>
-        fetch('https://kapi.kakao.com/v1/api/talk/friends/message/send', {
-          method:  'POST',
-          headers: { Authorization: `KakaoAK ${apiKey}`, 'Content-Type': 'application/json' },
-          body:    kakaoBody(phone),
-        })
-      )
+    phones.map((phone) =>
+      messageService.send(buildKakaoMessage({ ...config, phone, fileId, studentName, reportLabel, reportDate, imageUrl })),
+    ),
   )
 
   const errors: string[] = []
   let sentCount = 0
-  for (const r of sendResults) {
-    if (r.status === 'fulfilled' && r.value.ok) {
+  for (const result of sendResults) {
+    if (result.status === 'fulfilled') {
       sentCount++
-    } else if (r.status === 'fulfilled') {
-      const err = await r.value.json().catch(() => ({}))
-      errors.push((err as { msg?: string }).msg ?? `${r.value.status}`)
     } else {
-      errors.push('네트워크 오류')
+      errors.push(result.reason instanceof Error ? result.reason.message : '발송 실패')
     }
   }
 
@@ -353,25 +407,26 @@ export async function sendBatchKakaoReports(
   classId: string,
   date: string,
 ): Promise<{ error?: string; sent: number; failed: number }> {
-  const apiKey = process.env.KAKAO_API_KEY
-  if (!apiKey) return { error: '카카오 API 키가 설정되지 않았습니다.', sent: 0, failed: 0 }
+  const config = getSolapiConfig()
+  if (!config) return { error: '카카오 발송 설정(Solapi)이 아직 준비되지 않았습니다.', sent: 0, failed: 0 }
 
   const auth = await assertStaff()
   if (!auth.ok) return { error: auth.error, sent: 0, failed: 0 }
 
   const admin = createAdminClient()
 
-  const { data: reports } = await admin
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: reports } = await (admin as any)
     .from('reports')
-    .select('id, student_id, image_url, report_date, student:users!student_id(name)')
+    .select('id, student_id, image_url, report_date, report_type, student:users!student_id(name)')
     .eq('class_id', classId)
     .eq('report_date', date)
 
   if (!reports?.length) return { error: '해당 세션의 리포트가 없습니다.', sent: 0, failed: 0 }
 
   const now = new Date().toISOString()
-  const validReports = reports.filter((r) => !!(r as Record<string, unknown>).image_url)
-  const studentIds   = validReports.map((r) => (r as Record<string, unknown>).student_id as string)
+  const validReports = reports.filter((r: Record<string, unknown>) => !!r.image_url)
+  const studentIds   = validReports.map((r: Record<string, unknown>) => r.student_id as string)
 
   // 모든 학부모 링크를 한 번에 조회 (N개 순차 쿼리 → 1개 병렬 쿼리)
   const { data: allLinks } = await admin
@@ -386,63 +441,61 @@ export async function sendBatchKakaoReports(
     const sid    = lr.student_id as string
     if (!phone || !sid) continue
     const phones = linksByStudent.get(sid) ?? []
-    phones.push(phone.replace(/-/g, ''))
+    phones.push(phone.replace(/\D/g, ''))
     linksByStudent.set(sid, phones)
   }
 
-  // 모든 발송을 병렬 처리
-  const sendJobs = validReports.flatMap((report) => {
+  const messageService = new SolapiMessageService(config.apiKey, config.apiSecret)
+
+  // 리포트당 이미지 업로드는 1회만 (학부모가 여러 명이어도 fileId 재사용)
+  const sendJobs: Array<{ reportId: string; phone: string; fileId: string; studentName: string; reportLabel: string; reportDate: string; imageUrl: string }> = []
+  const uploadFailedReportIds = new Set<string>()
+
+  for (const report of validReports) {
     const r           = report as Record<string, unknown>
     const sid         = r.student_id as string
     const phones      = linksByStudent.get(sid) ?? []
+    if (phones.length === 0) continue
+
+    const imageUrl = r.image_url as string
+    let fileId: string
+    try {
+      fileId = await uploadImageToSolapi(messageService, imageUrl)
+    } catch {
+      uploadFailedReportIds.add(r.id as string)
+      continue
+    }
+
     const studentName = ((r.student as { name?: string } | null)?.name ?? '학생') as string
-    const imageUrl    = r.image_url as string
+    const reportLabel = r.report_type === 'clinic' ? '클리닉 리포트' : '학습 리포트'
     const reportDate  = r.report_date as string
 
-    return phones.map((phone) => ({
-      reportId: r.id as string,
-      phone,
-      body: JSON.stringify({
-        receiver_type: 'phone',
-        receiver_phone: phone,
-        template_object: {
-          object_type: 'feed',
-          content: {
-            title:       `[TeamDJ] ${studentName} 학습 리포트`,
-            description: `${reportDate} 수업 학습 리포트입니다.`,
-            image_url:   imageUrl,
-            link: { web_url: imageUrl, mobile_web_url: imageUrl },
-          },
-          buttons: [
-            { title: '리포트 보기', link: { web_url: imageUrl, mobile_web_url: imageUrl } },
-          ],
-        },
-      }),
-    }))
-  })
+    for (const phone of phones) {
+      sendJobs.push({ reportId: r.id as string, phone, fileId, studentName, reportLabel, reportDate, imageUrl })
+    }
+  }
 
-  const fetchResults = await Promise.allSettled(
-    sendJobs.map(({ body }) =>
-      fetch('https://kapi.kakao.com/v1/api/talk/friends/message/send', {
-        method:  'POST',
-        headers: { Authorization: `KakaoAK ${apiKey}`, 'Content-Type': 'application/json' },
-        body,
-      })
-    )
+  const sendResults = await Promise.allSettled(
+    sendJobs.map((job) =>
+      messageService.send(buildKakaoMessage({ ...config, ...job })),
+    ),
   )
 
   // 성공한 reportId 집계 후 일괄 업데이트
   const sentReportIds = new Set<string>()
   const failedReportIds = new Set<string>()
 
-  fetchResults.forEach((result, i) => {
+  sendResults.forEach((result, i) => {
     const { reportId } = sendJobs[i]
-    if (result.status === 'fulfilled' && result.value.ok) {
+    if (result.status === 'fulfilled') {
       sentReportIds.add(reportId)
     } else {
       if (!sentReportIds.has(reportId)) failedReportIds.add(reportId)
     }
   })
+  for (const reportId of uploadFailedReportIds) {
+    if (!sentReportIds.has(reportId)) failedReportIds.add(reportId)
+  }
 
   // 발송 성공한 리포트만 kakao_sent_at 업데이트 (N개 순차 → 1개 병렬)
   if (sentReportIds.size > 0) {
@@ -455,8 +508,8 @@ export async function sendBatchKakaoReports(
   // 이미지 없는 리포트는 failed 카운트
   const noImageFailed = reports.length - validReports.length
   // 학부모 링크 없는 리포트는 failed
-  const noLinkFailed  = validReports.filter((r) => {
-    const sid = (r as Record<string, unknown>).student_id as string
+  const noLinkFailed  = validReports.filter((r: Record<string, unknown>) => {
+    const sid = r.student_id as string
     return !linksByStudent.has(sid)
   }).length
 
@@ -626,8 +679,8 @@ export async function deleteClinicSession(date: string): Promise<{ error?: strin
 export async function sendBatchClinicKakao(
   date: string,
 ): Promise<{ error?: string; sent: number; failed: number }> {
-  const apiKey = process.env.KAKAO_API_KEY
-  if (!apiKey) return { error: '카카오 API 키가 설정되지 않았습니다.', sent: 0, failed: 0 }
+  const config = getSolapiConfig()
+  if (!config) return { error: '카카오 발송 설정(Solapi)이 아직 준비되지 않았습니다.', sent: 0, failed: 0 }
 
   const auth = await assertStaff()
   if (!auth.ok) return { error: auth.error, sent: 0, failed: 0 }
@@ -660,55 +713,53 @@ export async function sendBatchClinicKakao(
     const sid   = lr.student_id as string
     if (!phone || !sid) continue
     const phones = linksByStudent.get(sid) ?? []
-    phones.push(phone.replace(/-/g, ''))
+    phones.push(phone.replace(/\D/g, ''))
     linksByStudent.set(sid, phones)
   }
 
-  const sendJobs = validReports.flatMap((r) => {
-    const sid         = r.student_id as string
-    const phones      = linksByStudent.get(sid) ?? []
+  const messageService = new SolapiMessageService(config.apiKey, config.apiSecret)
+
+  const sendJobs: Array<{ reportId: string; phone: string; fileId: string; studentName: string; reportLabel: string; reportDate: string; imageUrl: string }> = []
+  const uploadFailedReportIds = new Set<string>()
+
+  for (const r of validReports) {
+    const sid    = r.student_id as string
+    const phones = linksByStudent.get(sid) ?? []
+    if (phones.length === 0) continue
+
+    const imageUrl = r.image_url as string
+    let fileId: string
+    try {
+      fileId = await uploadImageToSolapi(messageService, imageUrl)
+    } catch {
+      uploadFailedReportIds.add(r.id as string)
+      continue
+    }
+
     const studentName = ((r.student as { name?: string } | null)?.name ?? '학생') as string
-    const imageUrl    = r.image_url as string
     const reportDate  = r.report_date as string
 
-    return phones.map((phone) => ({
-      reportId: r.id as string,
-      body: JSON.stringify({
-        receiver_type: 'phone',
-        receiver_phone: phone,
-        template_object: {
-          object_type: 'feed',
-          content: {
-            title:       `[TeamDJ] ${studentName} 클리닉 리포트`,
-            description: `${reportDate} 클리닉 리포트입니다.`,
-            image_url:   imageUrl,
-            link: { web_url: imageUrl, mobile_web_url: imageUrl },
-          },
-          buttons: [
-            { title: '리포트 보기', link: { web_url: imageUrl, mobile_web_url: imageUrl } },
-          ],
-        },
-      }),
-    }))
-  })
+    for (const phone of phones) {
+      sendJobs.push({ reportId: r.id as string, phone, fileId, studentName, reportLabel: '클리닉 리포트', reportDate, imageUrl })
+    }
+  }
 
-  const fetchResults = await Promise.allSettled(
-    sendJobs.map(({ body }) =>
-      fetch('https://kapi.kakao.com/v1/api/talk/friends/message/send', {
-        method:  'POST',
-        headers: { Authorization: `KakaoAK ${apiKey}`, 'Content-Type': 'application/json' },
-        body,
-      })
-    )
+  const sendResults = await Promise.allSettled(
+    sendJobs.map((job) =>
+      messageService.send(buildKakaoMessage({ ...config, ...job })),
+    ),
   )
 
   const sentReportIds = new Set<string>()
   const failedReportIds = new Set<string>()
-  fetchResults.forEach((result, i) => {
+  sendResults.forEach((result, i) => {
     const { reportId } = sendJobs[i]
-    if (result.status === 'fulfilled' && result.value.ok) sentReportIds.add(reportId)
+    if (result.status === 'fulfilled') sentReportIds.add(reportId)
     else if (!sentReportIds.has(reportId)) failedReportIds.add(reportId)
   })
+  for (const reportId of uploadFailedReportIds) {
+    if (!sentReportIds.has(reportId)) failedReportIds.add(reportId)
+  }
 
   if (sentReportIds.size > 0) {
     await admin.from('reports').update({ kakao_sent_at: now }).in('id', [...sentReportIds])
