@@ -328,7 +328,7 @@ function AnswerEditor({
           </button>
         )}
         <button type="button" onClick={onSubmit} disabled={isPending || !content.trim()}
-          className="inline-flex items-center gap-2 rounded-xl bg-zinc-950 dark:bg-zinc-50 px-6 py-2.5 text-sm font-bold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 transition-colors">
+          className="inline-flex items-center gap-2 rounded-xl bg-zinc-950 dark:bg-zinc-50 px-6 py-2.5 text-sm font-bold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400 transition-colors">
           {isPending ? (
             <>
               <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -536,7 +536,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
             )}
             {canAnswer && !isAssigned && (
               <button type="button" onClick={handleAssign} disabled={pending}
-                className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-3 py-1.5 text-xs font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 transition-colors disabled:opacity-50">
+                className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-3 py-1.5 text-xs font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 transition-colors disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400">
                 내가 담당하기
               </button>
             )}

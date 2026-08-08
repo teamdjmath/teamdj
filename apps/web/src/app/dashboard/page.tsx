@@ -121,8 +121,10 @@ export default async function DashboardPage() {
           <CardHeader title="오늘 수업" />
           <CardContent>
             <ul className="space-y-2">
+              {/* expandClassSlots()가 같은 요일에 시간대가 다른 슬롯을 가진 분반은 같은 id로
+                  가상 행을 여러 개 만들어내므로 id만으로 키를 잡으면 React key 충돌이 난다 */}
               {todayClassesResolved.map((cls) => (
-                <li key={cls.id as string} className="flex items-center gap-3 py-1">
+                <li key={`${cls.id}:${cls.start_time}`} className="flex items-center gap-3 py-1">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-zinc-100">
                     <svg className="h-4 w-4 text-zinc-500" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" />

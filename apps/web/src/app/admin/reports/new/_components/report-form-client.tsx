@@ -425,7 +425,7 @@ export function ReportFormClient({
               type="button"
               onClick={handleSave}
               disabled={!!progress || students.length === 0}
-              className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-8 py-3 text-sm font-bold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all disabled:opacity-50"
+              className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-8 py-3 text-sm font-bold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400"
             >
               {progress ? '생성 중...' : '리포트 일괄 생성'}
             </button>

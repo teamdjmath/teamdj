@@ -7,6 +7,7 @@ import { Modal } from '@/components/ui/modal'
 import { InputField, SelectField } from '@/components/ui/form-field'
 import { Card, CardHeader } from '@/components/ui/card'
 import { DatePicker } from '@/components/ui/date-picker'
+import { formatPhone } from '@/lib/phone'
 import {
   updateStudent,
   addStudentToClass,
@@ -231,7 +232,7 @@ export function StudentDetailClient({
               <button
                 type="submit"
                 disabled={isPending}
-                className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50"
+                className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400"
               >
                 {isPending ? '저장 중…' : '저장'}
               </button>
@@ -323,7 +324,7 @@ export function StudentDetailClient({
                   <li key={p.linkId} className="flex items-center justify-between py-3">
                     <div>
                       <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{p.name}</p>
-                      <p className="text-xs text-zinc-400 dark:text-zinc-600">{p.phone}</p>
+                      <p className="text-xs text-zinc-400 dark:text-zinc-600">{formatPhone(p.phone)}</p>
                     </div>
                     <button
                       type="button"
@@ -416,7 +417,7 @@ export function StudentDetailClient({
               type="button"
               disabled={isPending}
               onClick={handleResetPassword}
-              className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50"
+              className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400"
             >
               {isPending ? '초기화 중…' : '초기화'}
             </button>
@@ -452,7 +453,7 @@ export function StudentDetailClient({
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50"
+              className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400"
             >
               {isPending ? '연결 중…' : '연결'}
             </button>

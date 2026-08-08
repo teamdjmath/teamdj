@@ -379,7 +379,7 @@ export function ClassesClient({ classes, allTas }: { classes: ClassRow[]; allTas
             <button type="button" onClick={() => setCreateOpen(false)} className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">
               취소
             </button>
-            <button type="submit" disabled={isPending} className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50">
+            <button type="submit" disabled={isPending} className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400">
               {isPending ? '생성 중…' : '생성'}
             </button>
           </div>
@@ -421,7 +421,7 @@ export function ClassesClient({ classes, allTas }: { classes: ClassRow[]; allTas
               <button type="button" onClick={() => setEditTarget(null)} className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">
                 취소
               </button>
-              <button type="submit" disabled={isPending} className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50">
+              <button type="submit" disabled={isPending} className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400">
                 {isPending ? '저장 중…' : '저장'}
               </button>
             </div>

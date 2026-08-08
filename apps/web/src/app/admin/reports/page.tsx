@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getVisibleClassOptions } from '@/lib/data/class-options'
+import { purgeOldReports } from '@/lib/actions/reports'
 import { ReportsClient } from './_components/reports-client'
 import { NewReportButton } from './_components/new-report-button'
 
@@ -10,6 +11,9 @@ export default async function ReportsPage({
 }) {
   const { classId: selectedClassId, date: selectedDate } = await searchParams
   const admin = createAdminClient()
+
+  // 보존 정책 lazy 정리 — 3개월 지난 리포트는 Storage 이미지와 함께 삭제
+  await purgeOldReports(90)
 
   const classes = await getVisibleClassOptions()
 

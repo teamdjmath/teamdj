@@ -464,7 +464,7 @@ export function ClinicBuilderClient() {
                 type="button"
                 onClick={handleSend}
                 disabled={sending}
-                className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-3.5 py-1.5 text-xs font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 transition-colors"
+                className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-3.5 py-1.5 text-xs font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400 transition-colors"
               >
                 {sending ? '발송 중…' : sendResult ? '카카오 재발송' : '카카오 전체 발송'}
               </button>

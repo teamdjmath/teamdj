@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { removeStudentFromClass } from '@/lib/actions/classes'
+import { formatPhone } from '@/lib/phone'
 
 type Student = {
   id: string
@@ -78,7 +79,7 @@ export function ClassDetailClient({
                     {s.name}
                   </Link>
                 </td>
-                <td className="hidden sm:table-cell px-5 py-3.5 text-zinc-500 dark:text-zinc-500">{s.phone}</td>
+                <td className="hidden sm:table-cell px-5 py-3.5 text-zinc-500 dark:text-zinc-500">{formatPhone(s.phone)}</td>
                 <td className="hidden md:table-cell px-5 py-3.5 text-zinc-400 dark:text-zinc-600 text-xs">
                   {new Date(s.enrolledAt).toLocaleDateString('ko-KR')}
                 </td>

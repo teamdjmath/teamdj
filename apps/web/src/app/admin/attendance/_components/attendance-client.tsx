@@ -3,6 +3,7 @@
 import { useState, useTransition, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveAttendance, type AttendanceStatus } from '@/lib/actions/attendance'
+import { formatPhone } from '@/lib/phone'
 import { EmptyState } from '@/components/ui/empty-state'
 
 type Student = { id: string; name: string; phone: string }
@@ -273,7 +274,7 @@ export function AttendanceClient({
 
                           {/* 전화번호 */}
                           <td className="hidden sm:table-cell px-5 py-3.5 text-xs text-zinc-400 dark:text-zinc-600">
-                            {student.phone}
+                            {formatPhone(student.phone)}
                           </td>
 
                           {/* 출결 토글 버튼 */}

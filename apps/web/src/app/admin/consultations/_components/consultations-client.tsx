@@ -152,7 +152,7 @@ export function ConsultationsClient({ inquiries }: { inquiries: Inquiry[] }) {
                   type="button"
                   disabled={isPending}
                   onClick={() => handleMarkInquiryRead(selectedInquiry.id)}
-                  className="flex-1 rounded-xl bg-zinc-950 dark:bg-zinc-50 py-3 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 transition-colors"
+                  className="flex-1 rounded-xl bg-zinc-950 dark:bg-zinc-50 py-3 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400 transition-colors"
                 >
                   {isPending ? '처리 중…' : '읽음 처리'}
                 </button>

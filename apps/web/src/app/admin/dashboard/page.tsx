@@ -294,8 +294,10 @@ export default async function AdminDashboardPage() {
           <ul className="divide-y divide-zinc-100 dark:divide-zinc-900">
             {todayClasses.map((cls) => {
               const taCount = (taCountByClass.get(cls.id) ?? 0) + allClassesTaCount
+              // expandClassSlots()가 같은 요일에 시간대가 다른 슬롯을 가진 분반은 같은 id로
+              // 가상 행을 여러 개 만들어내므로 id만으로 키를 잡으면 React key 충돌이 난다
               return (
-                <li key={cls.id} className="flex items-center gap-3 px-5 py-3.5">
+                <li key={`${cls.id}:${cls.start_time}`} className="flex items-center gap-3 px-5 py-3.5">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{cls.name}</p>
                     <p className="text-xs text-zinc-400 dark:text-zinc-600">{cls.subject}</p>

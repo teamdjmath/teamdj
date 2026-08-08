@@ -4,6 +4,7 @@ import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Modal } from '@/components/ui/modal'
 import { bulkCreateStudents, type StudentBulkRow } from '@/lib/actions/students'
+import { formatPhone } from '@/lib/phone'
 
 type ParsedRow = StudentBulkRow & { _idx: number }
 
@@ -126,7 +127,7 @@ export function ExcelImportModal({
                   {result.failed.map((f, i) => (
                     <tr key={i} className="border-b border-red-50">
                       <td className="px-4 py-2 text-zinc-700 dark:text-zinc-300">{f.name}</td>
-                      <td className="px-4 py-2 text-zinc-500 dark:text-zinc-500">{f.phone}</td>
+                      <td className="px-4 py-2 text-zinc-500 dark:text-zinc-500">{formatPhone(f.phone)}</td>
                       <td className="px-4 py-2 text-red-500">{f.reason}</td>
                     </tr>
                   ))}
@@ -164,7 +165,7 @@ export function ExcelImportModal({
               type="file"
               accept=".xlsx,.xls"
               onChange={handleFile}
-              className="block w-full text-sm text-zinc-500 dark:text-zinc-500 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 dark:file:bg-zinc-100 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white dark:text-zinc-900 hover:file:bg-zinc-700 dark:hover:file:bg-zinc-300"
+              className="block w-full text-sm text-zinc-500 dark:text-zinc-500 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 dark:file:bg-zinc-100 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white dark:file:text-zinc-900 hover:file:bg-zinc-700 dark:hover:file:bg-zinc-300"
             />
             <div className="mt-2 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 px-3 py-2.5 space-y-1">
               <p className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">주의사항</p>
@@ -204,9 +205,9 @@ export function ExcelImportModal({
                       <tr key={r._idx}>
                         <td className="px-4 py-2 text-zinc-400 dark:text-zinc-600">{r._idx}</td>
                         <td className="px-4 py-2 text-zinc-800 dark:text-zinc-200">{r.name}</td>
-                        <td className="px-4 py-2 text-zinc-600 dark:text-zinc-400">{r.phone}</td>
+                        <td className="px-4 py-2 text-zinc-600 dark:text-zinc-400">{formatPhone(r.phone)}</td>
                         <td className="px-4 py-2 text-zinc-500 dark:text-zinc-500">{r.school || '세종고'}/{r.grade || '1'}학년</td>
-                        <td className="px-4 py-2 text-zinc-500 dark:text-zinc-500">{r.parentPhone || '—'}</td>
+                        <td className="px-4 py-2 text-zinc-500 dark:text-zinc-500">{r.parentPhone ? formatPhone(r.parentPhone) : '—'}</td>
                         <td className="px-4 py-2 text-zinc-500 dark:text-zinc-500">{r.className || '—'}</td>
                       </tr>
                     ))}
@@ -228,7 +229,7 @@ export function ExcelImportModal({
               type="button"
               onClick={handleImport}
               disabled={rows.length === 0 || isPending}
-              className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50"
+              className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400"
             >
               {isPending ? `등록 중… (0/${rows.length})` : `${rows.length}명 등록`}
             </button>

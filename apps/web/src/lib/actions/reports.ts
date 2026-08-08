@@ -220,6 +220,36 @@ export async function deleteSessionReports(
   return {}
 }
 
+// ── 보존 정책: N일 지난 리포트 자동 삭제 (Storage 이미지 포함)
+// Storage 객체는 SQL DELETE로는 정확히 못 지워서(SDK 호출 필요) pg_cron을 쓰지 않고,
+// audit_logs의 lazy fallback과 같은 방식으로 /admin/reports 진입 시마다 정리한다.
+export async function purgeOldReports(days: number): Promise<void> {
+  const admin = createAdminClient()
+  const cutoff = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10)
+
+  const { data: rows } = await admin
+    .from('reports')
+    .select('image_url')
+    .lt('report_date', cutoff)
+
+  if (!rows || rows.length === 0) return
+
+  const bucket = 'reports'
+  const marker = `/object/public/${bucket}/`
+  const filePaths = rows
+    .map((r) => r.image_url as string | null)
+    .filter((url): url is string => !!url)
+    .map((url) => {
+      const idx = url.indexOf(marker)
+      return idx !== -1 ? decodeURIComponent(url.slice(idx + marker.length)) : null
+    })
+    .filter((p): p is string => !!p)
+
+  if (filePaths.length > 0) await admin.storage.from(bucket).remove(filePaths)
+
+  await admin.from('reports').delete().lt('report_date', cutoff)
+}
+
 // ── 카카오톡 친구톡 발송
 export async function sendKakaoReport(
   reportId: string,

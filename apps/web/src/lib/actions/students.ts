@@ -7,7 +7,7 @@ import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
 import { logger } from '@/lib/logger'
 import { logAudit } from '@/lib/audit'
-import { formatPhone } from '@/lib/phone'
+import { formatPhone, normalizePhone } from '@/lib/phone'
 
 export type StudentBulkRow = {
   name: string
@@ -44,11 +44,11 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
     if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
 
     const name        = (formData.get('name')     as string).trim()
-    const phone       = (formData.get('phone')    as string).trim()
+    const phone       = normalizePhone((formData.get('phone')    as string).trim())
     const classIds    = formData.getAll('classId').map(String).filter(Boolean)
     const school      = (formData.get('school')   as string || '').trim()
     const grade       = (formData.get('grade')    as string || '').trim()
-    const parentPhone = (formData.get('parentPhone') as string || '').trim()
+    const parentPhone = normalizePhone((formData.get('parentPhone') as string || '').trim())
 
     if (!name || !phone) return { success: false, error: '필수 항목을 입력해주세요.' }
 
@@ -231,7 +231,12 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
     return null
   }
 
-  for (const row of rows) {
+  for (const rawRow of rows) {
+    const row = {
+      ...rawRow,
+      phone: normalizePhone(rawRow.phone),
+      parentPhone: rawRow.parentPhone ? normalizePhone(rawRow.parentPhone) : rawRow.parentPhone,
+    }
     const email = toAuthEmail(row.phone)
     try {
       // 같은 이름+학교의 학생이 이미 있는데 전화번호가 다르면 실패 (오타/번호 변경 확인 유도)
@@ -305,7 +310,7 @@ export async function updateStudent(formData: FormData): Promise<ActionResult> {
 
     const studentId = formData.get('studentId') as string
     const name      = (formData.get('name')  as string).trim()
-    const phone     = (formData.get('phone') as string).trim()
+    const phone     = normalizePhone((formData.get('phone') as string).trim())
     const school    = (formData.get('school') as string || '').trim()
     const grade     = (formData.get('grade') as string || '').trim()
 
@@ -455,7 +460,7 @@ export async function linkParent(formData: FormData): Promise<ActionResult> {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
 
     const studentId   = formData.get('studentId')   as string
-    const parentPhone = (formData.get('parentPhone') as string).trim()
+    const parentPhone = normalizePhone((formData.get('parentPhone') as string).trim())
 
     if (!studentId || !parentPhone) return { success: false, error: '필수 항목을 입력해주세요.' }
 

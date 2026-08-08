@@ -8,6 +8,7 @@ import { StudentFormModal } from './student-form-modal'
 import { ExcelImportModal } from './excel-import-modal'
 import { EmptyState } from '@/components/ui/empty-state'
 import { bulkRemoveStudentsFromClass } from '@/lib/actions/students'
+import { formatPhone } from '@/lib/phone'
 
 type StudentRow = {
   id: string
@@ -292,7 +293,7 @@ export function StudentsClient({
                       {s.school || '학교 미지정'} · {s.grade ? `${s.grade}학년` : '학년 미지정'}
                     </div>
                   </td>
-                  <td className="hidden sm:table-cell px-5 py-3.5 text-zinc-700 dark:text-zinc-300">{s.phone}</td>
+                  <td className="hidden sm:table-cell px-5 py-3.5 text-zinc-700 dark:text-zinc-300">{formatPhone(s.phone)}</td>
                   <td className="px-5 py-3.5">
                     {s.classes.length > 0 ? (
                       <div className="flex flex-wrap gap-1">

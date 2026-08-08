@@ -291,7 +291,7 @@ export function ProgressClient({ assignmentId, dueDate, students, existingProgre
           <button
             onClick={handleSave}
             disabled={pending}
-            className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-5 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50"
+            className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-5 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400"
           >
             {pending ? '저장 중...' : '일괄 저장'}
           </button>

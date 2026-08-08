@@ -754,7 +754,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
               type="button"
               onClick={handleAddTextbook}
               disabled={pending}
-              className="rounded-xl bg-zinc-950 dark:bg-zinc-50 px-4 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50"
+              className="rounded-xl bg-zinc-950 dark:bg-zinc-50 px-4 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400"
             >
               추가
             </button>
@@ -792,7 +792,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
           {err && <p className="text-sm text-red-500">{err}</p>}
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">취소</button>
-            <button type="button" onClick={handleCreateCourse} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50">{pending ? '생성 중…' : '생성'}</button>
+            <button type="button" onClick={handleCreateCourse} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400">{pending ? '생성 중…' : '생성'}</button>
           </div>
         </div>
       </Modal>
@@ -837,7 +837,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                   {err && <p className="text-sm text-red-500">{err}</p>}
                   <div className="flex gap-2">
                     <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">취소</button>
-                    <button type="button" onClick={handleRenameCourse} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50">{pending ? '저장 중…' : '저장'}</button>
+                    <button type="button" onClick={handleRenameCourse} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400">{pending ? '저장 중…' : '저장'}</button>
                   </div>
                 </div>
               )}
@@ -900,7 +900,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                   {err && <p className="text-sm text-red-500">{err}</p>}
                   <div className="flex gap-2">
                     <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">닫기</button>
-                    <button type="button" onClick={handleAddMaterial} disabled={pending || fileUploading || !materialForm.url} className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50">{pending ? '추가 중…' : '자료 추가'}</button>
+                    <button type="button" onClick={handleAddMaterial} disabled={pending || fileUploading || !materialForm.url} className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400">{pending ? '추가 중…' : '자료 추가'}</button>
                   </div>
                 </div>
               )}
@@ -919,7 +919,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                   {err && <p className="text-sm text-red-500">{err}</p>}
                   <div className="flex gap-2">
                     <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">취소</button>
-                    <button type="button" onClick={handleEditAccess} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50">{pending ? '저장 중…' : '저장'}</button>
+                    <button type="button" onClick={handleEditAccess} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400">{pending ? '저장 중…' : '저장'}</button>
                   </div>
                 </div>
               )}
@@ -1172,7 +1172,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                             type="button"
                             disabled={pending || !exDirty}
                             onClick={() => modal?.kind === 'settings' && handleSaveStudentAccess(modal.courseName, lecIds)}
-                            className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50"
+                            className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400"
                           >
                             {pending ? '저장 중…' : '저장'}
                           </button>
@@ -1219,7 +1219,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">닫기</button>
             {!syncResult && (
-              <button type="button" onClick={handleSync} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50">{pending ? '동기화 중…' : '동기화'}</button>
+              <button type="button" onClick={handleSync} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400">{pending ? '동기화 중…' : '동기화'}</button>
             )}
           </div>
         </div>
@@ -1258,7 +1258,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
           {err && <p className="text-sm text-red-500">{err}</p>}
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">취소</button>
-            <button type="button" onClick={handleSaveLecture} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50">{pending ? '저장 중…' : '저장'}</button>
+            <button type="button" onClick={handleSaveLecture} disabled={pending} className="flex-1 rounded-lg bg-zinc-950 dark:bg-zinc-50 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400">{pending ? '저장 중…' : '저장'}</button>
           </div>
         </div>
       </Modal>
