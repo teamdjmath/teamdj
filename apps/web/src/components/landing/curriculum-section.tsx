@@ -18,7 +18,7 @@ export function CurriculumSection() {
           viewport={{ once: true }}
         >
           <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-zinc-950 mb-6 uppercase">
-            Curriculum Lineup
+            고3 Curriculum Lineup
           </h2>
           <p className="text-zinc-500 text-lg md:text-xl font-medium leading-loose">
             학년별 맞춤 설계된 정교한 레이스,<br />
@@ -79,7 +79,7 @@ export function CurriculumSection() {
           viewport={{ once: true }}
           transition={{ delay: 0.5 }}
         >
-          * 고3 과정은 소수 정예 팀수업으로 진행되며, DJ MATERIALS가 공통 제공됩니다.
+          * 고3 과정은 소수 정예 팀수업으로 진행됩니다.
         </motion.p>
       </div>
     </section>

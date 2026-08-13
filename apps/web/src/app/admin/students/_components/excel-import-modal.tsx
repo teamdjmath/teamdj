@@ -10,7 +10,8 @@ type ParsedRow = StudentBulkRow & { _idx: number }
 
 type BulkResult = {
   succeeded: number
-  merged: number   // 기존 학생에 누락 정보만 보강한 건수
+  merged: number    // 기존 학생 정보 중 실제로 뭔가를 채우거나 바꾼 건수
+  unchanged: number // 이미 등록된 학생인데 엑셀 내용이 기존과 완전히 같아 바뀐 게 없는 건수
   failed: Array<{ name: string; phone: string; reason: string }>
 }
 
@@ -99,13 +100,21 @@ export function ExcelImportModal({
               {result.merged > 0 && (
                 <span> · 정보 보강 <span className="font-bold text-emerald-600">{result.merged}명</span></span>
               )}
+              {result.unchanged > 0 && (
+                <span> · 유지 <span className="font-bold text-zinc-400 dark:text-zinc-600">{result.unchanged}명</span></span>
+              )}
               {result.failed.length > 0 && (
                 <span> · 실패 <span className="font-bold text-red-500">{result.failed.length}명</span></span>
               )}
             </p>
             {result.merged > 0 && (
               <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-600">
-                정보 보강: 이미 등록된 학생(전화번호·이름 일치)에게 분반 소속·학부모 연결·빈 학교/학년만 추가했습니다.
+                정보 보강: 이미 등록된 학생에게 전화번호·분반 소속·학부모 연결·빈 학교/학년 중 바뀌거나 채워진 내용이 있었습니다.
+              </p>
+            )}
+            {result.unchanged > 0 && (
+              <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-600">
+                유지: 이미 등록된 학생인데 엑셀 내용이 기존 정보와 완전히 같아 바뀐 게 없습니다.
               </p>
             )}
           </div>

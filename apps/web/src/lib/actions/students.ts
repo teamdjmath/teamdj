@@ -21,7 +21,8 @@ export type StudentBulkRow = {
 
 export type BulkResult = {
   succeeded: number
-  merged: number   // 기존 학생(전화번호+이름 일치)에 누락 정보만 보강한 건수
+  merged: number    // 기존 학생 정보 중 실제로 뭔가(학교/학년/분반/학부모/전화번호)를 채우거나 바꾼 건수
+  unchanged: number // 이미 등록된 학생인데 엑셀 내용이 기존 정보와 완전히 같아 바뀐 게 없는 건수
   failed: Array<{ name: string; phone: string; reason: string }>
 }
 
@@ -135,7 +136,7 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
   const caller = await getVerifiedUser()
 
   if (!caller) {
-    return { succeeded: 0, merged: 0, failed: rows.map((r) => ({ name: r.name, phone: r.phone, reason: '인증 필요' })) }
+    return { succeeded: 0, merged: 0, unchanged: 0, failed: rows.map((r) => ({ name: r.name, phone: r.phone, reason: '인증 필요' })) }
   }
 
   const password = getInitialPassword()
@@ -146,31 +147,57 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
 
   let succeeded = 0
   let merged = 0
+  let unchanged = 0
   const failed: BulkResult['failed'] = []
 
-  // 이름+학교가 같은 기존 학생 사전 조회 — 전화번호가 다르면 중복 계정 생성 대신 실패 처리
+  // 이름+학교+학년이 같은 기존 학생 사전 조회 — 셋 다 같으면 같은 학생으로 보고 전화번호를 갱신,
+  // 학년까지는 같지 않으면(동명이인 등) 중복 계정 생성 대신 실패 처리
   const rowNames = [...new Set(rows.map((r) => r.name.trim()).filter(Boolean))]
   const { data: existingStudents } = rowNames.length > 0
     ? await adminSupabase
         .from('users')
-        .select('name, school, phone')
+        .select('id, name, school, grade, phone')
         .eq('role', 'student')
         .in('name', rowNames)
     : { data: [] }
 
-  function findSameNameSchool(row: StudentBulkRow): { phone: string } | null {
+  function findSameNameSchoolGrade(row: StudentBulkRow): { id: string; phone: string } | null {
     const school = row.school.trim()
-    if (!school) return null
+    const grade = row.grade.trim()
+    if (!school || !grade) return null
     const hit = (existingStudents ?? []).find((s) => {
       if (s.name.trim() !== row.name.trim()) return false
+      if ((s.grade ?? '').trim() !== grade) return false
       const st = (s.school ?? '').trim()
       return st === school || (!!st && (st.includes(school) || school.includes(st)))
     })
-    return hit ? { phone: hit.phone as string } : null
+    return hit ? { id: hit.id as string, phone: hit.phone as string } : null
+  }
+
+  // 이름+학교+학년이 모두 같은 기존 학생의 전화번호를 새 값으로 갱신 (로그인 이메일도 함께 동기화)
+  async function overwritePhone(studentId: string, newPhone: string): Promise<string | null> {
+    const { data: dup } = await adminSupabase
+      .from('users').select('id').eq('phone', newPhone).neq('id', studentId).maybeSingle()
+    if (dup) return '이미 다른 학생에게 등록된 전화번호입니다.'
+
+    const { data: authUser } = await adminSupabase.auth.admin.getUserById(studentId)
+    const { error: authErr } = await adminSupabase.auth.admin.updateUserById(studentId, {
+      email: toAuthEmail(newPhone),
+      email_confirm: true,
+      user_metadata: { ...(authUser?.user?.user_metadata ?? {}), phone: newPhone },
+    })
+    if (authErr) return '로그인 정보 변경에 실패했습니다.'
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await adminSupabase.from('users').update({ phone: newPhone } as any).eq('id', studentId)
+    if (error) return error.message
+
+    return null
   }
 
   // 기존 학생(전화번호+이름 일치)에게 누락 정보만 보강 (분반 추가 등)
-  async function mergeIntoExisting(row: StudentBulkRow): Promise<string | null> {
+  // changed=false면 엑셀 내용이 기존 정보와 완전히 같아 실제로 바뀐 게 없다는 뜻 (= "유지")
+  async function mergeIntoExisting(row: StudentBulkRow): Promise<{ error: string | null; changed: boolean }> {
     const { data: existing } = await adminSupabase
       .from('users')
       .select('id, name, school, grade')
@@ -178,12 +205,13 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
       .eq('role', 'student')
       .maybeSingle()
 
-    if (!existing) return '이미 등록된 전화번호 (학생 정보 조회 실패)'
+    if (!existing) return { error: '이미 등록된 전화번호 (학생 정보 조회 실패)', changed: false }
     if (existing.name.trim() !== row.name.trim()) {
-      return `이미 다른 이름(${existing.name})으로 등록된 전화번호`
+      return { error: `이미 다른 이름(${existing.name})으로 등록된 전화번호`, changed: false }
     }
 
     const userId = existing.id as string
+    let changed = false
 
     // 빈 학교/학년만 채움 — 기존 값은 덮어쓰지 않음
     const fill: Record<string, string> = {}
@@ -192,6 +220,7 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
     if (Object.keys(fill).length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await adminSupabase.from('users').update(fill as any).eq('id', userId)
+      changed = true
     }
 
     // 분반: 없으면 추가, 비활성이면 재활성화
@@ -206,8 +235,10 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
 
       if (!member) {
         await adminSupabase.from('class_members').insert({ class_id: classId, student_id: userId })
+        changed = true
       } else if (!member.is_active) {
         await adminSupabase.from('class_members').update({ is_active: true }).eq('id', member.id)
+        changed = true
       }
     }
 
@@ -224,11 +255,12 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
           .maybeSingle()
         if (!link) {
           await adminSupabase.from('parent_links').insert({ parent_id: parent.id, student_id: userId })
+          changed = true
         }
       }
     }
 
-    return null
+    return { error: null, changed }
   }
 
   for (const rawRow of rows) {
@@ -239,13 +271,18 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
     }
     const email = toAuthEmail(row.phone)
     try {
-      // 같은 이름+학교의 학생이 이미 있는데 전화번호가 다르면 실패 (오타/번호 변경 확인 유도)
-      const sameStudent = findSameNameSchool(row)
+      // 이름+학교+학년이 모두 같은 학생이 이미 있는데 전화번호만 다르면 같은 학생의 번호 변경으로 보고 갱신
+      const sameStudent = findSameNameSchoolGrade(row)
       if (sameStudent && sameStudent.phone.replace(/\D/g, '') !== row.phone.replace(/\D/g, '')) {
-        failed.push({
-          name: row.name, phone: row.phone,
-          reason: `전화번호가 다릅니다 (지금 등록된 전화번호: ${formatPhone(sameStudent.phone)})`,
-        })
+        const overwriteErr = await overwritePhone(sameStudent.id, row.phone)
+        if (overwriteErr) {
+          failed.push({ name: row.name, phone: row.phone, reason: overwriteErr })
+          continue
+        }
+        // 전화번호를 방금 갱신했으므로 이건 항상 실제 변경 — merged로 집계
+        const mergeResult = await mergeIntoExisting(row)
+        if (mergeResult.error) failed.push({ name: row.name, phone: row.phone, reason: mergeResult.error })
+        else merged++
         continue
       }
 
@@ -257,10 +294,11 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
       if (authErr) {
         const isDuplicate = authErr.message.includes('already been registered') || authErr.message.includes('already exists') || authErr.message.includes('duplicate')
         if (isDuplicate) {
-          // 같은 전화번호+이름이면 누락 정보만 보강
-          const mergeErr = await mergeIntoExisting(row)
-          if (mergeErr) failed.push({ name: row.name, phone: row.phone, reason: mergeErr })
-          else merged++
+          // 같은 전화번호+이름이면 누락 정보만 보강 — 실제로 바뀐 게 없으면 unchanged로 집계
+          const mergeResult = await mergeIntoExisting(row)
+          if (mergeResult.error) failed.push({ name: row.name, phone: row.phone, reason: mergeResult.error })
+          else if (mergeResult.changed) merged++
+          else unchanged++
         } else {
           failed.push({ name: row.name, phone: row.phone, reason: authErr.message })
         }
@@ -299,7 +337,7 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
   }
 
   revalidatePath('/admin/students')
-  return { succeeded, merged, failed }
+  return { succeeded, merged, unchanged, failed }
 }
 
 export async function updateStudent(formData: FormData): Promise<ActionResult> {
