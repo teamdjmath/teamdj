@@ -18,7 +18,7 @@ export default async function LecturesPage() {
   // 모든 강의 (강좌명 기준)
   const { data: lectureRows } = await admin
     .from('lectures')
-    .select('id, title, youtube_video_id, order_num, synced_at, course_name, material_url')
+    .select('id, title, youtube_video_id, order_num, synced_at, course_name, material_url, lecture_date')
     .not('course_name', 'is', null)
     .order('course_name')
     .order('order_num', { ascending: true })
@@ -61,7 +61,8 @@ export default async function LecturesPage() {
 
   // 강좌별 강의 맵
   const lectureMap: Record<string, Array<{
-    id: string; title: string; videoId: string; orderNum: number; syncedAt: string | null; materialUrl: string | null
+    id: string; title: string; videoId: string; orderNum: number; syncedAt: string | null
+    materialUrl: string | null; lectureDate: string | null
   }>> = {}
   for (const row of lectureRows ?? []) {
     const cn = row.course_name as string
@@ -73,6 +74,7 @@ export default async function LecturesPage() {
       orderNum: (row.order_num ?? 0) as number,
       syncedAt: (row.synced_at ?? null) as string | null,
       materialUrl: (row.material_url ?? null) as string | null,
+      lectureDate: (row.lecture_date ?? null) as string | null,
     })
   }
 

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { InputField } from '@/components/ui/form-field'
+import { DatePicker } from '@/components/ui/date-picker'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
 import { materialDownloadUrl } from '@/lib/download-url'
 import {
@@ -37,7 +38,8 @@ type TextbookItem = { id: string; name: string }
 type SubjectItem = { id: string; name: string }
 type CourseMaterial = { id: string; title: string; url: string }
 type LectureItem = {
-  id: string; title: string; videoId: string; orderNum: number; syncedAt: string | null; materialUrl?: string | null
+  id: string; title: string; videoId: string; orderNum: number; syncedAt: string | null
+  materialUrl?: string | null; lectureDate?: string | null
 }
 type Course = {
   courseName: string; allowedClassIds: string[]; lectures: LectureItem[]; materials: CourseMaterial[]
@@ -78,7 +80,7 @@ type ModalType =
   | { kind: 'settings'; courseName: string }
   | { kind: 'sync'; courseName: string }
   | { kind: 'addLecture'; courseName: string; nextOrder: number }
-  | { kind: 'editLecture'; lecture: LectureItem }
+  | { kind: 'editLecture'; lecture: LectureItem; courseName: string }
   | null
 
 export function LecturesClient({ classOptions, courses, textbooks: initialTextbooks, subjects: initialSubjects }: Props) {
@@ -117,7 +119,8 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
   const [syncResult, setSyncResult] = useState('')
 
   // 강의 폼
-  const [lectureForm, setLectureForm] = useState({ title: '', videoId: '', orderNum: '1', materialUrl: '' })
+  const [lectureForm, setLectureForm] = useState({ title: '', videoId: '', orderNum: '1', lectureDate: '' })
+  const [autoBlockMsg, setAutoBlockMsg] = useState('')
 
   // 강좌 자료 폼
   const [materialForm, setMaterialForm] = useState({ title: '', url: '' })
@@ -352,21 +355,23 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
 
   // ─ 강의 추가
   function openAddLecture(course: Course) {
-    setLectureForm({ title: '', videoId: '', orderNum: String(course.lectures.length + 1), materialUrl: '' })
+    setLectureForm({ title: '', videoId: '', orderNum: String(course.lectures.length + 1), lectureDate: '' })
     setErr('')
+    setAutoBlockMsg('')
     setModal({ kind: 'addLecture', courseName: course.courseName, nextOrder: course.lectures.length + 1 })
   }
 
   // ─ 강의 수정
-  function openEditLecture(lec: LectureItem) {
+  function openEditLecture(lec: LectureItem, courseName: string) {
     setLectureForm({
       title: lec.title,
       videoId: lec.videoId,
       orderNum: String(lec.orderNum),
-      materialUrl: lec.materialUrl || '',
+      lectureDate: lec.lectureDate || '',
     })
     setErr('')
-    setModal({ kind: 'editLecture', lecture: lec })
+    setAutoBlockMsg('')
+    setModal({ kind: 'editLecture', lecture: lec, courseName })
   }
 
   function handleSaveLecture() {
@@ -380,10 +385,11 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
       let res
       if (modal?.kind === 'editLecture') {
         res = await updateLecture(modal.lecture.id, {
+          courseName: modal.courseName,
           title: lectureForm.title.trim(),
           youtubeVideoId,
           orderNum: parseInt(lectureForm.orderNum) || 0,
-          materialUrl: lectureForm.materialUrl.trim(),
+          lectureDate: lectureForm.lectureDate || undefined,
         })
       } else if (modal?.kind === 'addLecture') {
         res = await createLecture({
@@ -391,7 +397,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
           title: lectureForm.title.trim(),
           youtubeVideoId,
           orderNum: parseInt(lectureForm.orderNum) || 0,
-          materialUrl: lectureForm.materialUrl.trim(),
+          lectureDate: lectureForm.lectureDate || undefined,
         })
       } else return
 
@@ -400,6 +406,9 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
         return
       }
       setModal(null)
+      if (res.data?.autoBlockedCount) {
+        setAutoBlockMsg(`결석(차감) 학생 ${res.data.autoBlockedCount}명의 이 강의 시청이 자동 차단되었습니다.`)
+      }
       router.refresh()
     })
   }
@@ -542,6 +551,13 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
           강좌 생성
         </button>
       </div>
+
+      {autoBlockMsg && (
+        <div className="mb-4 flex items-center justify-between rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 px-3.5 py-2.5 text-sm text-amber-800 dark:text-amber-300">
+          <span>{autoBlockMsg}</span>
+          <button type="button" onClick={() => setAutoBlockMsg('')} className="text-amber-500 hover:text-amber-700 dark:hover:text-amber-200 text-xs">닫기</button>
+        </div>
+      )}
 
       {/* 강좌 목록 */}
       {courses.length === 0 ? (
@@ -710,19 +726,26 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                                   {lec.videoId}
                                 </a>
                               )}
-                              {lec.materialUrl && (
+                              {(lec.lectureDate || lec.materialUrl) && (
                                 <div className="mt-1 flex items-center gap-2">
-                                  <a
-                                    href={materialDownloadUrl(lec.materialUrl, `${lec.title} 자료`)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 rounded bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800"
-                                  >
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                                    </svg>
-                                    강의 자료
-                                  </a>
+                                  {lec.lectureDate && (
+                                    <span className="inline-flex items-center gap-1 rounded bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
+                                      {lec.lectureDate}
+                                    </span>
+                                  )}
+                                  {lec.materialUrl && (
+                                    <a
+                                      href={materialDownloadUrl(lec.materialUrl, `${lec.title} 자료`)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 rounded bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800"
+                                    >
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                      </svg>
+                                      강의 자료
+                                    </a>
+                                  )}
                                 </div>
                               )}
                             </td>
@@ -731,7 +754,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                               <div className="flex items-center justify-end gap-1">
                                 <button
                                   type="button"
-                                  onClick={() => openEditLecture(lec)}
+                                  onClick={() => openEditLecture(lec, course.courseName)}
                                   className="rounded px-2.5 py-1 text-xs text-zinc-500 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900"
                                 >
                                   수정
@@ -1340,12 +1363,15 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
             />
             <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-600">URL의 <code className="bg-zinc-100 dark:bg-zinc-900 px-1 rounded">v=</code> 뒤 값</p>
           </div>
-          <InputField
-            label="강의 자료 링크"
-            value={lectureForm.materialUrl}
-            onChange={(e) => setLectureForm((f) => ({ ...f, materialUrl: e.target.value }))}
-            placeholder="PDF, Google Drive 등 자료 링크"
-          />
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-zinc-400 dark:text-zinc-600">강의일</label>
+            <DatePicker
+              value={lectureForm.lectureDate}
+              onChange={(d) => setLectureForm((f) => ({ ...f, lectureDate: d }))}
+              placeholder="강의일 선택"
+            />
+            <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-600">등록하면 그날 결석(차감)으로 표시된 학생은 이 강의가 자동으로 차단됩니다.</p>
+          </div>
           <InputField label="순서" type="number" value={lectureForm.orderNum} onChange={(e) => setLectureForm((f) => ({ ...f, orderNum: e.target.value }))} />
           {lectureForm.videoId && (
             <div className="rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800">

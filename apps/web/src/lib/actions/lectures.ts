@@ -312,13 +312,42 @@ export async function getClassStudentsForAccess(
   return { students }
 }
 
+// 강의일이 지정되면, 그 강좌가 배정된 분반에서 그날 결석(차감)으로 표시된 학생을
+// 이 강의 하나에 대해 자동으로 차단한다 — 결석(영상)과 달리 결석(차감)은 시청이 전제되지 않으므로.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function autoBlockAbsentStudents(admin: any, courseName: string, lectureId: string, lectureDate: string): Promise<number> {
+  const { data: accessRows } = await admin
+    .from('lecture_class_access')
+    .select('class_id')
+    .eq('course_name', courseName)
+    .not('class_id', 'is', null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const classIds = [...new Set((accessRows ?? []).map((r: any) => r.class_id).filter(Boolean))]
+  if (classIds.length === 0) return 0
+
+  const { data: absentRows } = await admin
+    .from('attendance_logs')
+    .select('student_id')
+    .in('class_id', classIds)
+    .eq('session_date', lectureDate)
+    .eq('status', 'absent')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const studentIds = [...new Set((absentRows ?? []).map((r: any) => r.student_id))]
+  if (studentIds.length === 0) return 0
+
+  const rows = studentIds.map((studentId) => ({ lecture_id: lectureId, student_id: studentId, mode: 'block' }))
+  const { error } = await admin.from('lecture_student_access').upsert(rows, { onConflict: 'lecture_id,student_id' })
+  if (error) throw error
+  return studentIds.length
+}
+
 export async function createLecture(data: {
   courseName: string
   title: string
   youtubeVideoId: string
   orderNum: number
-  materialUrl?: string
-}): Promise<ActionResult> {
+  lectureDate?: string
+}): Promise<ActionResult<{ autoBlockedCount: number }>> {
   const user = await getStaffUser()
 
   return withAction('createLecture', user?.id, async () => {
@@ -329,26 +358,35 @@ export async function createLecture(data: {
     if (!data.courseName.trim()) return { success: false, error: '강좌명이 없습니다.' }
 
     const admin = createAdminClient()
-    const { error } = await admin.from('lectures').insert({
-      course_name:      data.courseName,
-      title:            data.title.trim(),
-      youtube_video_id: data.youtubeVideoId.trim() || null,
-      order_num:        data.orderNum,
-      material_url:     data.materialUrl?.trim() || null,
-      class_id:         null,
-    })
+    const { data: inserted, error } = await admin
+      .from('lectures')
+      .insert({
+        course_name:      data.courseName,
+        title:            data.title.trim(),
+        youtube_video_id: data.youtubeVideoId.trim() || null,
+        order_num:        data.orderNum,
+        lecture_date:     data.lectureDate || null,
+        class_id:         null,
+      })
+      .select('id')
+      .single()
     if (error) throw error
+
+    let autoBlockedCount = 0
+    if (data.lectureDate) {
+      autoBlockedCount = await autoBlockAbsentStudents(admin, data.courseName, inserted.id as string, data.lectureDate)
+    }
 
     revalidatePath('/admin/lectures')
     revalidateTag('lectures', {})
-    return { success: true }
+    return { success: true, data: { autoBlockedCount } }
   })
 }
 
 export async function updateLecture(
   id: string,
-  data: { title: string; youtubeVideoId: string; orderNum: number; materialUrl?: string },
-): Promise<ActionResult> {
+  data: { courseName: string; title: string; youtubeVideoId: string; orderNum: number; lectureDate?: string },
+): Promise<ActionResult<{ autoBlockedCount: number }>> {
   const user = await getStaffUser()
 
   return withAction('updateLecture', user?.id, async () => {
@@ -363,14 +401,19 @@ export async function updateLecture(
         title:            data.title,
         youtube_video_id: data.youtubeVideoId || null,
         order_num:        data.orderNum,
-        material_url:     data.materialUrl || null,
+        lecture_date:     data.lectureDate || null,
       })
       .eq('id', id)
     if (error) throw error
 
+    let autoBlockedCount = 0
+    if (data.lectureDate) {
+      autoBlockedCount = await autoBlockAbsentStudents(admin, data.courseName, id, data.lectureDate)
+    }
+
     revalidatePath('/admin/lectures')
     revalidateTag('lectures', {})
-    return { success: true }
+    return { success: true, data: { autoBlockedCount } }
   })
 }
 
