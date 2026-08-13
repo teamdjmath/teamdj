@@ -53,6 +53,19 @@ interface Props {
 function ytThumb(vid: string) { return `https://img.youtube.com/vi/${vid}/mqdefault.jpg` }
 function ytUrl(vid: string)   { return `https://www.youtube.com/watch?v=${vid}` }
 
+// "YouTube Video ID" 필드에 전체 URL을 붙여넣는 실수가 흔해서(예: https://youtu.be/xxxxxxxxxxx),
+// 저장 전에 순수 11자리 ID만 추출한다. 이미 순수 ID면 그대로 통과.
+function extractYoutubeId(input: string): string {
+  const v = input.trim()
+  if (!v) return v
+  const m =
+    v.match(/youtube\.com\/watch\?(?:.*&)?v=([\w-]{11})/) ??
+    v.match(/youtu\.be\/([\w-]{11})/) ??
+    v.match(/youtube\.com\/shorts\/([\w-]{11})/) ??
+    v.match(/youtube\.com\/embed\/([\w-]{11})/)
+  return m ? m[1] : v
+}
+
 function fmtDate(iso: string) {
   const d = new Date(iso)
   return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
@@ -362,12 +375,13 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
       return
     }
     setErr('')
+    const youtubeVideoId = extractYoutubeId(lectureForm.videoId)
     startTransition(async () => {
       let res
       if (modal?.kind === 'editLecture') {
         res = await updateLecture(modal.lecture.id, {
           title: lectureForm.title.trim(),
-          youtubeVideoId: lectureForm.videoId.trim(),
+          youtubeVideoId,
           orderNum: parseInt(lectureForm.orderNum) || 0,
           materialUrl: lectureForm.materialUrl.trim(),
         })
@@ -375,7 +389,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
         res = await createLecture({
           courseName: modal.courseName,
           title: lectureForm.title.trim(),
-          youtubeVideoId: lectureForm.videoId.trim(),
+          youtubeVideoId,
           orderNum: parseInt(lectureForm.orderNum) || 0,
           materialUrl: lectureForm.materialUrl.trim(),
         })
@@ -1335,7 +1349,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
           <InputField label="순서" type="number" value={lectureForm.orderNum} onChange={(e) => setLectureForm((f) => ({ ...f, orderNum: e.target.value }))} />
           {lectureForm.videoId && (
             <div className="rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800">
-              <Image src={ytThumb(lectureForm.videoId)} alt="썸네일" width={320} height={180} className="w-full h-auto" />
+              <Image src={ytThumb(extractYoutubeId(lectureForm.videoId))} alt="썸네일" width={320} height={180} className="w-full h-auto" />
             </div>
           )}
           {err && <p className="text-sm text-red-500">{err}</p>}
