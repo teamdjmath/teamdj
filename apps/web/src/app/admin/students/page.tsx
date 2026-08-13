@@ -24,8 +24,16 @@ export default async function StudentsPage({
 
   // 분반 필터: embedded 관계에 .eq('class_members.class_id', ...)를 걸면 학생은 안 걸러지고
   // 학생 안의 분반 목록만 걸러져서 미소속 학생도 그대로 나옴 — 소속 학생 id를 먼저 뽑아 .in()으로 거른다.
+  // '__none__'은 실제 분반이 아니라 "어느 분반에도 속하지 않은 학생"을 뜻하는 특수값.
   let filterStudentIds: string[] | null = null
-  if (filterClassId) {
+  if (filterClassId === '__none__') {
+    const [{ data: allStudentRows }, { data: memberRows }] = await Promise.all([
+      supabase.from('users').select('id').eq('role', 'student'),
+      supabase.from('class_members').select('student_id').eq('is_active', true),
+    ])
+    const withClassIds = new Set((memberRows ?? []).map((r) => r.student_id))
+    filterStudentIds = (allStudentRows ?? []).map((r) => r.id).filter((id) => !withClassIds.has(id))
+  } else if (filterClassId) {
     const { data: memberRows } = await supabase
       .from('class_members')
       .select('student_id')

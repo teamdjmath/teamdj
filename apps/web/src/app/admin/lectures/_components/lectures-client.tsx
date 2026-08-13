@@ -30,9 +30,11 @@ import {
   type CourseAccessSummary,
 } from '@/lib/actions/lectures'
 import { createTextbook, deleteTextbook } from '@/lib/actions/textbooks'
+import { createSubject, deleteSubject } from '@/lib/actions/subjects'
 
 type ClassOption = { id: string; name: string }
 type TextbookItem = { id: string; name: string }
+type SubjectItem = { id: string; name: string }
 type CourseMaterial = { id: string; title: string; url: string }
 type LectureItem = {
   id: string; title: string; videoId: string; orderNum: number; syncedAt: string | null; materialUrl?: string | null
@@ -45,6 +47,7 @@ interface Props {
   classOptions: ClassOption[]
   courses: Course[]
   textbooks: TextbookItem[]
+  subjects: SubjectItem[]
 }
 
 function ytThumb(vid: string) { return `https://img.youtube.com/vi/${vid}/mqdefault.jpg` }
@@ -65,7 +68,7 @@ type ModalType =
   | { kind: 'editLecture'; lecture: LectureItem }
   | null
 
-export function LecturesClient({ classOptions, courses, textbooks: initialTextbooks }: Props) {
+export function LecturesClient({ classOptions, courses, textbooks: initialTextbooks, subjects: initialSubjects }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [modal, setModal] = useState<ModalType>(null)
@@ -80,6 +83,11 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
   const [textbooks, setTextbooks] = useState<TextbookItem[]>(initialTextbooks)
   const [newTextbookName, setNewTextbookName] = useState('')
   const [textbookErr, setTextbookErr] = useState('')
+
+  // 과목 관리
+  const [subjects, setSubjects] = useState<SubjectItem[]>(initialSubjects)
+  const [newSubjectName, setNewSubjectName] = useState('')
+  const [subjectErr, setSubjectErr] = useState('')
 
   // 강좌 생성 폼
   const [newCourseName, setNewCourseName] = useState('')
@@ -480,6 +488,30 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
     })
   }
 
+  // ─ 과목 추가
+  function handleAddSubject() {
+    if (!newSubjectName.trim()) { setSubjectErr('과목명을 입력하세요.'); return }
+    setSubjectErr('')
+    startTransition(async () => {
+      const res = await createSubject(newSubjectName.trim())
+      if (res.error) { setSubjectErr(res.error); return }
+      setSubjects((prev) => [...prev, { id: crypto.randomUUID(), name: newSubjectName.trim() }])
+      setNewSubjectName('')
+      router.refresh()
+    })
+  }
+
+  // ─ 과목 삭제
+  function handleDeleteSubject(id: string, name: string) {
+    if (!confirm(`"${name}" 과목을 삭제하시겠습니까?`)) return
+    setSubjectErr('')
+    startTransition(async () => {
+      const res = await deleteSubject(id)
+      if (res.error) { setSubjectErr(res.error); return }
+      setSubjects((prev) => prev.filter((s) => s.id !== id))
+    })
+  }
+
   return (
     <div>
       {/* 헤더 */}
@@ -760,6 +792,57 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
             </button>
           </div>
           {textbookErr && <p className="text-xs text-red-500">{textbookErr}</p>}
+        </div>
+      </div>
+
+      {/* ─ 사용 과목 관리 섹션 */}
+      <div className="mt-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
+        <div className="px-5 py-4 border-b border-zinc-100 dark:border-zinc-900">
+          <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">사용 과목 관리</h2>
+          <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-600">교재와 별개로, 학생의 Q&amp;A 등록 시 과목 선택이 가능합니다 (예: 확률과 통계).</p>
+        </div>
+        <div className="p-5 space-y-4">
+          {/* 과목 목록 */}
+          {subjects.length === 0 ? (
+            <p className="text-xs text-zinc-400 dark:text-zinc-600">등록된 과목이 없습니다.</p>
+          ) : (
+            <div className="space-y-2">
+              {subjects.map((s) => (
+                <div key={s.id} className="flex items-center justify-between rounded-xl bg-zinc-50 dark:bg-zinc-950 px-4 py-2.5">
+                  <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{s.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSubject(s.id, s.name)}
+                    disabled={pending}
+                    className="text-xs text-red-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                  >
+                    삭제
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 과목 추가 */}
+          <div className="flex gap-2 pt-1">
+            <input
+              type="text"
+              value={newSubjectName}
+              onChange={(e) => setNewSubjectName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddSubject()}
+              placeholder="과목명 입력"
+              className="flex-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50 px-4 py-2.5 text-sm font-medium text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 placeholder:font-normal focus:border-zinc-900 dark:focus:border-zinc-100 focus:bg-white dark:focus:bg-zinc-900 focus:outline-none transition-all"
+            />
+            <button
+              type="button"
+              onClick={handleAddSubject}
+              disabled={pending}
+              className="rounded-xl bg-zinc-950 dark:bg-zinc-50 px-4 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400"
+            >
+              추가
+            </button>
+          </div>
+          {subjectErr && <p className="text-xs text-red-500">{subjectErr}</p>}
         </div>
       </div>
 

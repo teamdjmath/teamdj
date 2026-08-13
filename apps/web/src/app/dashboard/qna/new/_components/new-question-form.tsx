@@ -18,6 +18,11 @@ interface Textbook {
   name: string
 }
 
+interface Subject {
+  id: string
+  name: string
+}
+
 interface SimilarQuestion {
   id: string
   title: string
@@ -40,9 +45,11 @@ const STATUS_CLS: Record<string, string> = {
 export function NewQuestionForm({
   classes,
   textbooks,
+  subjects,
 }: {
   classes: ClassGroup[]
   textbooks: Textbook[]
+  subjects: Subject[]
 }) {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
@@ -51,6 +58,7 @@ export function NewQuestionForm({
   const [content, setContent] = useState('')
   const [classId, setClassId] = useState(classes.length === 1 ? classes[0].id : '')
   const [textbookId, setTextbookId] = useState('')
+  const [subjectId, setSubjectId] = useState('')
   const [problemNumber, setProblemNumber] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -152,6 +160,7 @@ export function NewQuestionForm({
         classId: classId || null,
         imageUrls,
         textbookId: textbookId || null,
+        subjectId: subjectId || null,
         problemNumber: problemNumber.trim() || null,
       })
 
@@ -192,6 +201,20 @@ export function NewQuestionForm({
         {textbooks.map((t) => (
           <option key={t.id} value={t.id}>
             {t.name}
+          </option>
+        ))}
+      </SelectField>
+
+      {/* 과목 선택 */}
+      <SelectField
+        label="과목"
+        value={subjectId}
+        onChange={(e) => setSubjectId(e.target.value)}
+      >
+        <option value="">과목 선택 (선택사항)</option>
+        {subjects.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
           </option>
         ))}
       </SelectField>

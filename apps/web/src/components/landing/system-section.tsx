@@ -35,7 +35,7 @@ const SYSTEMS = [
     imgWidth: 4032,
     imgHeight: 3024,
     points: [
-      <>월·화·목·금 17:30~22:00, 토·일 12:00~19:00 상시 운영</>,
+      <>월·화·목·금 18:00~22:00, 토·일 12:00~19:00 상시 운영</>,
       <>정규반 학생은 주 1회 필참. 과제에서 막힌 문항을 바로 첨삭받는 시간입니다</>,
       <>횟수 제한 없이, 필요한 만큼 등원하면 됩니다</>,
       <>내신대비 기간에는 본 강의실에서 자료 배부와 질문 첨삭이 함께 진행되며, 등하원 시간과 학습내용은 동일하게 발송됩니다</>,
@@ -128,11 +128,10 @@ export function SystemSection() {
           {MATERIAL_LEVELS.map((lvl, idx) => (
             <motion.div
               key={lvl.tag}
-              className={`rounded-2xl border p-6 md:p-7 ${
-                lvl.accent
+              className={`rounded-2xl border p-6 md:p-7 ${lvl.accent
                   ? "bg-zinc-950 border-zinc-900 text-white"
                   : "bg-white border-zinc-200"
-              }`}
+                }`}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -199,9 +198,8 @@ export function SystemSection() {
           {SYSTEMS.map((sys, idx) => (
             <motion.div
               key={sys.title}
-              className={`flex flex-col items-center gap-6 md:gap-14 ${
-                idx % 2 === 1 ? "md:flex-row-reverse" : "md:flex-row"
-              }`}
+              className={`flex flex-col items-center gap-6 md:gap-14 ${idx % 2 === 1 ? "md:flex-row-reverse" : "md:flex-row"
+                }`}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}

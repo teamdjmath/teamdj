@@ -34,13 +34,14 @@ export default async function NewQuestionPage() {
     )
   }
 
-  const [membershipsRes, textbooksRes] = await Promise.all([
+  const [membershipsRes, textbooksRes, subjectsRes] = await Promise.all([
     supabase
       .from('class_members')
       .select('class_id, class_groups(id, name, subject)')
       .eq('student_id', user.id)
       .eq('is_active', true),
     db.from('textbooks').select('id, name').order('name'),
+    db.from('subjects').select('id, name').order('name'),
   ])
 
   const classes = (membershipsRes.data || [])
@@ -49,6 +50,8 @@ export default async function NewQuestionPage() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const textbooks = (textbooksRes.data ?? []).map((t: any) => ({ id: t.id as string, name: t.name as string }))
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const subjects = (subjectsRes.data ?? []).map((s: any) => ({ id: s.id as string, name: s.name as string }))
 
   return (
     <div className="space-y-6">
@@ -56,7 +59,7 @@ export default async function NewQuestionPage() {
         <h1 className="text-lg font-bold text-zinc-900">새 질문 등록</h1>
       </div>
 
-      <NewQuestionForm classes={classes} textbooks={textbooks} />
+      <NewQuestionForm classes={classes} textbooks={textbooks} subjects={subjects} />
     </div>
   )
 }

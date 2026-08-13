@@ -7,7 +7,7 @@ import { InputField } from '@/components/ui/form-field'
 import { StudentFormModal } from './student-form-modal'
 import { ExcelImportModal } from './excel-import-modal'
 import { EmptyState } from '@/components/ui/empty-state'
-import { bulkRemoveStudentsFromClass } from '@/lib/actions/students'
+import { bulkRemoveStudentsFromClass, bulkDeleteStudents } from '@/lib/actions/students'
 import { formatPhone } from '@/lib/phone'
 
 type StudentRow = {
@@ -53,6 +53,9 @@ export function StudentsClient({
   // 분반 필터 상태에서만 쓰는 일괄 제외 선택 — 분반이 바뀌면 선택도 초기화
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [removeError, setRemoveError] = useState<string | null>(null)
+  const [isDeleting, startDeleteTransition] = useTransition()
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const isNoClassFilter = filterClassId === '__none__'
 
   function pushParams(newQ: string, newPage: number, newClassId?: string, newStatus?: string) {
     const params = new URLSearchParams()
@@ -92,6 +95,19 @@ export function StudentsClient({
     startRemoveTransition(async () => {
       const res = await bulkRemoveStudentsFromClass(Array.from(selectedIds), filterClassId)
       if (!res.success) { setRemoveError(res.error); return }
+      setSelectedIds(new Set())
+      router.refresh()
+    })
+  }
+
+  // 어느 분반에도 속하지 않은 학생 일괄 삭제 (회원 탈퇴) — 하드 삭제라 되돌릴 수 없음
+  function handleBulkDelete() {
+    if (selectedIds.size === 0) return
+    if (!confirm(`선택한 학생 ${selectedIds.size}명의 정보를 완전히 삭제(회원 탈퇴)하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return
+    setDeleteError(null)
+    startDeleteTransition(async () => {
+      const res = await bulkDeleteStudents(Array.from(selectedIds))
+      if (!res.success) { setDeleteError(res.error); return }
       setSelectedIds(new Set())
       router.refresh()
     })
@@ -151,7 +167,7 @@ export function StudentsClient({
           <p className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-600">총 {totalCount}명</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {filterClassId && (
+          {filterClassId && !isNoClassFilter && (
             <button
               type="button"
               onClick={handleRosterDownload}
@@ -200,6 +216,7 @@ export function StudentsClient({
           className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600"
         >
           <option value="">전체 분반</option>
+          <option value="__none__">분반 없음</option>
           {classOptions.map((c) => (
             <option key={c.id} value={c.id}>{c.label}</option>
           ))}
@@ -216,18 +233,30 @@ export function StudentsClient({
       </div>
 
       {/* 분반 일괄 제외 — 특정 분반으로 필터링했을 때만. 분반을 통째로 삭제하려면
-          재원생을 모두 빼야 하는데, 한 명씩 빼는 대신 여기서 여러 명을 한 번에 뺄 수 있다. */}
+          재원생을 모두 빼야 하는데, 한 명씩 빼는 대신 여기서 여러 명을 한 번에 뺄 수 있다.
+          '분반 없음' 필터일 때는 제외할 분반이 없으므로 대신 완전 삭제(회원 탈퇴)를 제공한다. */}
       {filterClassId && selectedIds.size > 0 && (
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
           <span className="text-sm font-medium text-red-700">{selectedIds.size}명 선택됨</span>
-          <button
-            type="button"
-            onClick={handleBulkRemove}
-            disabled={isRemoving}
-            className="rounded-lg bg-red-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
-          >
-            {isRemoving ? '제외하는 중…' : '선택 학생 이 분반에서 제외'}
-          </button>
+          {isNoClassFilter ? (
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              disabled={isDeleting}
+              className="rounded-lg bg-red-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+            >
+              {isDeleting ? '삭제하는 중…' : '선택 학생 정보 삭제 (회원 탈퇴)'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleBulkRemove}
+              disabled={isRemoving}
+              className="rounded-lg bg-red-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+            >
+              {isRemoving ? '제외하는 중…' : '선택 학생 이 분반에서 제외'}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setSelectedIds(new Set())}
@@ -236,6 +265,7 @@ export function StudentsClient({
             선택 해제
           </button>
           {removeError && <span className="text-xs font-medium text-red-600">{removeError}</span>}
+          {deleteError && <span className="text-xs font-medium text-red-600">{deleteError}</span>}
         </div>
       )}
 
@@ -296,16 +326,21 @@ export function StudentsClient({
                   <td className="hidden sm:table-cell px-5 py-3.5 text-zinc-700 dark:text-zinc-300">{formatPhone(s.phone)}</td>
                   <td className="px-5 py-3.5">
                     {s.classes.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {s.classes.map((c) => (
+                      <div className="flex flex-wrap items-center gap-1">
+                        {(s.classes.length <= 2 ? s.classes : s.classes.slice(0, 2)).map((c) => (
                           <Link
                             key={c.id}
                             href={`/admin/classes/${c.id}`}
-                            className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
+                            className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors whitespace-nowrap"
                           >
                             {c.name}
                           </Link>
                         ))}
+                        {s.classes.length > 2 && (
+                          <span className="rounded-full bg-zinc-50 dark:bg-zinc-950 px-2 py-0.5 text-[11px] text-zinc-400 dark:text-zinc-600 whitespace-nowrap">
+                            외 {s.classes.length - 2}개
+                          </span>
+                        )}
                       </div>
                     ) : (
                       <span className="text-zinc-300 dark:text-zinc-700">—</span>
@@ -316,11 +351,11 @@ export function StudentsClient({
                   </td>
                   <td className="px-5 py-3.5 text-center">
                     {s.suspendedUntil ? (
-                      <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                      <span className="inline-flex whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
                         휴원 중
                       </span>
                     ) : s.is_active ? (
-                      <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                      <span className="inline-flex whitespace-nowrap rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
                         활성
                       </span>
                     ) : null}

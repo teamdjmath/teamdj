@@ -490,6 +490,46 @@ export async function bulkRemoveStudentsFromClass(
   })
 }
 
+// 어느 분반에도 속하지 않은 학생을 한 번에 완전 삭제(회원 탈퇴) — 하드 삭제라 되돌릴 수 없음.
+// deleteStudent와 동일한 로직(DB 삭제 → auth 삭제 → 감사 로그)을 여러 명에 대해 반복한다.
+export async function bulkDeleteStudents(studentIds: string[]): Promise<ActionResult<{ deletedCount: number }>> {
+  const caller = await getVerifiedUser()
+
+  return withAction('bulkDeleteStudents', caller?.id, async () => {
+    if (!caller) return { success: false, error: '인증이 필요합니다.' }
+    if (studentIds.length === 0) return { success: false, error: '삭제할 학생을 선택하세요.' }
+
+    const role = caller.user_metadata?.role as string | undefined
+    if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+
+    const adminSupabase = createAdminClient()
+
+    // 삭제 전에 이름 확보 (감사 로그용)
+    const { data: targets } = await adminSupabase
+      .from('users').select('id, name').in('id', studentIds)
+
+    // users 테이블에서 삭제 (class_members, parent_links 등은 CASCADE)
+    const { error: dbErr } = await adminSupabase.from('users').delete().in('id', studentIds)
+    if (dbErr) throw dbErr
+
+    // Auth에서도 각각 삭제 — 일부 실패해도 나머지는 계속 진행
+    for (const id of studentIds) {
+      const { error: authErr } = await adminSupabase.auth.admin.deleteUser(id)
+      if (authErr) logger.warn('bulkDeleteStudents:auth-delete-failed', { action: 'bulkDeleteStudents', userId: caller.id, error: authErr })
+    }
+
+    for (const t of (targets ?? [])) {
+      await logAudit(caller, {
+        action: 'student.delete', targetType: 'student',
+        targetId: t.id as string, targetLabel: (t.name as string | null) ?? '',
+      })
+    }
+
+    revalidatePath('/admin/students')
+    return { success: true, data: { deletedCount: studentIds.length } }
+  })
+}
+
 export async function linkParent(formData: FormData): Promise<ActionResult> {
   const caller = await getVerifiedUser()
 

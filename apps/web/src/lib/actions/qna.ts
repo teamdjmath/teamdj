@@ -439,6 +439,7 @@ export async function createQuestion(data: {
   classId: string | null
   imageUrls: string[]
   textbookId?: string | null
+  subjectId?: string | null
   problemNumber?: string | null
 }): Promise<{ error?: string }> {
   const supabase = await createClient()
@@ -463,6 +464,7 @@ export async function createQuestion(data: {
       image_urls: data.imageUrls,
       status: 'open',
       textbook_id: data.textbookId || null,
+      subject_id: data.subjectId || null,
       problem_number: data.problemNumber?.trim() || null,
     })
     .select('id')

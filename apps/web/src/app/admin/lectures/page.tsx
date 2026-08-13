@@ -30,6 +30,13 @@ export default async function LecturesPage() {
     .select('id, name')
     .order('name')
 
+  // 과목 목록
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: subjectRows } = await (supabase as any)
+    .from('subjects')
+    .select('id, name')
+    .order('name')
+
   // 강좌 자료 목록
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: materialRows } = await (admin as any)
@@ -92,6 +99,8 @@ export default async function LecturesPage() {
       courses={courses}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       textbooks={(textbookRows ?? []).map((t: any) => ({ id: t.id as string, name: t.name as string }))}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      subjects={(subjectRows ?? []).map((s: any) => ({ id: s.id as string, name: s.name as string }))}
     />
   )
 }
