@@ -656,9 +656,12 @@ export async function resetStudentPassword(studentId: string): Promise<ActionRes
     const adminSupabase = createAdminClient()
     const password = getInitialPassword()
 
+    // user_metadata는 통째로 교체되므로 기존 값(role·name·phone 등)을 먼저 불러와 합쳐야 한다 —
+    // 안 그러면 must_change_password만 남고 나머지가 전부 날아가 로그인 후 권한 체크가 깨진다.
+    const { data: authUser } = await adminSupabase.auth.admin.getUserById(studentId)
     const { error: authErr } = await adminSupabase.auth.admin.updateUserById(studentId, {
       password,
-      user_metadata: { must_change_password: true },
+      user_metadata: { ...(authUser?.user?.user_metadata ?? {}), must_change_password: true },
     })
     if (authErr) throw authErr
 
