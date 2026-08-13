@@ -197,18 +197,17 @@ export async function bulkCreateStudents(rows: StudentBulkRow[]): Promise<BulkRe
 
   // 기존 학생(전화번호+이름 일치)에게 누락 정보만 보강 (분반 추가 등)
   // changed=false면 엑셀 내용이 기존 정보와 완전히 같아 실제로 바뀐 게 없다는 뜻 (= "유지")
+  //
+  // DB에 하이픈 포함 등 비정규화된 phone이 남아있는 경우(과거 데이터)를 대비해
+  // .eq('phone', ...) 정확 일치 대신 이미 불러온 existingStudents에서 정규화 비교로 찾는다 —
+  // 안 그러면 실제로는 같은 학생인데 문자열이 안 맞아 "학생 정보 조회 실패"로 잘못 실패 처리된다.
   async function mergeIntoExisting(row: StudentBulkRow): Promise<{ error: string | null; changed: boolean }> {
-    const { data: existing } = await adminSupabase
-      .from('users')
-      .select('id, name, school, grade')
-      .eq('phone', row.phone)
-      .eq('role', 'student')
-      .maybeSingle()
+    const existing = (existingStudents ?? []).find((s) =>
+      s.name.trim() === row.name.trim() &&
+      (s.phone ?? '').replace(/\D/g, '') === row.phone.replace(/\D/g, ''),
+    )
 
     if (!existing) return { error: '이미 등록된 전화번호 (학생 정보 조회 실패)', changed: false }
-    if (existing.name.trim() !== row.name.trim()) {
-      return { error: `이미 다른 이름(${existing.name})으로 등록된 전화번호`, changed: false }
-    }
 
     const userId = existing.id as string
     let changed = false

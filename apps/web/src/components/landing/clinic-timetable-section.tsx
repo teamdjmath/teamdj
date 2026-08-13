@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 
 const ROWS = [
-  { days: "월 · 화 · 목 · 금", time: "17:30 ~ 22:00" },
+  { days: "월 · 화 · 목 · 금", time: "18:00 ~ 22:00" },
   { days: "토 · 일", time: "12:00 ~ 19:00" },
 ];
 
