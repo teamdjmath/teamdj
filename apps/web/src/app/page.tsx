@@ -6,7 +6,7 @@ import { ClinicTimetableSection } from "@/components/landing/clinic-timetable-se
 import { CurriculumSection } from "@/components/landing/curriculum-section";
 import { OpenClassesSection } from "@/components/landing/open-classes-section";
 import { SystemSection } from "@/components/landing/system-section";
-import { TestimonialSection } from "@/components/landing/testimonial-section";
+// import { TestimonialSection } from "@/components/landing/testimonial-section"; // 임시 비공개 (아래 렌더링도 주석 처리)
 import { SeminarSection } from "@/components/landing/seminar-section";
 import { ClosingSection } from "@/components/landing/closing-section";
 import { LandingNav } from "@/components/landing/landing-nav";
@@ -79,8 +79,8 @@ export default function LandingPage() {
       {/* 6. 교재 & 관리체계 시스템 안내 */}
       <SystemSection />
 
-      {/* 7. 후기 (카카오톡 이미지 캡처본) */}
-      <TestimonialSection />
+      {/* 7. 후기 (카카오톡 이미지 캡처본) — 요청으로 임시 비공개, 컴포넌트는 유지 */}
+      {/* <TestimonialSection /> */}
 
       {/* 8. 비공개설명회 (연4회) — 추후 오픈 */}
       <SeminarSection />
