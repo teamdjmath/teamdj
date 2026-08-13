@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { MATERIAL_LEVELS } from "@/lib/materials-data";
+import { AttendanceKioskGraphic } from "./attendance-kiosk-graphic";
 
 const SYSTEMS = [
   {
@@ -217,6 +218,10 @@ export function SystemSection() {
                       sizes="(min-width: 768px) 40vw, 90vw"
                       className="max-h-[420px] w-auto rounded-3xl border border-zinc-200 object-contain"
                     />
+                  </div>
+                ) : sys.icon === "attendance" ? (
+                  <div className="aspect-4/3 p-3">
+                    <AttendanceKioskGraphic />
                   </div>
                 ) : (
                   <div className="aspect-4/3 rounded-3xl bg-zinc-50 border border-zinc-200 flex items-center justify-center">
