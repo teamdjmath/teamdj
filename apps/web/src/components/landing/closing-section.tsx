@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 
 const TEACHER_PHONE = "010-9205-6541";
-const CLINIC_TEAM_PHONE = "053-214-4365";
+const CLINIC_TEAM_PHONE = "010-5508-3603";
 
 export function ClosingSection() {
   const [revealed, setRevealed] = useState(false);
