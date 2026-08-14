@@ -168,11 +168,6 @@ export default async function DashboardPage() {
                         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${categoryBadgeStyle(a.category as string | null)}`}>
                           {(a.category as string) || '기타'}
                         </span>
-                        {className && (
-                          <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium bg-zinc-100 text-zinc-400 border border-zinc-200">
-                            {className}
-                          </span>
-                        )}
                         <span className={`truncate text-sm ${isOverdue && pct < 100 ? 'text-red-600' : 'text-zinc-800'}`}>
                           {a.title as string}
                         </span>
@@ -186,10 +181,19 @@ export default async function DashboardPage() {
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                    {a.due_date && (
-                      <p className={`mt-0.5 text-[10px] ${isOverdue && pct < 100 ? 'text-red-400' : 'text-zinc-400'}`}>
-                        마감 {new Date(a.due_date as string).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-                      </p>
+                    {(a.due_date || className) && (
+                      <div className="mt-0.5 flex items-center justify-between gap-2">
+                        {a.due_date ? (
+                          <p className={`text-[10px] ${isOverdue && pct < 100 ? 'text-red-400' : 'text-zinc-400'}`}>
+                            마감 {new Date(a.due_date as string).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                          </p>
+                        ) : <span />}
+                        {className && (
+                          <span className="shrink-0 truncate max-w-[60%] rounded-full px-2 py-0.5 text-[10px] font-medium bg-zinc-100 text-zinc-400 border border-zinc-200">
+                            {className}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </li>
                 )

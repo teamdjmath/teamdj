@@ -8,6 +8,7 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import { createClient } from '@/lib/supabase/client'
 import { assignQuestion, submitAnswer, generateAiDraft, updateAnswer, cancelAnswer, adoptRelatedAnswer } from '@/lib/actions/qna'
+import { buildAnswerParts, buildStudentContent } from '@/lib/qna-format'
 
 type Question = {
   id: string
@@ -20,6 +21,14 @@ type Question = {
   studentName: string
   className: string | null
   assignedTaName: string | null
+  additionalRequestedAt?: string | null
+}
+
+type AiDraft = {
+  id: string
+  content: string
+  mediaUrls: string[]
+  isAiDraft: boolean
 }
 
 type Answer = {
@@ -29,6 +38,7 @@ type Answer = {
   answered_at: string
   taId: string
   taName: string
+  isAiDraft?: boolean
   difficulty?: number | null
   studentRating?: number | null
 }
@@ -52,6 +62,7 @@ type DifficultyHint = {
 interface Props {
   question: Question
   answers: Answer[]
+  aiDraft?: AiDraft | null
   currentUserId: string
   currentUserName: string
   currentUserRole: string
@@ -86,6 +97,7 @@ function AnswerEditor({
   difficulty, onDifficultyChange,
   relatedDifficulty, difficultyHint,
   errMsg, onSubmit, submitLabel, isPending, onCancel,
+  studentName, taName, isAiDraft,
 }: {
   content: string
   onContentChange: (v: string) => void
@@ -110,7 +122,14 @@ function AnswerEditor({
   submitLabel: string
   isPending: boolean
   onCancel?: () => void
+  studentName: string
+  taName: string
+  isAiDraft: boolean
 }) {
+  // 조교가 입력하는 content는 항상 본문(body)만 — 인사말/맺음말은 제출 시 자동으로 붙는다.
+  // 여기서는 그 완성된 형태를 미리 계산해 입력 탭엔 위/아래 회색 박스로, 미리보기 탭엔
+  // 실제 전송문 그대로 보여줘 조교가 학생에게 뭐가 나가는지 정확히 알 수 있게 한다.
+  const parts = buildAnswerParts({ content, studentName, taName, isAiDraft, isTaReviewed: true })
   return (
     <div className="space-y-3">
       {/* 탭 + AI 버튼 */}
@@ -174,19 +193,29 @@ function AnswerEditor({
       {aiErr && <p className="text-xs text-red-500">{aiErr}</p>}
 
       {tab === 'write' ? (
-        <textarea
-          rows={12}
-          value={content}
-          onChange={(e) => onContentChange(e.target.value)}
-          placeholder={`답변 내용을 입력하세요.\n\n마크다운: **굵게**, *기울임*, \`코드\`, - 목록\nLaTeX 수식: $x^2$ (인라인), $$\\frac{a}{b}$$ (블록)`}
-          className="w-full resize-none rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 font-mono text-sm leading-relaxed text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 focus:border-zinc-950 dark:focus:border-zinc-50 focus:ring-1 focus:ring-zinc-950 dark:focus:ring-zinc-50 focus:outline-none transition-all"
-        />
+        <div className="space-y-2">
+          <div className="rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-dashed border-zinc-200 dark:border-zinc-800 px-4 py-2.5 text-xs text-zinc-400 dark:text-zinc-600">
+            {parts.greeting}
+            <span className="ml-2 text-[10px] text-zinc-300 dark:text-zinc-700">(자동으로 붙는 인사말)</span>
+          </div>
+          <textarea
+            rows={12}
+            value={content}
+            onChange={(e) => onContentChange(e.target.value)}
+            placeholder={`답변 내용을 입력하세요.\n\n마크다운: **굵게**, *기울임*, \`코드\`, - 목록\nLaTeX 수식: $x^2$ (인라인), $$\\frac{a}{b}$$ (블록)`}
+            className="w-full resize-none rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 font-mono text-sm leading-relaxed text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 focus:border-zinc-950 dark:focus:border-zinc-50 focus:ring-1 focus:ring-zinc-950 dark:focus:ring-zinc-50 focus:outline-none transition-all"
+          />
+          <div className="rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-dashed border-zinc-200 dark:border-zinc-800 px-4 py-2.5 text-xs text-zinc-400 dark:text-zinc-600 whitespace-pre-wrap">
+            {parts.closing}
+            <span className="ml-2 text-[10px] text-zinc-300 dark:text-zinc-700">(자동으로 붙는 맺음말)</span>
+          </div>
+        </div>
       ) : (
         <div className="min-h-[280px] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-5 py-4">
           {content.trim() ? (
             <div className="prose prose-sm prose-zinc dark:prose-invert max-w-none text-sm leading-relaxed">
               <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
-                {content}
+                {buildStudentContent({ content, studentName, taName, isAiDraft, isTaReviewed: true })}
               </ReactMarkdown>
             </div>
           ) : (
@@ -244,19 +273,41 @@ function AnswerEditor({
           </div>
         )}
 
-        {/* 이미 업로드된(기존) 미디어 URLs */}
+        {/* 이미 업로드된(기존) 미디어 URLs — AI가 붙인 이미지도 여기 포함되므로, 조교가 제출 전에
+            실제로 뭐가 붙어있는지 눈으로 확인할 수 있게 썸네일로 보여준다 (파일명만으론 알 수 없음) */}
         {mediaUrls.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
-            {mediaUrls.map((url, i) => (
-              <div key={i} className="flex items-center gap-2 rounded-full bg-zinc-900 dark:bg-zinc-100 px-3 py-1.5 text-[11px] font-medium text-white dark:text-zinc-900 group">
-                <span className="max-w-[150px] truncate">{url.split('/').pop()}</span>
-                <button type="button" onClick={() => onRemoveMedia(i)} className="text-zinc-400 dark:text-zinc-600 hover:text-white transition-colors">
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            ))}
+            {mediaUrls.map((url, i) => {
+              const raw = url.split('/').pop()?.split('?')[0] ?? ''
+              const ext = raw.split('.').pop()?.toLowerCase() ?? ''
+              const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)
+              return isImage ? (
+                <div key={i} className="relative group">
+                  <a href={url} target="_blank" rel="noopener noreferrer" className="block h-20 w-20 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-zinc-50 dark:bg-zinc-950 hover:opacity-90 transition-opacity">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt={raw} className="h-full w-full object-contain" />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveMedia(i)}
+                    className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <div key={i} className="flex items-center gap-2 rounded-full bg-zinc-900 dark:bg-zinc-100 px-3 py-1.5 text-[11px] font-medium text-white dark:text-zinc-900 group">
+                  <span className="max-w-[150px] truncate">{raw}</span>
+                  <button type="button" onClick={() => onRemoveMedia(i)} className="text-zinc-400 dark:text-zinc-600 hover:text-white transition-colors">
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
@@ -344,20 +395,21 @@ function AnswerEditor({
   )
 }
 
-export function QnaDetailClient({ question, answers, currentUserId, currentUserRole, relatedAnswers, difficultyHint }: Props) {
+export function QnaDetailClient({ question, answers, aiDraft, currentUserId, currentUserName, currentUserRole, relatedAnswers, difficultyHint }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [errMsg, setErrMsg] = useState('')
 
-  const [content, setContent] = useState('')
+  // 조교가 열자마자 AI가 미리 써둔 1차 답변이 채워져 있다 — 그대로 제출(확정)하거나 고쳐서 제출.
+  const [content, setContent] = useState(aiDraft?.content ?? '')
   const [tab, setTab] = useState<'write' | 'preview'>('write')
-  const [mediaUrls, setMediaUrls] = useState<string[]>([])
+  const [mediaUrls, setMediaUrls] = useState<string[]>(aiDraft?.mediaUrls ?? [])
   const [files, setFiles] = useState<File[]>([])
   const [difficulty, setDifficulty] = useState<number | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiErr, setAiErr] = useState('')
-  const [usedAiDraft, setUsedAiDraft] = useState(false)
+  const [usedAiDraft, setUsedAiDraft] = useState(!!aiDraft)
   const [aiFullAnswer, setAiFullAnswer] = useState(false)
 
   const [editingAnswerId, setEditingAnswerId] = useState<string | null>(null)
@@ -526,6 +578,19 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[question.status]}`}>
               {STATUS_LABEL[question.status]}
             </span>
+            {aiDraft && question.status !== 'answered' && (
+              <span className="flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-700">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                </svg>
+                AI
+              </span>
+            )}
+            {question.additionalRequestedAt && question.status !== 'answered' && (
+              <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                추가 요청
+              </span>
+            )}
             <span className="text-xs text-zinc-400 dark:text-zinc-600">{formatDatetime(question.created_at)}</span>
           </div>
           <div className="flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-500">
@@ -681,6 +746,7 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
                   errMsg={editErr} onSubmit={handleUpdateAnswer}
                   submitLabel="수정 완료" isPending={pending}
                   onCancel={() => setEditingAnswerId(null)}
+                  studentName={question.studentName} taName={a.taName} isAiDraft={a.isAiDraft ?? false}
                 />
               </div>
             ) : (
@@ -738,9 +804,18 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
       {/* 답변 작성 */}
       {canAnswer && (
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5">
-          <h2 className="mb-4 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-            {answers.length > 0 ? '추가 답변 작성' : '답변 작성'}
-          </h2>
+          <div className="mb-1 flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+              {aiDraft ? (aiDraft.isAiDraft ? 'AI 초안 검토' : '연결된 이전 답변 검토') : answers.length > 0 ? '추가 답변 작성' : '답변 작성'}
+            </h2>
+          </div>
+          {aiDraft && (
+            <p className="mb-4 text-xs text-zinc-400 dark:text-zinc-600">
+              {aiDraft.isAiDraft
+                ? 'AI가 1차로 작성한 답변이에요. 그대로 괜찮으면 "답변 확정"을 누르고, 고칠 부분이 있으면 아래에서 수정한 뒤 제출하세요.'
+                : '유사 문항의 기존 답변을 자동으로 연결했어요. 같은 문항이 맞는지 확인하고, 다르면 아래에서 수정한 뒤 제출하세요.'}
+            </p>
+          )}
           <AnswerEditor
             content={content} onContentChange={handleContentChange}
             mediaUrls={mediaUrls}
@@ -758,7 +833,8 @@ export function QnaDetailClient({ question, answers, currentUserId, currentUserR
             difficulty={difficulty} onDifficultyChange={setDifficulty}
             relatedDifficulty={primaryDifficulty} difficultyHint={difficultyHint}
             errMsg={errMsg} onSubmit={handleSubmit}
-            submitLabel="답변 제출하기" isPending={pending}
+            submitLabel={usedAiDraft ? '답변 확정' : '답변 제출하기'} isPending={pending}
+            studentName={question.studentName} taName={currentUserName} isAiDraft={usedAiDraft}
           />
         </div>
       )}

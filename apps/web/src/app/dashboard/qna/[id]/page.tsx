@@ -47,20 +47,40 @@ export default async function QnaDetailPage({ params }: { params: Promise<{ id: 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: aData } = await (admin as any)
     .from('qna_answers')
-    .select('id, content, media_urls, answered_at, student_rating, is_ai_draft, ta:users!qna_answers_ta_id_fkey(name)')
+    .select('id, content, media_urls, answered_at, student_rating, is_ai_draft, adopted_from_question_id, ta_id, ta:users!qna_answers_ta_id_fkey(name)')
     .eq('question_id', id)
     .order('answered_at', { ascending: true })
 
+  // 조교가 아직 검토 전인 미확정 답변(ta_id=null)은 질문이 미답변/답변중일 때만 "조교 답변"과
+  // 분리해 별도 카드로 보여준다. AI가 생성했든, 유사 문항에서 자동 연결했든 조교 미검토라는 점은
+  // 같다. 학생이 직접 확정해 답변완료가 됐다면 그 답변이 최종 기록이므로 평범한 답변 목록에
+  // 포함시킨다 (isTaReviewed=false로 표시만 구분).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const answers = (aData || []).map((a: any) => ({
-    id: a.id as string,
-    content: a.content as string,
-    media_urls: (a.media_urls as string[]) ?? [],
-    answered_at: a.answered_at as string,
-    taName: (a.ta as { name?: string } | null)?.name || 'TA',
-    studentRating: (a.student_rating as number | null) ?? null,
-    isAiDraft: (a.is_ai_draft as boolean | null) ?? false,
-  }))
+  const allRows = (aData || []) as any[]
+  const pendingAiDraftRow = question.status !== 'answered'
+    ? allRows.find((a) => !a.ta_id)
+    : undefined
+  const aiDraft = pendingAiDraftRow
+    ? {
+        content: pendingAiDraftRow.content as string,
+        mediaUrls: (pendingAiDraftRow.media_urls as string[]) ?? [],
+        isAiDraft: (pendingAiDraftRow.is_ai_draft as boolean | null) ?? false,
+      }
+    : null
+
+  const answers = allRows
+    .filter((a) => a.id !== pendingAiDraftRow?.id)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((a: any) => ({
+      id: a.id as string,
+      content: a.content as string,
+      media_urls: (a.media_urls as string[]) ?? [],
+      answered_at: a.answered_at as string,
+      taName: a.ta_id ? ((a.ta as { name?: string } | null)?.name || 'TA') : (a.is_ai_draft ? 'AI' : '이전 답변'),
+      studentRating: (a.student_rating as number | null) ?? null,
+      isAiDraft: (a.is_ai_draft as boolean | null) ?? false,
+      isTaReviewed: !!a.ta_id,
+    }))
 
   // 같은 교재+문항으로 이미 답변된 질문이 있으면 그 답변을 자동 연결 (아직 미답변일 때만 유용 —
   // 답변이 이미 있으면 그 답변이 곧 이 내용이므로 조회할 필요가 없다)
@@ -88,6 +108,7 @@ export default async function QnaDetailPage({ params }: { params: Promise<{ id: 
       <StudentQnaDetail
         question={question}
         answers={answers}
+        aiDraft={aiDraft}
         studentName={(user.user_metadata?.name as string | undefined) ?? ''}
         relatedAnswer={relatedAnswer}
       />

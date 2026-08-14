@@ -22,9 +22,16 @@ export type AiUsageStats = {
   avgFullKrw: number | null
 }
 
+export type AiFeedbackStats = {
+  total: number
+  byCategory: Array<{ category: string; label: string; count: number }>
+  byProblem: Array<{ label: string; count: number }>
+}
+
 interface Props {
   stats: BehaviorStats | null
   aiUsage: AiUsageStats | null
+  aiFeedback: AiFeedbackStats | null
   checkedAt: string
 }
 
@@ -78,7 +85,7 @@ function formatKrw(v: number): string {
   return `${v.toFixed(1)}원`
 }
 
-export function MonitoringClient({ stats, aiUsage, checkedAt }: Props) {
+export function MonitoringClient({ stats, aiUsage, aiFeedback, checkedAt }: Props) {
   const router = useRouter()
   const [refreshing, setRefreshing] = useState(false)
 
@@ -160,7 +167,7 @@ export function MonitoringClient({ stats, aiUsage, checkedAt }: Props) {
         <div className="mb-4">
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">AI 초안 사용량 (이번 달)</h2>
           <p className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-600">
-            Gemini 2.5 Flash 유료 티어 단가 기준 예상 금액 — 무료 티어 키 사용 중에는 실제 청구 0원
+            힌트는 Gemini 2.5 Flash, 최종답은 Nano Banana Pro(이미지 생성) 유료 티어 단가 기준 예상 금액 — 무료 티어 키 사용 중에는 실제 청구 0원
           </p>
         </div>
         {!aiUsage || aiUsage.calls === 0 ? (
@@ -190,9 +197,47 @@ export function MonitoringClient({ stats, aiUsage, checkedAt }: Props) {
           </div>
         )}
         <p className="mt-4 border-t border-zinc-100 dark:border-zinc-900 pt-3 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-600">
-          참고 단가 (건당 예상): 힌트 모드 ~5원 · 최종답 모드 평이한 문제 ~20원, 보통 ~30원, 킬러급 ~75원.
-          실측 평균이 쌓이면 위 "평균 비용 / 건"을 기준으로 보세요.
+          참고 단가 (건당 예상): 힌트 모드 ~5원 · 최종답 모드(Nano Banana Pro, 그래프 포함) 평이한 문제 ~20~30원, 보통 ~40~60원, 킬러급 ~150원 이상.
+          실측 평균이 쌓이면 위 &quot;평균 비용 / 건&quot;을 기준으로 보세요.
         </p>
+      </div>
+
+      {/* AI 답변 부족 피드백 집계 — 학생이 "추가 답변 요청"하며 남긴 이유 */}
+      <div className="mb-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5">
+        <div className="mb-4">
+          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">AI 답변 부족 피드백 (최근 90일)</h2>
+          <p className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-600">
+            학생이 추가 답변을 요청하며 선택한 사유 — 어떤 문항·유형에서 AI가 자주 부족했는지 파악용
+          </p>
+        </div>
+        {!aiFeedback || aiFeedback.total === 0 ? (
+          <p className="py-4 text-center text-xs text-zinc-400 dark:text-zinc-600">추가 요청 피드백 기록이 없습니다.</p>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-600">사유별</p>
+              <div className="space-y-2">
+                {aiFeedback.byCategory.map((c) => (
+                  <div key={c.category} className="flex items-center justify-between gap-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 px-3 py-2">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400">{c.label}</span>
+                    <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">{c.count}건</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-600">문항별 상위 {aiFeedback.byProblem.length}건</p>
+              <div className="space-y-2">
+                {aiFeedback.byProblem.map((p) => (
+                  <div key={p.label} className="flex items-center justify-between gap-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 px-3 py-2">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400 truncate">{p.label}</span>
+                    <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 tabular-nums shrink-0">{p.count}건</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 트렌드 차트 */}

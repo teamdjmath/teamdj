@@ -197,7 +197,7 @@ export function QnaListClient({
                         <>
                           <span>·</span>
                           <span>{q.textbookName}</span>
-                          {q.problem_number && <span>{q.problem_number}번</span>}
+                          {q.problem_number && <span>{q.problem_number}</span>}
                         </>
                       )}
                       <span>·</span>

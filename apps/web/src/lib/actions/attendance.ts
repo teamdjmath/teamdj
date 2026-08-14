@@ -5,6 +5,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
+import { logger } from '@/lib/logger'
+import { autoBlockForAttendanceSave } from '@/lib/actions/lectures'
 
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'absent_video'
 
@@ -41,6 +43,12 @@ export async function saveAttendance(
       .from('attendance_logs')
       .upsert(rows, { onConflict: 'class_id,student_id,session_date', count: 'exact' })
     if (error) throw error
+
+    // 강의가 출석체크보다 먼저 등록돼있던 경우 대비 — 방금 저장한 날짜의 강의들을 다시 스캔해
+    // 결석(차감) 학생을 뒤늦게라도 자동 차단한다. 출석 저장 자체를 막으면 안 되므로 실패해도 무시.
+    await autoBlockForAttendanceSave(classId, sessionDate).catch((e) => {
+      logger.error('saveAttendance:auto-block-failed', { action: 'saveAttendance', userId: user.id, error: e })
+    })
 
     revalidatePath('/admin/attendance')
     return { success: true, data: { savedCount: count ?? rows.length } }

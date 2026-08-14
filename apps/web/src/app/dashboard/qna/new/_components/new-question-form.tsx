@@ -130,6 +130,14 @@ export function NewQuestionForm({
       setError('제목과 내용을 모두 입력해주세요.')
       return
     }
+    if (!classId) {
+      setError('분반을 선택해주세요.')
+      return
+    }
+    if (!textbookId) {
+      setError('교재를 선택해주세요.')
+      return
+    }
 
     setIsSubmitting(true)
     setError('')
@@ -182,8 +190,9 @@ export function NewQuestionForm({
         label="분반"
         value={classId}
         onChange={(e) => setClassId(e.target.value)}
+        required
       >
-        <option value="">분반을 선택해주세요 (선택사항)</option>
+        <option value="">분반을 선택해주세요</option>
         {classes.map((c) => (
           <option key={c.id} value={c.id}>
             {c.name} ({c.subject})
@@ -196,8 +205,9 @@ export function NewQuestionForm({
         label="교재"
         value={textbookId}
         onChange={(e) => { setTextbookId(e.target.value); setProblemNumber('') }}
+        required
       >
-        <option value="">교재 선택 (선택사항)</option>
+        <option value="">교재를 선택해주세요</option>
         {textbooks.map((t) => (
           <option key={t.id} value={t.id}>
             {t.name}

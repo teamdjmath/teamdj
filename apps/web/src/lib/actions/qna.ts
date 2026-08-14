@@ -4,10 +4,12 @@ import { createClient } from '@/lib/supabase/server'
 import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
-import { GoogleGenAI } from '@google/genai'
+import { after } from 'next/server'
+import { GoogleGenAI, Modality } from '@google/genai'
 import { logger } from '@/lib/logger'
 import { createNotification } from '@/lib/actions/notifications'
 import { checkSuspension } from '@/lib/suspension'
+import { findRelatedAnswers } from '@/lib/data/qna-related'
 
 export async function assignQuestion(questionId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
@@ -28,6 +30,124 @@ export async function assignQuestion(questionId: string): Promise<{ error?: stri
   return {}
 }
 
+export type AiFeedbackCategory = 'wrong_answer' | 'unclear_explanation' | 'mismatched_problem' | 'other'
+
+// 학생이 "조교님께 추가 답변 요청하기"를 눌렀을 때 — AI 초안(또는 유사 문항 자동 연결 답변)만으로
+// 충분하지 않을 때 조교 큐로 명시적으로 올린다. 답변중(조교 대기)으로 전환하고, 조교 목록에
+// "추가 요청" 뱃지가 뜨도록 additional_requested_at을 기록한다. 조교가 답변을 확정하면 다시
+// null로 돌아간다. 어떤 부분이 부족했는지는 qna_ai_feedback에 별도로 남겨 모니터링에서 집계한다.
+export async function requestAdditionalAnswer(
+  questionId: string,
+  feedback?: { category: AiFeedbackCategory; detail?: string },
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const user = await getVerifiedUser()
+  if (!user) return { error: '인증이 필요합니다.' }
+
+  const { data: question } = await supabase
+    .from('qna_questions')
+    .select('student_id, status, title')
+    .eq('id', questionId)
+    .single()
+
+  if (!question) return { error: '질문을 찾을 수 없습니다.' }
+  if (question.student_id !== user.id) return { error: '본인의 질문만 요청할 수 있습니다.' }
+  if (question.status === 'answered') return { error: '이미 답변이 완료된 질문입니다.' }
+
+  const now = new Date().toISOString()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from('qna_questions')
+    .update({ status: 'in_progress', additional_requested_at: now })
+    .eq('id', questionId)
+
+  if (error) return { error: '요청에 실패했습니다.' }
+
+  if (feedback) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: feedbackError } = await (supabase as any).from('qna_ai_feedback').insert({
+      question_id: questionId,
+      student_id: user.id,
+      category: feedback.category,
+      detail: feedback.detail?.trim() || null,
+    })
+    if (feedbackError) {
+      logger.warn('requestAdditionalAnswer:feedback-save-failed', { action: 'requestAdditionalAnswer', userId: user.id, error: feedbackError })
+    }
+  }
+
+  try {
+    const admin = createAdminClient()
+    const { data: staff } = await admin
+      .from('users')
+      .select('id')
+      .in('role', ['teacher', 'ta_desk', 'ta_assistant'])
+      .eq('is_active', true)
+
+    if (staff && staff.length > 0) {
+      await Promise.all(
+        staff.map((s) =>
+          createNotification(
+            s.id as string,
+            'qna_new',
+            '조교 답변을 요청했습니다',
+            `${question.title}에 대해 학생이 추가 답변을 요청했습니다`,
+            `/admin/qna/${questionId}`,
+          ),
+        ),
+      )
+    }
+  } catch (err) {
+    logger.warn('requestAdditionalAnswer:notification-failed', { action: 'requestAdditionalAnswer', userId: user.id, error: err })
+  }
+
+  revalidatePath('/admin/qna')
+  revalidatePath(`/admin/qna/${questionId}`)
+  revalidatePath('/dashboard/qna')
+  revalidatePath(`/dashboard/qna/${questionId}`)
+  return {}
+}
+
+// 학생이 AI 1차 답변을 그대로 확정 — 조교 개입 없이 바로 답변완료 처리한다.
+// (조교가 검수한 게 아니므로 학생 화면의 AI 고지 문구는 buildStudentContent에서 별도로 구분한다.)
+export async function confirmAiDraft(questionId: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const user = await getVerifiedUser()
+  if (!user) return { error: '인증이 필요합니다.' }
+
+  const { data: question } = await supabase
+    .from('qna_questions')
+    .select('student_id, status')
+    .eq('id', questionId)
+    .single()
+
+  if (!question) return { error: '질문을 찾을 수 없습니다.' }
+  if (question.student_id !== user.id) return { error: '본인의 질문만 확정할 수 있습니다.' }
+  if (question.status === 'answered') return { error: '이미 답변이 완료된 질문입니다.' }
+
+  const { data: draft } = await supabase
+    .from('qna_answers')
+    .select('id')
+    .eq('question_id', questionId)
+    .is('ta_id', null)
+    .maybeSingle()
+  if (!draft) return { error: '아직 답변이 준비되지 않았습니다. 잠시 후 다시 시도해주세요.' }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from('qna_questions')
+    .update({ status: 'answered', additional_requested_at: null })
+    .eq('id', questionId)
+
+  if (error) return { error: '확정에 실패했습니다.' }
+
+  revalidatePath('/admin/qna')
+  revalidatePath(`/admin/qna/${questionId}`)
+  revalidatePath('/dashboard/qna')
+  revalidatePath(`/dashboard/qna/${questionId}`)
+  return {}
+}
+
 // 답변 저장(insert) 이후 공통 처리 — 질문 상태 변경 + 학생 알림.
 // submitAnswer(직접 작성)와 adoptRelatedAnswer(유사 답변 채택) 둘 다 사용.
 async function finalizeAnsweredQuestion(
@@ -36,9 +156,10 @@ async function finalizeAnsweredQuestion(
   taId: string,
   notificationBody: string,
 ): Promise<{ error?: string }> {
-  const { error: qError, data: qData } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: qError, data: qData } = await (supabase as any)
     .from('qna_questions')
-    .update({ status: 'answered', assigned_ta_id: taId })
+    .update({ status: 'answered', assigned_ta_id: taId, additional_requested_at: null })
     .eq('id', questionId)
     .select('student_id, title')
     .single()
@@ -249,19 +370,26 @@ export async function rateAnswer(answerId: string, rating: number): Promise<{ er
 
 export type AiDraftMode = 'hint' | 'full'
 
-export async function generateAiDraft(
+// full 모드(최종 답까지 풀이)는 그래프를 직접 그릴 수 있어야 해서 이미지 생성 지원 모델을 쓴다.
+// gemini-3.1-flash-image(Nano Banana 2)는 TEXT+IMAGE 동시 요청 시 응답이 끝없이 지연되는 현상이
+// 실측으로 확인됐고(빈 프롬프트로도 90초+ 무응답), gemini-2.5-flash-image(Nano Banana)는 안정적으로
+// 응답은 하지만 좌표/그래프 정확도가 낮아(점 위치 오류, 도형 왜곡, 이미지 안 한글 깨짐) 조교 검수 없이
+// 학생에게 바로 나갈 수 있는 1차 초안 품질로는 부족했다. gemini-3-pro-image(Nano Banana Pro)로
+// 실측 검증한 결과 좌표·라벨이 정확해 이걸 쓴다. 이미지 1장당 약 $0.134(1K/2K) —
+// flash-image 대비 3~4배 비싸므로 월 지출 한도를 반드시 넉넉히 잡아둘 것.
+const AI_DRAFT_IMAGE_MODEL = 'gemini-3-pro-image'
+
+// generateAiDraft(조교가 수동으로 누르는 버튼)와 질문 등록 시 자동 1차 답변 생성이
+// 같은 핵심 로직을 쓰되 호출 주체의 권한 체크만 다르므로, 실제 Gemini 호출부는
+// 이 내부 함수로 분리해 공유한다. userId는 로그·업로드 경로 구성용.
+async function runAiDraftGeneration(
   questionContent: string,
-  imageUrls: string[] = [],
-  mode: AiDraftMode = 'hint',
+  imageUrls: string[],
+  mode: AiDraftMode,
+  userId: string,
 ): Promise<{ draft?: string; mediaUrls?: string[]; error?: string }> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'Gemini API 키가 설정되지 않았습니다.' }
-
-  const user = await getVerifiedUser()
-  if (!user) return { error: '인증이 필요합니다.' }
-
-  const role = user.user_metadata?.role as string | undefined
-  if (!['teacher', 'ta_desk', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
 
   try {
     const ai = new GoogleGenAI({ apiKey })
@@ -274,6 +402,10 @@ export async function generateAiDraft(
 - 단 하나의 예외: **학생이 질문한 바로 그 지점**(예: 보조선을 어디에 왜 긋는지, 그 발상이 어디서 나오는지)은 2~4문장으로 공들여 설명할 것. 나머지 단계는 전부 짧게.
 - 핵심 수식은 인라인으로 길게 잇지 말고 $$...$$ 블록으로 한 줄씩 분리할 것.
 - 자명한 산술 중간 단계는 생략할 것 (예: $\\sqrt{9+16}=\\sqrt{25}=5$ 전부 대신 $\\overline{AC}=5$만).
+- **풀이가 성격이 다른 여러 단계로 자연스럽게 나뉘는 문제(예: 길이부터 구한 뒤 그 값으로 좌표를 구하는 문제)라면 "**Step 1**", "**Step 2**"처럼 단계 제목을 붙여 구분할 것.** 공식 하나로 바로 끝나는 단일 단계 문제는 억지로 단계를 쪼개지 말고 번호 없이 쓸 것.
+- **그래프/도형으로 나타낼 수 있는 문제(함수 그래프 개형, 도형·좌표 문제 등)라면 말로 설명하기 전에 반드시 그래프 이미지를 먼저 그려서 보여줄 것** — 좌표축, 눈금, 주요 점(교점·꼭짓점 등), 곡선/직선을 정확한 위치에 표시하고, 이미지 다음에 그 그래프를 근거로 한 짧은 설명을 덧붙일 것. 그래프가 필요없는 순수 계산 문제라면 이미지 없이 텍스트로만 풀이할 것.
+- **이미지에는 좌표축·눈금·곡선/도형·좌표 라벨만 그릴 것.** 문제 지문, 식 전개 과정, "풀이:"/"최종 답" 같은 텍스트를 이미지 안에 다시 옮겨 적지 말 것 — 그런 서술은 전부 이미지 밖 본문에 쓴다. 이미지는 순수한 도형/그래프 삽화 하나로 충분하며, 같은 그래프를 두 장 이상 반복해서 그리지 말 것 (최대 1장).
+- **이미지 안에는 한국어를 쓰지 말 것.** 이미지 생성 모델은 한글 렌더링이 깨지기 쉽다. 이미지에 라벨이 꼭 필요하면 숫자와 영어(알파벳, 좌표, 함수식 등)만 쓰고, 한국어 설명은 전부 이미지 밖의 텍스트로 뺄 것.
 - 마지막 줄에 "**최종 답:** ..." 형태로 답을 명시하고 끝낼 것.`
       : `답변 범위: **학생이 물어본 것에만** 답한다. 최종 답·최종 계산 결과는 알려주지 말 것.
 - 첫 줄부터 질문에 대한 직접적인 답(예: 어떤 보조선을 그어야 하는지, 어떤 성질을 쓰는지)을 제시할 것.
@@ -289,6 +421,7 @@ export async function generateAiDraft(
 4. 이미지가 있으면 이미지 속 문제를 정확히 읽고 답할 것.
 5. 같은 내용을 표현만 바꿔 반복하지 말 것.
 6. 한국어로만 작성 (수식 제외).
+7. **반드시 대한민국 고등학교 수학 교육과정 범위 안의 개념·풀이 방법만 사용할 것.** 대학 과정 기법(예: 라플라스 변환, 다변수 미적분, 선형대수의 고급 정리, 교육과정 밖 급수·해석 기법 등)은 절대 쓰지 말 것. 교육과정 안에서 여러 풀이가 가능하면 그중 가장 표준적이고 짧은 방법을 택할 것.
 
 ${scopeRules}
 
@@ -319,7 +452,7 @@ ${scopeRules}
             })
           }
         } catch (e) {
-          logger.warn('generateAiDraft:image-fetch-failed', { action: 'generateAiDraft', userId: user.id, error: e })
+          logger.warn('generateAiDraft:image-fetch-failed', { action: 'generateAiDraft', userId: userId, error: e })
         }
       }
     }
@@ -330,20 +463,23 @@ ${scopeRules}
         : `학생 질문: ${questionContent}`,
     )
 
+    // full 모드는 그래프 이미지를 직접 그려야 하므로 이미지 생성이 가능한 모델을 쓴다.
+    // hint 모드는 이미지가 필요 없어 텍스트 전용 flash를 그대로 유지.
+    const model = mode === 'full' ? AI_DRAFT_IMAGE_MODEL : 'gemini-2.5-flash'
+
     const response = await ai.models.generateContent({
-      // flash-lite는 수식·손글씨 이미지 인식이 약해 flash로 상향
-      model: 'gemini-2.5-flash',
+      model,
       contents: contentsParts,
       config: {
         systemInstruction,
         temperature: 0.3,
-        // full 모드: 사고 예산이 부족하면 모델이 답변 텍스트 안에서 문제를 풀며 헤매는 과정이
-        // 그대로 노출됨 — thinkingBudget -1(동적)로 난이도에 맞게 알아서 충분히 사고하게 한다.
-        // Gemini 2.5는 thinking 토큰도 maxOutputTokens에 포함되고 budget을 초과할 수 있어서,
-        // 어려운 문제에서 한도가 작으면 MAX_TOKENS로 잘림 → 모델 최대치(65536)로 연다.
-        // 실제 답변 길이는 프롬프트(EBS 해설 수준 간결함)로 제어한다.
-        maxOutputTokens: mode === 'full' ? 65536 : 4096,
-        thinkingConfig: { thinkingBudget: mode === 'full' ? -1 : 1024 },
+        ...(mode === 'full' ? { responseModalities: [Modality.TEXT, Modality.IMAGE] } : {}),
+        // gemini-3-pro-image(full 모드)는 thinkingConfig 없이도 기본으로 사고하며, outputTokenLimit이
+        // 32768이라 그 이상을 넣으면 400 에러가 난다 — hint 모드(gemini-2.5-flash)에서만 사고 예산을
+        // 명시적으로 켠다. thinking 토큰도 maxOutputTokens에 포함되고 budget을 초과할 수 있어서,
+        // 어려운 문제에서 한도가 작으면 MAX_TOKENS로 잘림 → 각 모델의 최대치로 연다.
+        maxOutputTokens: mode === 'full' ? 32768 : 4096,
+        ...(mode === 'full' ? {} : { thinkingConfig: { thinkingBudget: 1024 } }),
       },
     })
     
@@ -360,7 +496,7 @@ ${scopeRules}
         const contentType = part.inlineData.mimeType || 'image/png'
         const buffer = Buffer.from(imageData, 'base64')
         const ext = contentType.split('/')[1] || 'png'
-        const filePath = `ai-drafts/${user.id}/${Date.now()}.${ext}`
+        const filePath = `ai-drafts/${userId}/${Date.now()}.${ext}`
 
         const { error: uploadError } = await admin.storage
           .from('qna-images')
@@ -378,16 +514,16 @@ ${scopeRules}
     try {
       const usage = response.usageMetadata
       await admin.from('ai_usage_logs').insert({
-        user_id: user.id,
+        user_id: userId,
         feature: 'qna_draft',
         mode,
-        model: 'gemini-2.5-flash',
+        model,
         prompt_tokens: usage?.promptTokenCount ?? 0,
         thoughts_tokens: usage?.thoughtsTokenCount ?? 0,
         output_tokens: usage?.candidatesTokenCount ?? 0,
       })
     } catch (e) {
-      logger.warn('generateAiDraft:usage-log-failed', { action: 'generateAiDraft', userId: user.id, error: e })
+      logger.warn('generateAiDraft:usage-log-failed', { action: 'generateAiDraft', userId: userId, error: e })
     }
 
     if (!rawText) return { error: 'AI 응답을 받지 못했습니다.' }
@@ -395,18 +531,18 @@ ${scopeRules}
     // 토큰 한도로 풀이가 중간에 끊긴 초안은 그대로 쓰면 안 됨 — 재시도 유도
     const finishReason = String(response.candidates?.[0]?.finishReason ?? '')
     if (finishReason === 'MAX_TOKENS') {
-      logger.warn('generateAiDraft:truncated', { action: 'generateAiDraft', userId: user.id, input: rawText.slice(-200) })
+      logger.warn('generateAiDraft:truncated', { action: 'generateAiDraft', userId: userId, input: rawText.slice(-200) })
       return { error: '풀이가 너무 길어 응답이 중간에 잘렸습니다. 다시 시도해 주세요.' }
     }
 
-    logger.info('generateAiDraft:raw', { action: 'generateAiDraft', userId: user.id, input: rawText.slice(0, 500) })
+    logger.info('generateAiDraft:raw', { action: 'generateAiDraft', userId: userId, input: rawText.slice(0, 500) })
 
     // 모델이 관성으로 예전 형식의 태그를 붙여도 본문만 남긴다
     const draft = rawText.replace(/###[A-Z]+###/g, '').trim()
     if (!draft) return { error: 'AI 응답을 파싱할 수 없습니다. 다시 시도해 주세요.' }
     return { draft, mediaUrls }
   } catch (err: unknown) {
-    logger.error('generateAiDraft:error', { action: 'generateAiDraft', userId: user.id, error: err })
+    logger.error('generateAiDraft:error', { action: 'generateAiDraft', userId: userId, error: err })
     
     let errorMsg = 'AI 초안 생성 중 오류가 발생했습니다.'
     
@@ -433,6 +569,21 @@ ${scopeRules}
   }
 }
 
+// 조교가 "AI 초안" 버튼을 눌러 수동으로 생성 — 권한 체크 후 핵심 로직에 위임.
+export async function generateAiDraft(
+  questionContent: string,
+  imageUrls: string[] = [],
+  mode: AiDraftMode = 'hint',
+): Promise<{ draft?: string; mediaUrls?: string[]; error?: string }> {
+  const user = await getVerifiedUser()
+  if (!user) return { error: '인증이 필요합니다.' }
+
+  const role = user.user_metadata?.role as string | undefined
+  if (!['teacher', 'ta_desk', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
+
+  return runAiDraftGeneration(questionContent, imageUrls, mode, user.id)
+}
+
 export async function createQuestion(data: {
   title: string
   content: string
@@ -446,6 +597,8 @@ export async function createQuestion(data: {
   const user = await getVerifiedUser()
 
   if (!user) return { error: '인증이 필요합니다.' }
+  if (!data.classId) return { error: '분반을 선택해주세요.' }
+  if (!data.textbookId) return { error: '교재를 선택해주세요.' }
 
   const { suspended } = await checkSuspension(user.id)
   if (suspended) return { error: '휴원 중에는 질문 등록이 제한됩니다.' }
@@ -498,6 +651,81 @@ export async function createQuestion(data: {
     }
   } catch (err) {
     logger.warn('createQuestion:notification-failed', { action: 'createQuestion', userId: user.id, error: err })
+  }
+
+  // 1차 답변 자동 준비 — 학생 응답을 기다리게 하면 안 되므로 응답 전송 후 백그라운드에서 실행.
+  // 조교가 검토 전까지는 ta_id가 null인 미확정 상태로만 존재한다(AI 생성이든, 아래 유사 문항
+  // 재활용이든 동일). 같은/비슷한 문항에 이미 답변이 있으면 AI를 호출하지 않고 그 답변을 그대로
+  // 재사용해 비용을 아낀다 — 다만 실제로 다른 문항일 수 있어(특히 유사도 매칭) 학생이 "유사 문항이
+  // 실제 문항과 다름"으로 피드백하며 추가 요청할 수 있게 해둔다.
+  if (inserted?.id) {
+    const questionId = inserted.id as string
+    const questionContent = data.content
+    const imageUrls = data.imageUrls
+    const studentId = user.id
+    const textbookId = data.textbookId ?? null
+    const problemNumber = data.problemNumber ?? null
+    const title = data.title
+
+    after(async () => {
+      const admin = createAdminClient()
+
+      const related = await findRelatedAnswers({
+        excludeQuestionId: questionId,
+        textbookId,
+        problemNumber,
+        title,
+        content: questionContent,
+      })
+      const bestMatch = related[0]
+
+      if (bestMatch) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: linkError } = await (admin as any).from('qna_answers').insert({
+          question_id: questionId,
+          ta_id: null,
+          content: bestMatch.content,
+          media_urls: bestMatch.mediaUrls,
+          is_ai_draft: false,
+          adopted_from_question_id: bestMatch.questionId,
+          difficulty: bestMatch.difficulty,
+        })
+        if (linkError) {
+          logger.error('createQuestion:related-link-failed', { action: 'createQuestion', userId: studentId, error: linkError })
+        } else {
+          revalidatePath('/admin/qna')
+          revalidatePath(`/admin/qna/${questionId}`)
+          revalidatePath('/dashboard/qna')
+          revalidatePath(`/dashboard/qna/${questionId}`)
+        }
+        return
+      }
+
+      const result = await runAiDraftGeneration(questionContent, imageUrls, 'full', studentId)
+      if (result.error || !result.draft) {
+        logger.warn('createQuestion:ai-draft-failed', { action: 'createQuestion', userId: studentId, error: result.error })
+        return
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: draftError } = await (admin as any).from('qna_answers').insert({
+        question_id: questionId,
+        ta_id: null,
+        content: result.draft,
+        media_urls: result.mediaUrls ?? [],
+        is_ai_draft: true,
+        difficulty: null,
+      })
+      if (draftError) {
+        logger.error('createQuestion:ai-draft-save-failed', { action: 'createQuestion', userId: studentId, error: draftError })
+        return
+      }
+
+      revalidatePath('/admin/qna')
+      revalidatePath(`/admin/qna/${questionId}`)
+      revalidatePath('/dashboard/qna')
+      revalidatePath(`/dashboard/qna/${questionId}`)
+    })
   }
 
   revalidatePath('/dashboard/qna')

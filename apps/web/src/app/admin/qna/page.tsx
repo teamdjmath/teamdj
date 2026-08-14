@@ -43,7 +43,7 @@ export default async function QnaPage({
   let query = db
     .from('qna_questions')
     .select(
-      'id, title, content, status, created_at, assigned_ta_id, textbook_id, problem_number, student:users!student_id(name), class:class_groups!class_id(name), assigned_ta:users!assigned_ta_id(name), textbook:textbooks!textbook_id(name)',
+      'id, title, content, status, created_at, assigned_ta_id, textbook_id, problem_number, additional_requested_at, student:users!student_id(name), class:class_groups!class_id(name), assigned_ta:users!assigned_ta_id(name), textbook:textbooks!textbook_id(name)',
     )
     .order('created_at', { ascending: false })
 
@@ -74,12 +74,17 @@ export default async function QnaPage({
     return q
   }
 
-  const [{ data: rows }, openCnt, progressCnt, answeredCnt] = await Promise.all([
+  const [{ data: rows }, openCnt, progressCnt, answeredCnt, { data: aiDraftRows }] = await Promise.all([
     query,
     countQuery('open'),
     countQuery('in_progress'),
     countQuery('answered'),
+    // 조교가 아직 확정 안 한 답변(AI 생성 또는 유사 문항 자동 연결)이 붙어있는 질문 id 목록 —
+    // 목록에 AI 뱃지 표시용
+    db.from('qna_answers').select('question_id').is('ta_id', null),
   ])
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aiDraftQuestionIds = new Set((aiDraftRows ?? []).map((a: any) => a.question_id as string))
 
   const statusCounts = {
     open:        openCnt.count ?? 0,
@@ -104,6 +109,8 @@ export default async function QnaPage({
       className: ((r.class as { name?: string } | null)?.name ?? null) as string | null,
       assignedTaName: ((r.assigned_ta as { name?: string } | null)?.name ?? null) as string | null,
       textbookName: ((r.textbook as { name?: string } | null)?.name ?? null) as string | null,
+      additionalRequestedAt: (r.additional_requested_at ?? null) as string | null,
+      hasAiDraft: aiDraftQuestionIds.has(r.id as string),
     }
   })
 

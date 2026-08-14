@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Modal } from '@/components/ui/modal'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InputField, SelectField } from '@/components/ui/form-field'
-import { createAssignment, updateAssignment, deleteAssignment, createCategory } from '@/lib/actions/assignments'
+import { createAssignment, updateAssignment, deleteAssignment, createCategory, deleteCategory } from '@/lib/actions/assignments'
 import { DatePicker } from '@/components/ui/date-picker'
 
 type ClassOption = { id: string; name: string }
@@ -66,6 +66,20 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
         setForm(f => ({ ...f, category: newCategoryName.trim() }))
         setNewCategoryName('')
         setIsAddingCategory(false)
+        router.refresh()
+      } else {
+        alert(res.error)
+      }
+    })
+  }
+
+  function handleDeleteCategory() {
+    if (!form.category) return
+    if (!confirm(`"${form.category}" 카테고리를 목록에서 삭제할까요? 이미 등록된 과제의 카테고리 표시는 그대로 유지됩니다.`)) return
+    startTransition(async () => {
+      const res = await deleteCategory(form.category)
+      if (res.success) {
+        setForm((f) => ({ ...f, category: '' }))
         router.refresh()
       } else {
         alert(res.error)
@@ -338,16 +352,27 @@ export function AssignmentsClient({ classOptions, selectedClassId, assignments, 
                 </button>
               </div>
             ) : (
-              <select
-                value={form.category}
-                onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2.5 text-sm font-bold text-zinc-900 dark:text-zinc-100 shadow-sm transition-all focus:border-zinc-900 dark:focus:border-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100 cursor-pointer appearance-none"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2371717a' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 1rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
-              >
-                {categoryOptions.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+              <div className="flex gap-2">
+                <select
+                  value={form.category}
+                  onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2.5 text-sm font-bold text-zinc-900 dark:text-zinc-100 shadow-sm transition-all focus:border-zinc-900 dark:focus:border-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100 cursor-pointer appearance-none"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2371717a' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 1rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
+                >
+                  {categoryOptions.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleDeleteCategory}
+                  disabled={!form.category || pending}
+                  title="선택된 카테고리 삭제"
+                  className="shrink-0 rounded-xl border border-zinc-200 dark:border-zinc-800 px-3.5 py-2.5 text-xs font-bold text-zinc-400 dark:text-zinc-600 hover:border-red-200 hover:text-red-500 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                >
+                  삭제
+                </button>
+              </div>
             )}
           </div>
 

@@ -8,6 +8,7 @@ import type { ActionResult } from '@/lib/types/actions'
 import { logger } from '@/lib/logger'
 import { logAudit } from '@/lib/audit'
 import { formatPhone, normalizePhone } from '@/lib/phone'
+import { autoBlockForSuspension } from '@/lib/actions/lectures'
 
 export type StudentBulkRow = {
   name: string
@@ -652,6 +653,11 @@ export async function setSuspension(
       .update({ suspended_from: from, suspended_until: until })
       .eq('id', studentId)
     if (error) throw error
+
+    // 휴원 기간에 걸리는, 이미 등록돼있던 강의를 소급 차단 — 휴원 설정 자체를 막으면 안 되므로 실패해도 무시.
+    await autoBlockForSuspension(studentId, from, until).catch((e) => {
+      logger.error('setSuspension:auto-block-failed', { action: 'setSuspension', userId: caller.id, error: e })
+    })
 
     revalidatePath(`/admin/students/${studentId}`)
     return { success: true }

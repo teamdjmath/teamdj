@@ -312,10 +312,11 @@ export async function getClassStudentsForAccess(
   return { students }
 }
 
-// 강의일이 지정되면, 그 강좌가 배정된 분반에서 그날 결석(차감)으로 표시된 학생을
-// 이 강의 하나에 대해 자동으로 차단한다 — 결석(영상)과 달리 결석(차감)은 시청이 전제되지 않으므로.
+// 강의일이 지정되면, 그 강좌가 배정된 분반에서 그날 결석(차감)으로 표시됐거나 그 날짜에
+// 휴원 중인 학생을 이 강의 하나에 대해 자동으로 차단한다 — 결석(영상)과 달리 결석(차감)은
+// 시청이 전제되지 않고, 휴원 기간에는 애초에 수업을 안 듣기 때문.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function autoBlockAbsentStudents(admin: any, courseName: string, lectureId: string, lectureDate: string): Promise<number> {
+async function autoBlockForLecture(admin: any, courseName: string, lectureId: string, lectureDate: string): Promise<number> {
   const { data: accessRows } = await admin
     .from('lecture_class_access')
     .select('class_id')
@@ -325,20 +326,111 @@ async function autoBlockAbsentStudents(admin: any, courseName: string, lectureId
   const classIds = [...new Set((accessRows ?? []).map((r: any) => r.class_id).filter(Boolean))]
   if (classIds.length === 0) return 0
 
-  const { data: absentRows } = await admin
-    .from('attendance_logs')
-    .select('student_id')
-    .in('class_id', classIds)
-    .eq('session_date', lectureDate)
-    .eq('status', 'absent')
+  const [{ data: absentRows }, { data: memberRows }] = await Promise.all([
+    admin
+      .from('attendance_logs')
+      .select('student_id')
+      .in('class_id', classIds)
+      .eq('session_date', lectureDate)
+      .eq('status', 'absent'),
+    admin
+      .from('class_members')
+      .select('student_id, users!student_id(suspended_from, suspended_until)')
+      .in('class_id', classIds)
+      .eq('is_active', true),
+  ])
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const studentIds = [...new Set((absentRows ?? []).map((r: any) => r.student_id))]
+  const absentIds = new Set((absentRows ?? []).map((r: any) => r.student_id as string))
+  const suspendedIds = new Set(
+    (memberRows ?? [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .filter((m: any) => {
+        const u = m.users as { suspended_from?: string | null; suspended_until?: string | null } | null
+        return !!(u?.suspended_from && u?.suspended_until && u.suspended_from <= lectureDate && lectureDate <= u.suspended_until)
+      })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((m: any) => m.student_id as string),
+  )
+
+  const studentIds = [...new Set([...absentIds, ...suspendedIds])]
   if (studentIds.length === 0) return 0
 
   const rows = studentIds.map((studentId) => ({ lecture_id: lectureId, student_id: studentId, mode: 'block' }))
   const { error } = await admin.from('lecture_student_access').upsert(rows, { onConflict: 'lecture_id,student_id' })
   if (error) throw error
   return studentIds.length
+}
+
+// 출석체크를 저장할 때도 그날짜 강의들에 대해 자동 차단을 다시 돌린다 — 강의를 그날 출석체크보다
+// 먼저 올려두면(예: 미리 등록해두는 OT 영상) 강의 저장 시점엔 아직 결석 기록이 없어 자동 차단이
+// 안 걸리는 타이밍 허점이 있었다. 출석 저장 시점 기준으로 다시 스캔해 뒤늦게라도 차단한다.
+export async function autoBlockForAttendanceSave(classId: string, sessionDate: string): Promise<number> {
+  const admin = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = admin as any
+
+  const { data: courseLinks } = await db.from('lecture_class_access').select('course_name').eq('class_id', classId)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const courseNames = [...new Set((courseLinks ?? []).map((r: any) => r.course_name).filter(Boolean))]
+  if (courseNames.length === 0) return 0
+
+  const { data: lectures } = await db
+    .from('lectures')
+    .select('id, course_name')
+    .in('course_name', courseNames)
+    .eq('lecture_date', sessionDate)
+  if (!lectures?.length) return 0
+
+  let total = 0
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const lec of lectures as any[]) {
+    total += await autoBlockForLecture(db, lec.course_name as string, lec.id as string, sessionDate)
+  }
+
+  if (total > 0) {
+    revalidatePath('/admin/lectures')
+    revalidatePath('/dashboard/learning')
+    revalidateTag('lectures', {})
+  }
+  return total
+}
+
+// 휴원을 새로 설정할 때도, 이미 등록되어 있던 강의 중 휴원 기간에 걸리는 강의들을
+// 이 학생에 대해 소급 차단한다 — 강의가 휴원 설정보다 먼저 올라와 있던 경우 대비.
+export async function autoBlockForSuspension(studentId: string, from: string, until: string): Promise<number> {
+  const admin = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = admin as any
+
+  const { data: memberRows } = await db.from('class_members').select('class_id').eq('student_id', studentId).eq('is_active', true)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const classIds = [...new Set((memberRows ?? []).map((r: any) => r.class_id).filter(Boolean))]
+  if (classIds.length === 0) return 0
+
+  const { data: courseLinks } = await db.from('lecture_class_access').select('course_name').in('class_id', classIds)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const courseNames = [...new Set((courseLinks ?? []).map((r: any) => r.course_name).filter(Boolean))]
+  if (courseNames.length === 0) return 0
+
+  const { data: lectures } = await db
+    .from('lectures')
+    .select('id')
+    .in('course_name', courseNames)
+    .gte('lecture_date', from)
+    .lte('lecture_date', until)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const lectureIds: string[] = (lectures ?? []).map((l: any) => l.id as string)
+  if (lectureIds.length === 0) return 0
+
+  const rows = lectureIds.map((lectureId: string) => ({ lecture_id: lectureId, student_id: studentId, mode: 'block' }))
+  const { error } = await db.from('lecture_student_access').upsert(rows, { onConflict: 'lecture_id,student_id' })
+  if (error) throw error
+
+  revalidatePath('/admin/lectures')
+  revalidatePath('/dashboard/learning')
+  revalidateTag('lectures', {})
+  return rows.length
 }
 
 export async function createLecture(data: {
@@ -374,7 +466,7 @@ export async function createLecture(data: {
 
     let autoBlockedCount = 0
     if (data.lectureDate) {
-      autoBlockedCount = await autoBlockAbsentStudents(admin, data.courseName, inserted.id as string, data.lectureDate)
+      autoBlockedCount = await autoBlockForLecture(admin, data.courseName, inserted.id as string, data.lectureDate)
     }
 
     revalidatePath('/admin/lectures')
@@ -408,7 +500,7 @@ export async function updateLecture(
 
     let autoBlockedCount = 0
     if (data.lectureDate) {
-      autoBlockedCount = await autoBlockAbsentStudents(admin, data.courseName, id, data.lectureDate)
+      autoBlockedCount = await autoBlockForLecture(admin, data.courseName, id, data.lectureDate)
     }
 
     revalidatePath('/admin/lectures')

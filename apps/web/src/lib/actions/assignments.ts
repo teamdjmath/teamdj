@@ -161,3 +161,24 @@ export async function createCategory(name: string): Promise<ActionResult> {
     return { success: true }
   })
 }
+
+// 카테고리 목록(assignment_categories)에서만 제거 — assignments.category는 자유 텍스트라
+// FK로 연결돼있지 않으므로, 이미 그 카테고리를 쓰고 있는 과제들은 그대로 유지된다
+// (새 과제 등록 시 드롭다운에만 더 이상 안 나옴).
+export async function deleteCategory(name: string): Promise<ActionResult> {
+  const supabase = await createClient()
+  const user = await getVerifiedUser()
+
+  return withAction('deleteCategory', user?.id, async () => {
+    if (!user) return { success: false, error: '인증이 필요합니다.' }
+
+    const role = user.user_metadata?.role as string | undefined
+    if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+
+    const { error } = await supabase.from('assignment_categories').delete().eq('name', name)
+    if (error) throw error
+
+    revalidatePath('/admin/assignments')
+    return { success: true }
+  })
+}

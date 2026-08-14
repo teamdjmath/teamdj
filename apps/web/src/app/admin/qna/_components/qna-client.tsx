@@ -23,6 +23,8 @@ type Question = {
   assignedTaName: string | null
   textbookName: string | null
   isDuplicate: boolean
+  additionalRequestedAt: string | null
+  hasAiDraft: boolean
 }
 type MyStats = {
   total: number
@@ -470,6 +472,16 @@ export function QnaClient({
                     <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_BADGE[q.status]}`}>
                       {STATUS_LABEL[q.status]}
                     </span>
+                    {q.hasAiDraft && q.status !== 'answered' && (
+                      <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
+                        AI
+                      </span>
+                    )}
+                    {q.additionalRequestedAt && q.status !== 'answered' && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                        추가 요청
+                      </span>
+                    )}
                     {q.isDuplicate && (
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
                         중복 질문
