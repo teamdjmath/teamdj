@@ -404,16 +404,20 @@ export async function changeStudentClass(
   return withAction('changeStudentClass', caller?.id, async () => {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
 
-    const adminSupabase = createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const adminSupabase = createAdminClient() as any
     if (oldClassId) {
-      await adminSupabase.from('class_members').update({ is_active: false }).eq('student_id', studentId).eq('class_id', oldClassId)
+      await adminSupabase.from('class_members')
+        .update({ is_active: false, removed_at: new Date().toISOString() })
+        .eq('student_id', studentId).eq('class_id', oldClassId)
     }
 
     const { data: existing } = await adminSupabase
       .from('class_members').select('id').eq('student_id', studentId).eq('class_id', newClassId).single()
 
     if (existing) {
-      const { error } = await adminSupabase.from('class_members').update({ is_active: true }).eq('id', existing.id)
+      const { error } = await adminSupabase.from('class_members')
+        .update({ is_active: true, removed_at: null }).eq('id', existing.id)
       if (error) throw error
     } else {
       const { error } = await adminSupabase.from('class_members').insert({ class_id: newClassId, student_id: studentId })
@@ -437,7 +441,9 @@ export async function addStudentToClass(studentId: string, classId: string): Pro
 
     if (existing) {
       if (existing.is_active) return { success: false, error: '이미 등록된 분반입니다.' }
-      const { error } = await adminSupabase.from('class_members').update({ is_active: true }).eq('id', existing.id)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (adminSupabase as any).from('class_members')
+        .update({ is_active: true, removed_at: null }).eq('id', existing.id)
       if (error) throw error
     } else {
       const { error } = await adminSupabase.from('class_members').insert({ class_id: classId, student_id: studentId })
@@ -456,8 +462,10 @@ export async function removeStudentFromClass(studentId: string, classId: string)
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
 
     const adminSupabase = createAdminClient()
-    const { error } = await adminSupabase
-      .from('class_members').update({ is_active: false }).eq('student_id', studentId).eq('class_id', classId)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (adminSupabase as any)
+      .from('class_members').update({ is_active: false, removed_at: new Date().toISOString() })
+      .eq('student_id', studentId).eq('class_id', classId)
     if (error) throw error
 
     revalidatePath(`/admin/students/${studentId}`)
@@ -478,9 +486,10 @@ export async function bulkRemoveStudentsFromClass(
     if (studentIds.length === 0) return { success: false, error: '제외할 학생을 선택하세요.' }
 
     const adminSupabase = createAdminClient()
-    const { error, count } = await adminSupabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error, count } = await (adminSupabase as any)
       .from('class_members')
-      .update({ is_active: false }, { count: 'exact' })
+      .update({ is_active: false, removed_at: new Date().toISOString() }, { count: 'exact' })
       .eq('class_id', classId)
       .in('student_id', studentIds)
     if (error) throw error
@@ -588,6 +597,17 @@ export async function deleteStudent(studentId: string): Promise<ActionResult> {
     // 삭제 전에 이름 확보 (감사 로그용)
     const { data: target } = await adminSupabase
       .from('users').select('name').eq('id', studentId).maybeSingle()
+    const studentName = (target as { name?: string } | null)?.name ?? ''
+
+    // 출석 기록은 student_id가 SET NULL로 끊어질 뿐 삭제되진 않는데(월간 엑셀 보존 목적),
+    // 이름을 스냅샷해둬야 연결이 끊긴 뒤에도 어떤 학생 기록인지 알 수 있다.
+    if (studentName) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (adminSupabase as any)
+        .from('attendance_logs')
+        .update({ student_name_snapshot: studentName })
+        .eq('student_id', studentId)
+    }
 
     // users 테이블에서 삭제 (class_members, parent_links 등은 CASCADE)
     const { error: dbErr } = await adminSupabase.from('users').delete().eq('id', studentId)
@@ -599,7 +619,7 @@ export async function deleteStudent(studentId: string): Promise<ActionResult> {
 
     await logAudit(caller, {
       action: 'student.delete', targetType: 'student',
-      targetId: studentId, targetLabel: (target as { name?: string } | null)?.name ?? '',
+      targetId: studentId, targetLabel: studentName,
     })
 
     revalidatePath('/admin/students')

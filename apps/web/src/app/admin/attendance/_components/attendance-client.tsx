@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { saveAttendance, type AttendanceStatus } from '@/lib/actions/attendance'
+import { saveAttendance, getMonthlyAttendanceExport, type AttendanceStatus } from '@/lib/actions/attendance'
 import { formatPhone } from '@/lib/phone'
 import { EmptyState } from '@/components/ui/empty-state'
 
@@ -76,6 +76,34 @@ export function AttendanceClient({
   )
 
   const [saveResult, setSaveResult] = useState<string | null>(null)
+
+  // 월간 출석 엑셀 내보내기
+  const [exportMonth, setExportMonth] = useState(() => selectedDate.slice(0, 7))
+  const [exporting, setExporting] = useState(false)
+
+  async function handleExport() {
+    if (!selectedClassId) return
+    const [year, month] = exportMonth.split('-').map(Number)
+    setExporting(true)
+    try {
+      const res = await getMonthlyAttendanceExport(selectedClassId, year, month)
+      if (res.error) { alert(res.error); return }
+      if (!res.dates?.length || !res.rows?.length) { alert('해당 달에 기록된 출석이 없습니다.'); return }
+
+      const XLSX = await import('xlsx')
+      const data = res.rows.map((r) => {
+        const row: Record<string, string> = { 이름: r.studentName }
+        for (const d of res.dates!) row[d] = r.cells[d] ?? ''
+        return row
+      })
+      const ws = XLSX.utils.json_to_sheet(data)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, `${month}월`)
+      XLSX.writeFile(wb, `${month}월_${res.className}_출석기록.xlsx`)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   // 상단 컨트롤 변경 시 URL 업데이트 (서버에서 재fetch)
   function handleClassChange(e: React.ChangeEvent<HTMLSelectElement>) {
@@ -183,6 +211,29 @@ export function AttendanceClient({
             className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
           />
         </div>
+
+        {/* 월간 출석 엑셀 내보내기 */}
+        {selectedClassId && (
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">월간 엑셀 저장</label>
+            <div className="flex gap-2">
+              <input
+                type="month"
+                value={exportMonth}
+                onChange={(e) => setExportMonth(e.target.value)}
+                className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleExport}
+                disabled={exporting}
+                className="shrink-0 rounded-lg border border-zinc-200 dark:border-zinc-800 px-4 py-2.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              >
+                {exporting ? '생성 중…' : '엑셀 저장'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 반 미선택 */}
@@ -370,7 +421,7 @@ export function AttendanceClient({
                       type="button"
                       onClick={handleSave}
                       disabled={isPending || summary.unchecked === students.length}
-                      className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-5 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-40 transition-colors"
+                      className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-5 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400 transition-colors"
                     >
                       {isPending ? '저장 중…' : '저장'}
                     </button>
