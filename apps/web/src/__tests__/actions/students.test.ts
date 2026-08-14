@@ -13,7 +13,7 @@ vi.mock('@/lib/logger', async (importOriginal) => {
 
 import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createStudent } from '@/lib/actions/students'
+import { createStudent, updateStudent } from '@/lib/actions/students'
 
 const mockCaller = { id: 'teacher-1', user_metadata: { role: 'teacher' } }
 const mockNewUser = { id: 'new-student-uuid' }
@@ -158,5 +158,109 @@ describe('createStudent', () => {
     if (!result.success) {
       expect(result.error).toBe('인증이 필요합니다.')
     }
+  })
+})
+
+// 이름을 고쳐도 user_metadata.name이 동기화 안 돼서 학생이 로그인 화면에서 옛 이름을
+// 계속 보던 버그(전화번호 변경 시에만 auth를 갱신했고, 그마저도 phone만 넣고 name은 빠뜨림)의
+// 회귀 테스트.
+describe('updateStudent', () => {
+  function makeUpdateAdminMock({
+    current = { phone: '01011112222', name: '이임수' },
+    dup = null as { id: string } | null,
+  } = {}) {
+    const updateUserByIdMock = vi.fn().mockResolvedValue({ error: null })
+    const getUserByIdMock = vi.fn().mockResolvedValue({
+      data: { user: { user_metadata: { role: 'student', phone: current.phone, name: current.name, must_change_password: false } } },
+    })
+    const usersUpdateEqMock = vi.fn().mockResolvedValue({ error: null })
+
+    const usersFrom = {
+      select: vi.fn((cols: string) => {
+        if (cols.includes('phone, name')) {
+          return { eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: current }) }) }
+        }
+        return { eq: vi.fn().mockReturnValue({ neq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: dup }) }) }) }
+      }),
+      update: vi.fn().mockReturnValue({ eq: usersUpdateEqMock }),
+    }
+
+    return {
+      auth: { admin: { getUserById: getUserByIdMock, updateUserById: updateUserByIdMock } },
+      from: vi.fn().mockReturnValue(usersFrom),
+      updateUserByIdMock,
+      getUserByIdMock,
+      usersUpdateEqMock,
+      usersFrom,
+    }
+  }
+
+  function makeFormData(overrides: Record<string, string> = {}) {
+    const fd = new FormData()
+    fd.set('studentId', 'student-1')
+    fd.set('name', overrides.name ?? '이임수')
+    fd.set('phone', overrides.phone ?? '01011112222')
+    fd.set('school', '대륜고')
+    fd.set('grade', '1')
+    return fd
+  }
+
+  beforeEach(() => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.mocked(getVerifiedUser).mockResolvedValue(mockCaller as any)
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('이름만 바뀌어도 user_metadata.name이 새 이름으로 동기화된다 (전화번호는 안 건드림)', async () => {
+    const admin = makeUpdateAdminMock({ current: { phone: '01011112222', name: '이임수' } })
+    vi.mocked(createAdminClient).mockReturnValue(admin as any)
+
+    const result = await updateStudent(makeFormData({ name: '이인수', phone: '01011112222' }))
+
+    expect(result.success).toBe(true)
+    expect(admin.updateUserByIdMock).toHaveBeenCalledTimes(1)
+    const [, payload] = admin.updateUserByIdMock.mock.calls[0]
+    expect(payload.user_metadata.name).toBe('이인수')
+    expect(payload.email).toBeUndefined() // 전화번호 안 바뀌었으면 로그인 이메일은 안 건드림
+  })
+
+  it('전화번호가 바뀌면 로그인 이메일과 user_metadata의 name·phone이 함께 갱신된다', async () => {
+    const admin = makeUpdateAdminMock({ current: { phone: '01011112222', name: '이인수' } })
+    vi.mocked(createAdminClient).mockReturnValue(admin as any)
+
+    const result = await updateStudent(makeFormData({ name: '이인수', phone: '01099998888' }))
+
+    expect(result.success).toBe(true)
+    const [, payload] = admin.updateUserByIdMock.mock.calls[0]
+    expect(payload.email).toBe('01099998888@teamdj.com')
+    expect(payload.user_metadata.name).toBe('이인수')
+    expect(payload.user_metadata.phone).toBe('01099998888')
+  })
+
+  it('이름·전화번호 둘 다 안 바뀌면 auth 갱신을 아예 호출하지 않는다', async () => {
+    const admin = makeUpdateAdminMock({ current: { phone: '01011112222', name: '이인수' } })
+    vi.mocked(createAdminClient).mockReturnValue(admin as any)
+
+    const result = await updateStudent(makeFormData({ name: '이인수', phone: '01011112222' }))
+
+    expect(result.success).toBe(true)
+    expect(admin.updateUserByIdMock).not.toHaveBeenCalled()
+    expect(admin.getUserByIdMock).not.toHaveBeenCalled()
+  })
+
+  it('이미 등록된 전화번호로 바꾸려 하면 실패하고 auth는 건드리지 않는다', async () => {
+    const admin = makeUpdateAdminMock({
+      current: { phone: '01011112222', name: '이인수' },
+      dup: { id: 'other-student' },
+    })
+    vi.mocked(createAdminClient).mockReturnValue(admin as any)
+
+    const result = await updateStudent(makeFormData({ name: '이인수', phone: '01099998888' }))
+
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toBe('이미 등록된 전화번호입니다.')
+    expect(admin.updateUserByIdMock).not.toHaveBeenCalled()
   })
 })

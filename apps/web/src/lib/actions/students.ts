@@ -355,27 +355,32 @@ export async function updateStudent(formData: FormData): Promise<ActionResult> {
 
     const adminSupabase = createAdminClient()
 
-    // 전화번호가 바뀌는 경우: 전화번호가 곧 로그인 ID(내부 이메일)이므로
-    // 계정을 파기/재생성하지 않고 같은 계정의 로그인 ID를 함께 갱신한다 (기록 보존).
+    // 전화번호가 곧 로그인 ID(내부 이메일)이므로 바뀌면 계정을 파기/재생성하지 않고
+    // 같은 계정의 로그인 ID를 함께 갱신한다 (기록 보존). 이름도 user_metadata에 동기화해야
+    // 학생이 로그인 시 보는 자기 이름(대시보드 인사말 등, DB가 아니라 세션 메타데이터를 읽음)이
+    // 갱신된다 — 예전엔 phone만 동기화하고 name을 빠뜨려서 이름을 고쳐도 학생 화면엔
+    // 옛 이름이 그대로 남는 버그가 있었다.
     const { data: current } = await adminSupabase
-      .from('users').select('phone').eq('id', studentId).maybeSingle()
+      .from('users').select('phone, name').eq('id', studentId).maybeSingle()
     const phoneChanged = !!current && current.phone !== phone
+    const nameChanged  = !!current && current.name  !== name
 
     if (phoneChanged) {
       // 중복 선확인 — DB unique 제약에 걸리기 전에 친절한 메시지로 거부
       const { data: dup } = await adminSupabase
         .from('users').select('id').eq('phone', phone).neq('id', studentId).maybeSingle()
       if (dup) return { success: false, error: '이미 등록된 전화번호입니다.' }
+    }
 
-      // 로그인 이메일 + 메타데이터의 전화번호 동기화 (기존 메타데이터 보존)
+    if (phoneChanged || nameChanged) {
+      // 기존 메타데이터 보존 + 이름/전화번호만 갱신 (updateUserById는 user_metadata를 통째로 교체함)
       const { data: authUser } = await adminSupabase.auth.admin.getUserById(studentId)
       const { error: authErr } = await adminSupabase.auth.admin.updateUserById(studentId, {
-        email: toAuthEmail(phone),
-        email_confirm: true,
-        user_metadata: { ...(authUser?.user?.user_metadata ?? {}), phone },
+        ...(phoneChanged ? { email: toAuthEmail(phone), email_confirm: true } : {}),
+        user_metadata: { ...(authUser?.user?.user_metadata ?? {}), name, phone },
       })
       if (authErr) {
-        logger.error('updateStudent:auth-email-sync-failed', { action: 'updateStudent', userId: caller.id, error: authErr })
+        logger.error('updateStudent:auth-sync-failed', { action: 'updateStudent', userId: caller.id, error: authErr })
         return { success: false, error: '로그인 정보 변경에 실패했습니다. 잠시 후 다시 시도해주세요.' }
       }
     }
