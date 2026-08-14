@@ -93,6 +93,56 @@ export async function saveReport(data: {
   return { id: report.id as string, imageUrl: publicUrl }
 }
 
+// ── 리포트 작성 임시저장 (학습내용/과제/공지사항/학생별 특이사항)
+export type ReportDraftData = {
+  studyContent: string
+  homework: string
+  announcement: string
+  perStudentNotes: Record<string, string>
+}
+
+export async function saveReportDraft(
+  classId: string,
+  sessionDate: string,
+  data: ReportDraftData,
+): Promise<{ error?: string; savedAt?: string }> {
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error }
+
+  const admin = createAdminClient()
+  const now = new Date().toISOString()
+
+  const { error } = await admin
+    .from('report_drafts')
+    .upsert({
+      class_id:           classId,
+      session_date:       sessionDate,
+      study_content:      data.studyContent,
+      homework:           data.homework,
+      announcement:       data.announcement,
+      per_student_notes:  asJson(data.perStudentNotes),
+      updated_by:         auth.user.id,
+      updated_at:         now,
+    }, { onConflict: 'class_id, session_date' })
+
+  if (error) {
+    logger.error('saveReportDraft:db-error', { action: 'saveReportDraft', userId: auth.user.id, error })
+    return { error: '임시저장에 실패했습니다.' }
+  }
+
+  return { savedAt: now }
+}
+
+// ── 리포트 일괄 생성 완료 후 임시저장 데이터 정리
+export async function deleteReportDraft(classId: string, sessionDate: string): Promise<{ error?: string }> {
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error }
+
+  const admin = createAdminClient()
+  await admin.from('report_drafts').delete().eq('class_id', classId).eq('session_date', sessionDate)
+  return {}
+}
+
 // ── 분반 일괄 리포트 저장
 export async function saveBatchReports(
   items: Array<{

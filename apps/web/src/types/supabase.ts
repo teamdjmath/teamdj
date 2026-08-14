@@ -208,6 +208,7 @@ export type Database = {
           session_date: string
           status: string
           student_id: string
+          student_name_snapshot: string | null
         }
         Insert: {
           absence_reason?: string | null
@@ -216,6 +217,7 @@ export type Database = {
           session_date: string
           status: string
           student_id: string
+          student_name_snapshot?: string | null
         }
         Update: {
           absence_reason?: string | null
@@ -224,6 +226,7 @@ export type Database = {
           session_date?: string
           status?: string
           student_id?: string
+          student_name_snapshot?: string | null
         }
         Relationships: [
           {
@@ -348,6 +351,7 @@ export type Database = {
           enrolled_at: string
           id: string
           is_active: boolean
+          removed_at: string | null
           student_id: string
         }
         Insert: {
@@ -355,6 +359,7 @@ export type Database = {
           enrolled_at?: string
           id?: string
           is_active?: boolean
+          removed_at?: string | null
           student_id: string
         }
         Update: {
@@ -362,6 +367,7 @@ export type Database = {
           enrolled_at?: string
           id?: string
           is_active?: boolean
+          removed_at?: string | null
           student_id?: string
         }
         Relationships: [
@@ -1114,6 +1120,57 @@ export type Database = {
             columns: ["textbook_id"]
             isOneToOne: false
             referencedRelation: "textbooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_drafts: {
+        Row: {
+          announcement: string
+          class_id: string
+          homework: string
+          id: string
+          per_student_notes: Json
+          session_date: string
+          study_content: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          announcement?: string
+          class_id: string
+          homework?: string
+          id?: string
+          per_student_notes?: Json
+          session_date: string
+          study_content?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          announcement?: string
+          class_id?: string
+          homework?: string
+          id?: string
+          per_student_notes?: Json
+          session_date?: string
+          study_content?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_drafts_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "class_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_drafts_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

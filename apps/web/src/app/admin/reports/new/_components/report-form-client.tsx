@@ -4,7 +4,7 @@ import { useRef, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ReportCard } from '../../_components/report-card'
-import { saveReport } from '@/lib/actions/reports'
+import { saveReport, saveReportDraft, deleteReportDraft } from '@/lib/actions/reports'
 import { InputField, SelectField, TextareaField } from '@/components/ui/form-field'
 import type { ReportContent } from '@/lib/actions/reports'
 import type { ReportCardData } from '../../_components/report-card'
@@ -84,6 +84,9 @@ export function ReportFormClient({
   const [done, setDone] = useState<number | null>(null)
   const [err, setErr] = useState('')
 
+  const [draftSaving, setDraftSaving] = useState(false)
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null)
+
   const classStdDev = useMemo(() => {
     const scores = students
       .map(s => selectedTestId ? s.scores[selectedTestId]?.score : undefined)
@@ -130,6 +133,24 @@ export function ReportFormClient({
         assignmentsDetail: s.assignments,
       },
     }
+  }
+
+  async function handleSaveDraft() {
+    if (!selectedClassId || !selectedSessionDate) { setErr('분반과 날짜를 선택하세요.'); return }
+    setErr('')
+    setDraftSaving(true)
+    const perStudentNotes = Object.fromEntries(
+      Object.entries(perStudent).map(([id, v]) => [id, v.notes]),
+    )
+    const res = await saveReportDraft(selectedClassId, selectedSessionDate, {
+      studyContent: common.studyContent,
+      homework: common.homework,
+      announcement: common.announcement,
+      perStudentNotes,
+    })
+    setDraftSaving(false)
+    if (res.error) { setErr(res.error); return }
+    setDraftSavedAt(res.savedAt ?? new Date().toISOString())
   }
 
   async function handleSave() {
@@ -207,6 +228,8 @@ export function ReportFormClient({
 
       setDone(savedCount)
       setProgress(null)
+      setDraftSavedAt(null)
+      if (savedCount > 0) await deleteReportDraft(selectedClassId, selectedSessionDate)
     } catch (e) {
       console.error('Report saving error:', e)
       setProgress(null)
@@ -417,18 +440,32 @@ export function ReportFormClient({
                 </div>
               ) : err ? (
                 <p className="text-sm font-medium text-red-500">{err}</p>
+              ) : draftSavedAt ? (
+                <p className="text-sm text-zinc-500 dark:text-zinc-500">
+                  {new Date(draftSavedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}에 임시저장됨
+                </p>
               ) : (
                 <p className="text-sm text-zinc-500 dark:text-zinc-500">리포트 내용을 모두 확인하셨나요?</p>
               )}
             </div>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={!!progress || students.length === 0}
-              className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-8 py-3 text-sm font-bold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400"
-            >
-              {progress ? '생성 중...' : '리포트 일괄 생성'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSaveDraft}
+                disabled={draftSaving || !!progress}
+                className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-5 py-3 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-all disabled:pointer-events-none disabled:opacity-50"
+              >
+                {draftSaving ? '저장 중...' : '임시 저장'}
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={!!progress || students.length === 0}
+                className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-8 py-3 text-sm font-bold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400"
+              >
+                {progress ? '생성 중...' : '리포트 일괄 생성'}
+              </button>
+            </div>
           </div>
         </>
       )}

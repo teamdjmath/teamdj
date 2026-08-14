@@ -79,6 +79,7 @@ export default async function NewReportPage({
       { data: assignments },
       { data: attRows },
       { data: existingReports },
+      { data: draftRow },
     ] = await Promise.all([
       admin
         .from('tests')
@@ -109,6 +110,12 @@ export default async function NewReportPage({
         .select('student_id, content_json')
         .eq('class_id', selectedClassId)
         .eq('report_date', selectedSessionDate),
+      admin
+        .from('report_drafts')
+        .select('study_content, homework, announcement, per_student_notes')
+        .eq('class_id', selectedClassId)
+        .eq('session_date', selectedSessionDate)
+        .maybeSingle(),
     ])
 
     testOptions = (tests ?? []).map((t) => ({ id: t.id, title: t.title, date: t.test_date }))
@@ -230,11 +237,20 @@ export default async function NewReportPage({
     const firstReport = existingReports?.[0]?.content_json
       ? fromJson<ReportContent>(existingReports[0].content_json)
       : undefined
+    const draftPerStudentNotes = draftRow?.per_student_notes
+      ? fromJson<Record<string, string>>(draftRow.per_student_notes)
+      : {}
     const initialCommon = firstReport
       ? {
           studyContent: firstReport.studyContent,
           homework:     firstReport.homework,
           announcement: firstReport.announcement,
+        }
+      : draftRow
+      ? {
+          studyContent: draftRow.study_content,
+          homework:     draftRow.homework,
+          announcement: draftRow.announcement,
         }
       : null
 
@@ -251,8 +267,8 @@ export default async function NewReportPage({
         scores:           scoreMap[m.id] ?? {},
         assignments:      studentAssignments[m.id] ?? [],
         avgAssignmentPct: assignmentPctMap[m.id] ?? 0,
-        // 기존 리포트가 있으면 특이사항을 채워서 수정 모드에서 이어서 편집 가능하게
-        initialNotes:     existing?.notes ?? '',
+        // 기존 리포트 또는 임시저장이 있으면 특이사항을 채워서 이어서 편집 가능하게
+        initialNotes:     existing?.notes ?? draftPerStudentNotes[m.id] ?? '',
       }
     })
 

@@ -31,7 +31,7 @@ export function CurriculumSection() {
             <img src={CURRICULUM_IMAGE} alt="커리큘럼 라인업" className="w-full h-auto rounded-2xl border border-zinc-200" />
           ) : (
             <div className="rounded-2xl border-2 border-dashed border-zinc-300 bg-zinc-50 p-16 text-center text-zinc-400 font-bold text-sm">
-              커리큘럼 표 이미지 준비 중
+              11월 공개 예정
             </div>
           )}
         </div>
