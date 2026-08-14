@@ -269,6 +269,33 @@ describe('getMonthlyAttendanceExport', () => {
     })
   })
 
+  it('동명이인은 학교로 구분할 수 있게 school을 함께 반환한다', async () => {
+    const logs = [
+      { student_id: 'dup-1', session_date: '2026-08-14', status: 'present', student_name_snapshot: null, student: { name: '김도은', school: '대륜고' } },
+      { student_id: 'dup-2', session_date: '2026-08-14', status: 'late',    student_name_snapshot: null, student: { name: '김도은', school: '세종고' } },
+    ]
+    const members = [
+      { student_id: 'dup-1', is_active: true, removed_at: null, student: { name: '김도은', school: '대륜고', suspended_from: null, suspended_until: null } },
+      { student_id: 'dup-2', is_active: true, removed_at: null, student: { name: '김도은', school: '세종고', suspended_from: null, suspended_until: null } },
+    ]
+
+    const db = {
+      from: vi.fn((table: string) => {
+        if (table === 'class_groups')   return makeThenable({ data: { name: '샘플반' } })
+        if (table === 'attendance_logs') return makeThenable({ data: logs })
+        if (table === 'class_members')   return makeThenable({ data: members })
+        throw new Error(`unexpected table ${table}`)
+      }),
+    }
+    vi.mocked(createAdminClient).mockReturnValue(db as any)
+
+    const res = await getMonthlyAttendanceExport('class-1', 2026, 8)
+
+    const schools = (res.rows ?? []).map((r) => r.school).sort()
+    expect(schools).toEqual(['대륜고', '세종고'])
+    expect(res.rows).toHaveLength(2)
+  })
+
   it('권한 없는 역할(parent) → 권한이 없습니다 반환, DB 조회 안 함', async () => {
     vi.mocked(getVerifiedUser).mockResolvedValue({ id: 'parent-1', user_metadata: { role: 'parent' } } as any)
     const fromSpy = vi.fn()

@@ -20,7 +20,7 @@ export default async function AttendancePage({ searchParams }: PageProps) {
     selectedClassId
       ? supabase
           .from('class_members')
-          .select('users!student_id(id, name, phone)')
+          .select('users!student_id(id, name, phone, school)')
           .eq('class_id', selectedClassId)
           .eq('is_active', true)
           .order('users(name)')
@@ -39,7 +39,7 @@ export default async function AttendancePage({ searchParams }: PageProps) {
     label: `${c.name} (${c.subject} · ${c.grade})`,
   }))
 
-  type MemberUser = { id: string; name: string; phone: string }
+  type MemberUser = { id: string; name: string; phone: string; school: string | null }
   const students = (members ?? [])
     .map((m) => m.users as MemberUser)
     .filter(Boolean)

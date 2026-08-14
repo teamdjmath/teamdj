@@ -6,7 +6,7 @@ import { saveAttendance, getMonthlyAttendanceExport, type AttendanceStatus } fro
 import { formatPhone } from '@/lib/phone'
 import { EmptyState } from '@/components/ui/empty-state'
 
-type Student = { id: string; name: string; phone: string }
+type Student = { id: string; name: string; phone: string; school: string | null }
 type ClassOption = { id: string; label: string }
 type LogMap = Record<string, { status: string; absenceReason: string | null }>
 
@@ -92,7 +92,7 @@ export function AttendanceClient({
 
       const XLSX = await import('xlsx')
       const data = res.rows.map((r) => {
-        const row: Record<string, string> = { 이름: r.studentName }
+        const row: Record<string, string> = { 이름: r.studentName, 학교: r.school }
         for (const d of res.dates!) row[d] = r.cells[d] ?? ''
         return row
       })
@@ -320,6 +320,11 @@ export function AttendanceClient({
                               <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                                 {student.name}
                               </span>
+                              {student.school && (
+                                <span className="text-xs text-zinc-400 dark:text-zinc-600">
+                                  {student.school}
+                                </span>
+                              )}
                             </div>
                           </td>
 

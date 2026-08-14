@@ -126,7 +126,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
         {/* 본문 */}
         <div className="flex-1 md:pl-56">
-          <main className="p-5 pt-20 md:pt-5 max-w-5xl">
+          <main className="p-5 pt-20 md:pt-5 max-w-6xl">
             {children}
           </main>
         </div>

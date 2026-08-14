@@ -53,6 +53,7 @@ const STATUS_LABEL: Record<AttendanceStatus, string> = {
 
 export type AttendanceExportRow = {
   studentName: string
+  school: string // 동명이인 구분용 — 탈퇴생은 스냅샷이 없어 빈 문자열일 수 있음
   cells: Record<string, string> // session_date(yyyy-mm-dd) → 셀 표기
 }
 
@@ -87,12 +88,12 @@ export async function getMonthlyAttendanceExport(
   const [{ data: cls }, { data: logs }, { data: members }] = await Promise.all([
     db.from('class_groups').select('name').eq('id', classId).maybeSingle(),
     db.from('attendance_logs')
-      .select('student_id, session_date, status, student_name_snapshot, student:users!student_id(name)')
+      .select('student_id, session_date, status, student_name_snapshot, student:users!student_id(name, school)')
       .eq('class_id', classId)
       .gte('session_date', monthStart)
       .lte('session_date', monthEnd),
     db.from('class_members')
-      .select('student_id, is_active, removed_at, student:users!student_id(name, suspended_from, suspended_until)')
+      .select('student_id, is_active, removed_at, student:users!student_id(name, school, suspended_from, suspended_until)')
       .eq('class_id', classId),
   ])
 
@@ -104,6 +105,7 @@ export async function getMonthlyAttendanceExport(
 
   type Agg = {
     name: string
+    school: string // 동명이인 구분용 (탈퇴생은 스냅샷이 없어 빈 문자열)
     cells: Map<string, string>
     suspendedFrom: string | null
     suspendedUntil: string | null
@@ -115,19 +117,20 @@ export async function getMonthlyAttendanceExport(
   function getAgg(key: string, name: string): Agg {
     let a = byKey.get(key)
     if (!a) {
-      a = { name, cells: new Map(), suspendedFrom: null, suspendedUntil: null, removedAt: null, isMember: false, isActive: true }
+      a = { name, school: '', cells: new Map(), suspendedFrom: null, suspendedUntil: null, removedAt: null, isMember: false, isActive: true }
       byKey.set(key, a)
     }
     return a
   }
 
   for (const log of (logs ?? []) as Record<string, unknown>[]) {
-    const sid  = log.student_id as string | null
-    const name = ((log.student as { name?: string } | null)?.name
-      ?? log.student_name_snapshot as string | null
-      ?? '알 수 없음')
+    const sid     = log.student_id as string | null
+    const student = log.student as { name?: string; school?: string | null } | null
+    const name = student?.name ?? log.student_name_snapshot as string | null ?? '알 수 없음'
     const key = sid ?? `withdrawn:${name}`
-    getAgg(key, name).cells.set(log.session_date as string, STATUS_LABEL[log.status as AttendanceStatus] ?? String(log.status))
+    const agg = getAgg(key, name)
+    if (student?.school) agg.school = student.school
+    agg.cells.set(log.session_date as string, STATUS_LABEL[log.status as AttendanceStatus] ?? String(log.status))
   }
 
   for (const m of (members ?? []) as Record<string, unknown>[]) {
@@ -135,17 +138,18 @@ export async function getMonthlyAttendanceExport(
     if (removedAt && removedAt.slice(0, 10) < monthStart) continue // 이번 달 되기 전에 이미 제외 → 로스터에서 빠짐
 
     const sid     = m.student_id as string
-    const student = m.student as { name?: string; suspended_from?: string | null; suspended_until?: string | null } | null
+    const student = m.student as { name?: string; school?: string | null; suspended_from?: string | null; suspended_until?: string | null } | null
     const agg = getAgg(sid, student?.name ?? '알 수 없음')
     agg.isMember       = true
     agg.isActive       = m.is_active as boolean
+    agg.school         = student?.school ?? agg.school
     agg.suspendedFrom  = student?.suspended_from ?? null
     agg.suspendedUntil = student?.suspended_until ?? null
     agg.removedAt      = removedAt
   }
 
   const rows: AttendanceExportRow[] = [...byKey.values()]
-    .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+    .sort((a, b) => a.name.localeCompare(b.name, 'ko') || a.school.localeCompare(b.school, 'ko'))
     .map((agg) => {
       let markedSpecial = false
       for (const date of dates) {
@@ -177,7 +181,7 @@ export async function getMonthlyAttendanceExport(
           continue
         }
       }
-      return { studentName: agg.name, cells: Object.fromEntries(agg.cells) }
+      return { studentName: agg.name, school: agg.school, cells: Object.fromEntries(agg.cells) }
     })
 
   return { className, dates, rows }
