@@ -30,6 +30,14 @@ export async function sendKakaoText(
   const config = getSolapiConfig()
   if (!config) return { sentCount: 0, errors: [] }
 
+  // 킬스위치 — SOLAPI_*를 실제 값으로 채워도(테스트 목적) 이 플래그를 'true'로 명시하기 전까지는
+  // 절대 실제 발송을 안 한다. 질문 등록/공지/쪽지 등 거의 모든 액션에 카카오 발송이 걸려있어서,
+  // 자격증명만 넣고 테스트하다가 실수로 실제 문자가 나가는 사고를 막기 위함.
+  if (process.env.KAKAO_AUTO_SEND !== 'true') {
+    logger.info('sendKakaoText:disabled', { action: logContext })
+    return { sentCount: 0, errors: [] }
+  }
+
   const cleanPhones = [...new Set(phones.map((p) => p?.replace(/\D/g, '') ?? '').filter(Boolean))]
   if (cleanPhones.length === 0) return { sentCount: 0, errors: [] }
 

@@ -64,6 +64,7 @@ export async function sendKakaoBroadcast(data: {
     if (phones.length === 0) return { success: false, error: '연결된 발송 대상이 없습니다.' }
 
     if (!getSolapiConfig()) return { success: false, error: '카카오 발송 설정이 아직 준비되지 않았습니다.' }
+    if (process.env.KAKAO_AUTO_SEND !== 'true') return { success: false, error: '카카오 자동발송이 꺼져 있습니다. (테스트 모드 — KAKAO_AUTO_SEND=true로 켜야 실제 발송됩니다)' }
 
     const validPhoneCount = phones.filter((p) => p?.replace(/\D/g, '')).length
     if (validPhoneCount === 0) return { success: false, error: '대상자에게 등록된 전화번호가 없어 발송하지 못했습니다.' }
