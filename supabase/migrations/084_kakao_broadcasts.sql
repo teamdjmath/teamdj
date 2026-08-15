@@ -3,7 +3,7 @@
 -- 테이블이 필요없고, 카카오는 인앱 저장소가 없어 발송 이력만 여기 남긴다.
 create table if not exists public.kakao_broadcasts (
   id uuid primary key default gen_random_uuid(),
-  sender_id uuid not null references public.users(id) on delete set null,
+  sender_id uuid references public.users(id) on delete set null,
   audience text not null check (audience in ('student', 'parent')),
   scope text not null check (scope in ('all', 'class', 'individual')),
   class_id uuid references public.class_groups(id) on delete set null,

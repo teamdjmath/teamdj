@@ -519,9 +519,21 @@ export async function bulkDeleteStudents(studentIds: string[]): Promise<ActionRe
 
     const adminSupabase = createAdminClient()
 
-    // 삭제 전에 이름 확보 (감사 로그용)
+    // 삭제 전에 이름 확보 (감사 로그 + 출석 기록 스냅샷용)
     const { data: targets } = await adminSupabase
       .from('users').select('id, name').in('id', studentIds)
+
+    // 출석 기록은 student_id가 SET NULL로 끊어질 뿐 삭제되진 않는데(월간 엑셀 보존 목적),
+    // 이름을 스냅샷해둬야 연결이 끊긴 뒤에도 어떤 학생 기록인지 알 수 있다 (deleteStudent와 동일)
+    for (const t of (targets ?? [])) {
+      const name = t.name as string | null
+      if (!name) continue
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (adminSupabase as any)
+        .from('attendance_logs')
+        .update({ student_name_snapshot: name })
+        .eq('student_id', t.id)
+    }
 
     // users 테이블에서 삭제 (class_members, parent_links 등은 CASCADE)
     const { error: dbErr } = await adminSupabase.from('users').delete().in('id', studentIds)
