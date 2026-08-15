@@ -109,11 +109,18 @@ export function NewQuestionForm({
     }
   }, [textbookId, problemNumber, classId, supabase])
 
+  const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB — 일반 폰 사진 화질은 넉넉히 넘고, AI 입력 비용 폭탄용 대용량 업로드만 막는다
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selected = Array.from(e.target.files)
       if (files.length + selected.length > 3) {
         alert('최대 3장까지만 첨부할 수 있습니다.')
+        return
+      }
+      const tooBig = selected.find((f) => f.size > MAX_FILE_SIZE)
+      if (tooBig) {
+        alert(`${tooBig.name} 파일이 너무 큽니다. 50MB 이하 이미지만 첨부할 수 있습니다.`)
         return
       }
       setFiles((prev) => [...prev, ...selected].slice(0, 3))

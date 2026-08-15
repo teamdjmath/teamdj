@@ -26,10 +26,11 @@ type ChartRow = {
   examDetail?: string
 }
 
-// 검증된 카테고리 팔레트 (scripts/validate_palette.js: 2색 모두 PASS) — 순수 회색·검정은
-// 카테고리 색으로 쓰면 "비활성"으로 읽혀 채도 하한을 통과하지 못한다
-const TEST_COLOR = '#2a78d6'
-const EXAM_COLOR = '#d97706'
+// 검증된 카테고리 팔레트 (scripts/validate_palette.js: 2색 모두 PASS) — 순수 검정(#000000)은
+// 채도·명도 하한 미달로 FAIL(비활성으로 읽힘)이라, 가장 어둡고 "검정에 가까운" 통과색인
+// 남보라(#4a3aa7)로 대체했다. 그래도 순수 검정을 원하면 이 코멘트를 남기고 바꿀 것.
+const TEST_COLOR = '#4a3aa7'
+const EXAM_COLOR = '#008300'
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
