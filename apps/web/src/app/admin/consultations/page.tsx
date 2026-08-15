@@ -1,32 +1,6 @@
-import { createAdminClient } from '@/lib/supabase/admin'
-import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { redirect } from 'next/navigation'
-import { ConsultationsClient } from './_components/consultations-client'
 
-export default async function ConsultationsPage() {
-  const user = await getVerifiedUser()
-  if (!user) redirect('/login')
-
-  const admin = createAdminClient()
-
-  const { data } = await (admin as any) // eslint-disable-line @typescript-eslint/no-explicit-any
-    .from('student_inquiries')
-    .select('id, user_id, student_name, content, is_read, created_at, users!user_id(school, grade)')
-    .order('created_at', { ascending: false })
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const inquiries = (data ?? []).map((r: any) => ({
-    id:           r.id           as string,
-    user_id:      r.user_id      as string,
-    student_name: r.student_name as string,
-    school:       (r.users as { school?: string; grade?: string } | null)?.school ?? '',
-    grade:        (r.users as { school?: string; grade?: string } | null)?.grade  ?? '',
-    content:      r.content      as string,
-    is_read:      r.is_read      as boolean,
-    created_at:   r.created_at   as string,
-  }))
-
-  return (
-    <ConsultationsClient inquiries={inquiries} />
-  )
+// 문의 & 발송 화면으로 통합됨 — 기존 링크/북마크 대비 리다이렉트만 유지
+export default function ConsultationsRedirect() {
+  redirect('/admin/messages?tab=inquiries')
 }

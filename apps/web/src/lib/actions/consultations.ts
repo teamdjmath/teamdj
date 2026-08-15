@@ -19,7 +19,7 @@ export async function submitInquiry(content: string): Promise<{ error?: string }
   })
 
   if (error) return { error: '문의 전송에 실패했습니다. 다시 시도해주세요.' }
-  revalidatePath('/admin/consultations')
+  revalidatePath('/admin/messages')
   return {}
 }
 
@@ -32,7 +32,7 @@ export async function markInquiryRead(id: string): Promise<{ error?: string }> {
     .eq('id', id)
 
   if (error) return { error: '처리에 실패했습니다.' }
-  revalidatePath('/admin/consultations')
+  revalidatePath('/admin/messages')
   return {}
 }
 

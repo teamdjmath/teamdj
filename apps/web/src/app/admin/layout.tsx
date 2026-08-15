@@ -34,8 +34,7 @@ const NAV_ITEMS = [
   { href: '/admin/notices', label: '공지사항', visibility: 'senior' as NavVisibility, icon: 'notices' as const },
   { href: '/admin/lectures', label: '강의 영상', visibility: 'senior' as NavVisibility, icon: 'lectures' as const },
   { href: '/admin/qna', label: '질의응답', visibility: 'all' as NavVisibility, icon: 'qna' as const },
-  { href: '/admin/consultations', label: '문의', visibility: 'teacher' as NavVisibility, icon: 'consultations' as const },
-  { href: '/admin/messages', label: '쪽지 발송', visibility: 'all' as NavVisibility, icon: 'messages' as const },
+  { href: '/admin/messages', label: '문의 & 추가 발송', visibility: 'all' as NavVisibility, icon: 'messages' as const },
   { href: '/admin/qna/stats', label: '답변 통계', visibility: 'teacher' as NavVisibility, icon: 'qna-stats' as const },
   { href: '/admin/monitoring', label: '모니터링', visibility: 'teacher' as NavVisibility, icon: 'monitoring' as const },
   { href: '/admin/audit', label: '감사 로그', visibility: 'teacher' as NavVisibility, icon: 'audit' as const },
@@ -78,7 +77,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     ? await Promise.all([checkSuperAdmin(user.id), getUnreadConsultationCount()])
     : [false, 0]
   const badgeLabel = isSuperAdmin ? 'admin' : staffRole
-  const badges: Record<string, number> = unreadConsultations > 0 ? { '/admin/consultations': unreadConsultations } : {}
+  const badges: Record<string, number> = unreadConsultations > 0 ? { '/admin/messages': unreadConsultations } : {}
 
   const visibleItems = filterNavByRole(staffRole)
 

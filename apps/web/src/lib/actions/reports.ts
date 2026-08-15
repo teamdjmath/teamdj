@@ -14,6 +14,7 @@ import { writeFile, unlink } from 'fs/promises'
 import { randomUUID } from 'crypto'
 import { tmpdir } from 'os'
 import { join } from 'path'
+import { getSolapiConfig } from '@/lib/kakao'
 
 async function assertStaff() {
   const user = await getVerifiedUser()
@@ -307,18 +308,8 @@ export async function purgeOldReports(days: number): Promise<void> {
 
 // ── 카카오 친구톡(브랜드메시지) 발송 — Solapi 연동
 // 알림톡은 템플릿당 고정 이미지 1장만 허용돼 학생마다 다른 리포트 이미지를 못
-// 보내므로, 채널 친구에게 자유형 이미지(BMS_FREE)로 발송한다. 사업자번호로 카카오
-// 채널을 개설하고 Solapi에 연동해 pfId를 발급받은 뒤, 아래 4개 환경변수만 채우면
-// 바로 동작한다: SOLAPI_API_KEY, SOLAPI_API_SECRET, SOLAPI_PF_ID, SOLAPI_SENDER_PHONE
-// (SOLAPI_SENDER_PHONE은 Solapi 콘솔에 사전 등록해둔 발신번호).
-function getSolapiConfig() {
-  const apiKey       = process.env.SOLAPI_API_KEY
-  const apiSecret    = process.env.SOLAPI_API_SECRET
-  const pfId         = process.env.SOLAPI_PF_ID
-  const senderPhone  = process.env.SOLAPI_SENDER_PHONE
-  if (!apiKey || !apiSecret || !pfId || !senderPhone) return null
-  return { apiKey, apiSecret, pfId, senderPhone }
-}
+// 보내므로, 채널 친구에게 자유형 이미지(BMS_FREE)로 발송한다. getSolapiConfig는
+// src/lib/kakao.ts로 옮겨 텍스트 전용 발송(sendKakaoText)과 공유한다.
 
 // Storage에 있는 리포트 이미지를 Solapi에 업로드해 fileId를 발급받는다.
 // uploadFile()이 로컬 파일 경로만 받아서 임시 파일을 거쳐야 한다.

@@ -20,6 +20,17 @@ const ACTION_LABELS: Record<string, string> = {
   'report.delete_session':   '리포트 세션 삭제',
   'report.kakao_batch_send': '카카오 일괄 발송',
   'message.send':            '쪽지 발송',
+  'qna.question_create':     'QnA 질문 등록',
+  'qna.question_delete':     'QnA 질문 삭제',
+  'qna.answer_complete':     'QnA 답변 완료',
+  'auth.login_all':          '로그인 기록',
+}
+
+// 개별 행 표시용 — auth.login_all은 필터 칩 전용 합성 키라 실제 행의 action 값과는 별도로 매핑한다
+const ROW_ACTION_LABELS: Record<string, string> = {
+  ...ACTION_LABELS,
+  'auth.login':        '로그인 성공',
+  'auth.login_failed': '로그인 실패',
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -98,7 +109,7 @@ export function AuditClient({ logs, actionFilter }: { logs: AuditRow[]; actionFi
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
                       DESTRUCTIVE.has(log.action) ? 'bg-red-50 text-red-600' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400'
                     }`}>
-                      {ACTION_LABELS[log.action] ?? log.action}
+                      {ROW_ACTION_LABELS[log.action] ?? log.action}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">

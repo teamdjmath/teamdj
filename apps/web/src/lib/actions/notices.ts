@@ -7,6 +7,7 @@ import { withAction } from '@/lib/actions'
 import type { ActionResult } from '@/lib/types/actions'
 import { logger } from '@/lib/logger'
 import { createNotification } from '@/lib/actions/notifications'
+import { sendKakaoText } from '@/lib/kakao'
 
 export async function createNotice(data: {
   title: string
@@ -41,7 +42,7 @@ export async function createNotice(data: {
       if (data.classId) {
         const { data: members } = await adminSupabase
           .from('class_members')
-          .select('student_id')
+          .select('student_id, student:users!student_id(phone)')
           .eq('class_id', data.classId)
           .eq('is_active', true)
 
@@ -61,9 +62,14 @@ export async function createNotice(data: {
               ),
             ),
           )
+          await sendKakaoText(
+            members.map((m) => (m.student as { phone?: string } | null)?.phone),
+            `[TeamDJ] 공지사항이 등록되었습니다.\n${data.title}`,
+            'createNotice:kakao',
+          )
         }
       } else {
-        const { data: students } = await adminSupabase.from('users').select('id').eq('role', 'student')
+        const { data: students } = await adminSupabase.from('users').select('id, phone').eq('role', 'student')
         if (students && students.length > 0) {
           const messages = students.map((s) => ({
             sender_id: user.id, student_id: s.id, content: `[전체 공지] ${data.title}`, is_system: true,
@@ -79,6 +85,11 @@ export async function createNotice(data: {
                 '/dashboard',
               ),
             ),
+          )
+          await sendKakaoText(
+            students.map((s) => s.phone as string | null),
+            `[TeamDJ] 공지사항이 등록되었습니다.\n${data.title}`,
+            'createNotice:kakao',
           )
         }
       }

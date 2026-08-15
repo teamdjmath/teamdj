@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { getVerifiedUser } from '@/lib/supabase/verified-user'
+import { getVerifiedUser, type VerifiedUser } from '@/lib/supabase/verified-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
@@ -10,6 +10,8 @@ import { logger } from '@/lib/logger'
 import { createNotification } from '@/lib/actions/notifications'
 import { checkSuspension } from '@/lib/suspension'
 import { findRelatedAnswers } from '@/lib/data/qna-related'
+import { sendKakaoText } from '@/lib/kakao'
+import { logAudit } from '@/lib/audit'
 
 export async function assignQuestion(questionId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
@@ -58,7 +60,7 @@ export async function requestAdditionalAnswer(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from('qna_questions')
-    .update({ status: 'in_progress', additional_requested_at: now })
+    .update({ status: 'in_progress', additional_requested_at: now, reminder_sent_at: null })
     .eq('id', questionId)
 
   if (error) return { error: '요청에 실패했습니다.' }
@@ -117,7 +119,7 @@ export async function confirmAiDraft(questionId: string): Promise<{ error?: stri
 
   const { data: question } = await supabase
     .from('qna_questions')
-    .select('student_id, status')
+    .select('student_id, status, title')
     .eq('id', questionId)
     .single()
 
@@ -136,10 +138,15 @@ export async function confirmAiDraft(questionId: string): Promise<{ error?: stri
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from('qna_questions')
-    .update({ status: 'answered', additional_requested_at: null })
+    .update({ status: 'answered', additional_requested_at: null, reminder_sent_at: null })
     .eq('id', questionId)
 
   if (error) return { error: '확정에 실패했습니다.' }
+
+  await logAudit(user, {
+    action: 'qna.answer_complete', targetType: 'qna_question', targetId: questionId,
+    targetLabel: question.title ?? '', detail: { via: 'student_self_confirm' },
+  })
 
   revalidatePath('/admin/qna')
   revalidatePath(`/admin/qna/${questionId}`)
@@ -153,18 +160,24 @@ export async function confirmAiDraft(questionId: string): Promise<{ error?: stri
 async function finalizeAnsweredQuestion(
   supabase: Awaited<ReturnType<typeof createClient>>,
   questionId: string,
-  taId: string,
+  actor: VerifiedUser,
   notificationBody: string,
 ): Promise<{ error?: string }> {
+  const taId = actor.id
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: qError, data: qData } = await (supabase as any)
     .from('qna_questions')
-    .update({ status: 'answered', assigned_ta_id: taId, additional_requested_at: null })
+    .update({ status: 'answered', assigned_ta_id: taId, additional_requested_at: null, reminder_sent_at: null })
     .eq('id', questionId)
-    .select('student_id, title')
+    .select('student_id, title, student:users!student_id(phone)')
     .single()
 
   if (qError) return { error: '질문 상태 업데이트에 실패했습니다.' }
+
+  await logAudit(actor, {
+    action: 'qna.answer_complete', targetType: 'qna_question', targetId: questionId,
+    targetLabel: (qData?.title as string | undefined) ?? '',
+  })
 
   if (qData?.student_id) {
     await supabase.from('push_messages').insert({
@@ -181,6 +194,8 @@ async function finalizeAnsweredQuestion(
         `${qData.title}에 답변이 달렸습니다`,
         `/dashboard/qna/${questionId}`,
       )
+      const studentPhone = (qData.student as { phone?: string } | null)?.phone
+      await sendKakaoText([studentPhone], `[TeamDJ] "${qData.title}" 질문에 답변이 등록되었습니다.`, 'finalizeAnsweredQuestion:kakao')
     } catch (err) {
       logger.warn('finalizeAnsweredQuestion:notification-failed', { action: 'finalizeAnsweredQuestion', userId: taId, error: err })
     }
@@ -222,7 +237,7 @@ export async function submitAnswer(data: {
 
   if (answerError) return { error: '답변 등록에 실패했습니다.' }
 
-  return finalizeAnsweredQuestion(supabase, data.questionId, user.id, '질문에 대한 답변이 등록되었습니다.')
+  return finalizeAnsweredQuestion(supabase, data.questionId, user, '질문에 대한 답변이 등록되었습니다.')
 }
 
 // 유사 문항 답변을 조교가 확인만으로 채택 — 원본 답변 내용·난이도를 그대로 복사해
@@ -263,7 +278,7 @@ export async function adoptRelatedAnswer(data: {
 
   if (answerError) return { error: '답변 채택에 실패했습니다.' }
 
-  return finalizeAnsweredQuestion(supabase, data.questionId, user.id, '비슷한 문항의 기존 답변으로 질문이 해결되었습니다.')
+  return finalizeAnsweredQuestion(supabase, data.questionId, user, '비슷한 문항의 기존 답변으로 질문이 해결되었습니다.')
 }
 
 export async function updateAnswer(data: {
@@ -636,6 +651,11 @@ export async function createQuestion(data: {
     return { error: '질문 등록에 실패했습니다.' }
   }
 
+  await logAudit(user, {
+    action: 'qna.question_create', targetType: 'qna_question', targetId: (inserted?.id as string | undefined) ?? '',
+    targetLabel: data.title,
+  })
+
   // 전체 선생님/조교에게 알림 전송
   try {
     const admin = createAdminClient()
@@ -656,6 +676,20 @@ export async function createQuestion(data: {
             `/admin/qna/${inserted.id}`,
           ),
         ),
+      )
+    }
+
+    // 카카오는 "선생님 이상"에게만 즉시 발송 — 조교는 근무 시간에만 홈페이지에 상시 대기하므로 제외.
+    const { data: teachers } = await admin
+      .from('users')
+      .select('phone')
+      .eq('role', 'teacher')
+      .eq('is_active', true)
+    if (teachers && teachers.length > 0) {
+      await sendKakaoText(
+        teachers.map((t) => t.phone as string | null),
+        `[TeamDJ] 새 질문 등록\n${studentName} 학생: ${data.title}`,
+        'createQuestion:kakao',
       )
     }
   } catch (err) {
@@ -750,7 +784,7 @@ export async function deleteQuestion(id: string): Promise<{ error?: string }> {
 
   const { data: question, error: fetchError } = await supabase
     .from('qna_questions')
-    .select('status, student_id')
+    .select('status, student_id, title')
     .eq('id', id)
     .single()
 
@@ -764,6 +798,10 @@ export async function deleteQuestion(id: string): Promise<{ error?: string }> {
     .eq('id', id)
 
   if (error) return { error: '삭제에 실패했습니다.' }
+
+  await logAudit(user, {
+    action: 'qna.question_delete', targetType: 'qna_question', targetId: id, targetLabel: question.title ?? '',
+  })
 
   revalidatePath('/dashboard/qna')
   revalidatePath('/admin/qna')
