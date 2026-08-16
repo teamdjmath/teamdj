@@ -20,7 +20,7 @@ export default async function QnaDetailPage({
   const { data: q } = await (supabase as any)
     .from('qna_questions')
     .select(
-      'id, title, content, image_urls, status, assigned_ta_id, created_at, problem_number, textbook_id, additional_requested_at, student:users!student_id(name), class:class_groups!class_id(name), assigned_ta:users!assigned_ta_id(name), textbook:textbooks!textbook_id(name)',
+      'id, title, content, image_urls, status, assigned_ta_id, created_at, problem_number, textbook_id, additional_requested_at, student:users!student_id(name), class:class_groups!class_id(name), assigned_ta:users!assigned_ta_id(name), textbook:textbooks!textbook_id(name), subject:subjects!subject_id(name)',
     )
     .eq('id', id)
     .single()
@@ -40,6 +40,7 @@ export default async function QnaDetailPage({
     className: ((r.class as { name?: string } | null)?.name ?? null) as string | null,
     assignedTaName: ((r.assigned_ta as { name?: string } | null)?.name ?? null) as string | null,
     textbookName: ((r.textbook as { name?: string } | null)?.name ?? null) as string | null,
+    subjectName: ((r.subject as { name?: string } | null)?.name ?? null) as string | null,
     problemNumber: (r.problem_number ?? null) as string | null,
     additionalRequestedAt: (r.additional_requested_at ?? null) as string | null,
   }
@@ -121,6 +122,7 @@ export default async function QnaDetailPage({
           <span className="text-sm text-zinc-400 dark:text-zinc-600">·</span>
           <span className="text-sm text-zinc-500 dark:text-zinc-500">{question.studentName}</span>
           {question.className && <span className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-xs text-zinc-600 dark:text-zinc-400">{question.className}</span>}
+          {question.subjectName && <span className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-xs text-zinc-600 dark:text-zinc-400">{question.subjectName}</span>}
           {question.textbookName && (
             <span className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 text-xs text-zinc-600 dark:text-zinc-400">
               {question.textbookName}{question.problemNumber ? ` · ${question.problemNumber}` : ''}

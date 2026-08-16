@@ -22,6 +22,7 @@ type Question = {
   className: string | null
   assignedTaName: string | null
   additionalRequestedAt?: string | null
+  subjectName?: string | null
 }
 
 type AiDraft = {
@@ -471,7 +472,7 @@ export function QnaDetailClient({ question, answers, aiDraft, currentUserId, cur
   async function handleAiDraft() {
     setAiErr('')
     setAiLoading(true)
-    const res = await generateAiDraft(question.content, question.image_urls, aiFullAnswer ? 'full' : 'hint')
+    const res = await generateAiDraft(question.content, question.image_urls, aiFullAnswer ? 'full' : 'hint', question.subjectName)
     setAiLoading(false)
     if (res.error) { setAiErr(res.error); return }
     if (res.draft) { setContent(res.draft); setUsedAiDraft(true) }
