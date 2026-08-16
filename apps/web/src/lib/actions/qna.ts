@@ -792,6 +792,14 @@ export async function deleteQuestion(id: string): Promise<{ error?: string }> {
   if (question.student_id !== user.id) return { error: '권한이 없습니다.' }
   if (question.status !== 'open') return { error: '미답변 상태인 질문만 삭제할 수 있습니다.' }
 
+  // AI 초안(is_ai_draft) 또는 유사 문항 자동 연결이든, ta_id 확정 답변이든 —
+  // 답변이 하나라도 이미 달렸다면 status가 아직 'open'이어도(학생이 확정 전) 삭제 금지.
+  const { count: answerCount } = await supabase
+    .from('qna_answers')
+    .select('id', { count: 'exact', head: true })
+    .eq('question_id', id)
+  if (answerCount && answerCount > 0) return { error: '이미 답변이 등록된 질문은 삭제할 수 없습니다.' }
+
   const { error } = await supabase
     .from('qna_questions')
     .delete()

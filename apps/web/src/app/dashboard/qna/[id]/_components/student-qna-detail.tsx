@@ -186,7 +186,7 @@ export function StudentQnaDetail({ question, answers, aiDraft, studentName, rela
         <CardHeader
           title={question.title || '제목 없음'}
           action={
-            question.status === 'open' && (
+            question.status === 'open' && !aiDraft && (
               <button
                 onClick={handleDelete}
                 disabled={pending}
