@@ -29,11 +29,16 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="ko"
+      translate="no"
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
+        {/* lang="en"으로 잘못 선언돼 있던 걸 ko로 고친 김에, 브라우저/인앱 브라우저의 자동 번역
+            기능이 페이지 언어를 오판해 임의로 번역을 시도하는 걸 막기 위한 표준 opt-out도 같이 건다.
+            (학생 화면에서 "성적 히스토리"가 자동번역으로 다른 단어로 깨져 보인 사고가 있었음) */}
+        <meta name="google" content="notranslate" />
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="min-h-full flex flex-col">
