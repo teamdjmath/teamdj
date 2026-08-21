@@ -12,6 +12,7 @@ import { checkSuspension } from '@/lib/suspension'
 import { findRelatedAnswers } from '@/lib/data/qna-related'
 import { sendKakaoText } from '@/lib/kakao'
 import { logAudit } from '@/lib/audit'
+import { reportError } from '@/lib/error-report'
 
 export async function assignQuestion(questionId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
@@ -466,6 +467,12 @@ async function generateInstructedImage(instruction: string, userId: string): Pro
     return mediaUrls
   } catch (err) {
     logger.error('generateInstructedImage:error', { action: 'generateInstructedImage', userId, error: err })
+    // 텍스트 풀이는 이미 완성돼 저장되니 부분 실패 — Slack까지는 안 띄우고 조회 가능하게만 남긴다.
+    await reportError({
+      source: 'server', severity: 'warn',
+      message: `QnA 그래프 이미지 생성 실패: ${err instanceof Error ? err.message : String(err)}`,
+      userId, context: { step: 'ai-draft-image' },
+    })
     return []
   }
 }
@@ -806,6 +813,11 @@ export async function createQuestion(data: {
         })
         if (linkError) {
           logger.error('createQuestion:related-link-failed', { action: 'createQuestion', userId: studentId, error: linkError })
+          await reportError({
+            source: 'server', severity: 'error',
+            message: `유사 문항 자동연결 저장 실패: ${linkError.message ?? '알 수 없는 오류'}`,
+            userId: studentId, context: { questionId, step: 'related-link' },
+          })
         } else {
           revalidatePath('/admin/qna')
           revalidatePath(`/admin/qna/${questionId}`)
@@ -818,6 +830,13 @@ export async function createQuestion(data: {
       const result = await runAiDraftGeneration(questionContent, imageUrls, 'full', studentId, subjectName)
       if (result.error || !result.draft) {
         logger.warn('createQuestion:ai-draft-failed', { action: 'createQuestion', userId: studentId, error: result.error })
+        // 실패해도 아무 데도 기록이 안 남으면 "실패인지 그냥 안 됐는지" 나중에 구분할 방법이 없다 —
+        // error_logs에 남기고(추후 조회 가능) Slack으로도 바로 알린다.
+        await reportError({
+          source: 'server', severity: 'error',
+          message: `QnA AI 1차 답변 생성 실패: ${result.error ?? '빈 응답'}`,
+          userId: studentId, context: { questionId, step: 'ai-draft-generate' },
+        })
         return
       }
 
@@ -832,6 +851,11 @@ export async function createQuestion(data: {
       })
       if (draftError) {
         logger.error('createQuestion:ai-draft-save-failed', { action: 'createQuestion', userId: studentId, error: draftError })
+        await reportError({
+          source: 'server', severity: 'error',
+          message: `QnA AI 1차 답변 저장 실패: ${draftError.message ?? '알 수 없는 오류'}`,
+          userId: studentId, context: { questionId, step: 'ai-draft-save' },
+        })
         return
       }
 
