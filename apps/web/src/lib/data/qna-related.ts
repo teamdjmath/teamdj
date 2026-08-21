@@ -144,7 +144,7 @@ export async function findRelatedAnswers(params: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: legacy } = await (admin as any)
         .from('qna_questions')
-        .select('id, title, content, created_at')
+        .select('id, title, content, created_at, textbook_id, problem_number')
         .eq('status', 'answered')
         .neq('id', excludeQuestionId)
         .order('created_at', { ascending: false })
@@ -152,11 +152,24 @@ export async function findRelatedAnswers(params: {
       candidates = legacy
     }
 
+    // "몇 번" 표기 통일 — 학생마다 "98번"/"98"처럼 다르게 입력해도 같은 문항으로 비교되게
+    const normalizeProblemNumber = (v: string | null | undefined) => v?.trim().replace(/번$/, '') || null
+    const queryProblemNumber = normalizeProblemNumber(problemNumber)
+
     const seen = new Set(picked.map((p) => p.id))
     const scored: { id: string; title: string; overlap: number; ratio: number }[] = []
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const c of ((candidates ?? []) as any[])) {
       if (seen.has(c.id as string)) continue
+      // 같은 교재인데 문항번호가 서로 다르게 명시돼 있으면, 제목·내용 텍스트가 아무리 비슷해도
+      // 확실히 다른 문항이다 (같은 챕터를 다루는 질문끼리 생기는 오매칭 방지 — 91번 질문에
+      // 98번 질문이 자동 연결된 사고가 실제로 있었음). 텍스트 유사도 판정보다 우선 배제한다.
+      const candidateProblemNumber = normalizeProblemNumber(c.problem_number as string | null)
+      if (
+        textbookId && c.textbook_id === textbookId &&
+        queryProblemNumber && candidateProblemNumber &&
+        queryProblemNumber !== candidateProblemNumber
+      ) continue
       const { overlap, ratio, isSimilar } = similarityScore(queryText, `${c.title ?? ''} ${c.content ?? ''}`)
       if (!isSimilar) continue
       scored.push({ id: c.id as string, title: (c.title ?? '') as string, overlap, ratio })
