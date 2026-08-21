@@ -167,7 +167,7 @@ export function MonitoringClient({ stats, aiUsage, aiFeedback, checkedAt }: Prop
         <div className="mb-4">
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">AI 초안 사용량 (이번 달)</h2>
           <p className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-600">
-            힌트는 Gemini 2.5 Flash, 최종답은 Nano Banana Pro(이미지 생성) 유료 티어 단가 기준 예상 금액 — 무료 티어 키 사용 중에는 실제 청구 0원
+            힌트는 Gemini 2.5 Flash, 최종답은 Gemini 3.1 Pro(풀이) + 그래프 필요 시 Nano Banana Pro(이미지, 별도 호출) 유료 티어 단가 기준 예상 금액 — 무료 티어 키 사용 중에는 실제 청구 0원
           </p>
         </div>
         {!aiUsage || aiUsage.calls === 0 ? (
@@ -197,7 +197,7 @@ export function MonitoringClient({ stats, aiUsage, aiFeedback, checkedAt }: Prop
           </div>
         )}
         <p className="mt-4 border-t border-zinc-100 dark:border-zinc-900 pt-3 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-600">
-          참고 단가 (건당 예상): 힌트 모드 ~5원 · 최종답 모드(Nano Banana Pro, 그래프 포함) 평이한 문제 ~20~30원, 보통 ~40~60원, 킬러급 ~150원 이상.
+          참고 단가 (건당 예상): 힌트 모드 ~5원 · 최종답 모드(Gemini 3.1 Pro 풀이, 그래프 있으면 이미지 호출 추가) 평이한 문제 ~30~50원, 보통 ~60~100원, 킬러급 ~200원 이상.
           실측 평균이 쌓이면 위 &quot;평균 비용 / 건&quot;을 기준으로 보세요.
         </p>
       </div>
