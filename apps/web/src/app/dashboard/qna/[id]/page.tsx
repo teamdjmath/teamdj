@@ -47,7 +47,7 @@ export default async function QnaDetailPage({ params }: { params: Promise<{ id: 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: aData } = await (admin as any)
     .from('qna_answers')
-    .select('id, content, media_urls, answered_at, student_rating, is_ai_draft, adopted_from_question_id, ta_id, ta:users!qna_answers_ta_id_fkey(name)')
+    .select('id, content, media_urls, answered_at, student_rating, is_ai_draft, adopted_from_question_id, ta_id, ta:users!qna_answers_ta_id_fkey(name, role, is_super_admin)')
     .eq('question_id', id)
     .order('answered_at', { ascending: true })
 
@@ -77,6 +77,8 @@ export default async function QnaDetailPage({ params }: { params: Promise<{ id: 
       media_urls: (a.media_urls as string[]) ?? [],
       answered_at: a.answered_at as string,
       taName: a.ta_id ? ((a.ta as { name?: string } | null)?.name || 'TA') : (a.is_ai_draft ? 'AI' : '이전 답변'),
+      taRole: (a.ta as { role?: string } | null)?.role ?? undefined,
+      taIsSuperAdmin: (a.ta as { is_super_admin?: boolean } | null)?.is_super_admin ?? false,
       studentRating: (a.student_rating as number | null) ?? null,
       isAiDraft: (a.is_ai_draft as boolean | null) ?? false,
       isTaReviewed: !!a.ta_id,

@@ -5,8 +5,17 @@ export type AnswerFormatInput = {
   content: string
   studentName: string
   taName: string
+  taRole?: string
+  taIsSuperAdmin?: boolean
   isAiDraft: boolean
   isTaReviewed: boolean
+}
+
+// 관리자는 "OO 조교"가 아니라 "관리자"로, 선생님은 "OO 선생"으로 자기소개한다.
+function responderTitle(taName: string, taRole?: string, taIsSuperAdmin?: boolean): string {
+  if (taIsSuperAdmin) return '관리자입니다.'
+  if (taRole === 'teacher') return `**${taName}** 선생입니다.`
+  return `**${taName}** 조교입니다.`
 }
 
 // 레거시 AI 답변 형식(### 칭찬 / ### 핵심 포인트 / ### 풀이)이면 그 본문만 추출, 아니면 그대로.
@@ -20,7 +29,7 @@ function extractBody(content: string): string {
 }
 
 export function buildAnswerParts(input: AnswerFormatInput): { greeting: string; body: string; closing: string } {
-  const { content, studentName, taName, isAiDraft, isTaReviewed } = input
+  const { content, studentName, taName, taRole, taIsSuperAdmin, isAiDraft, isTaReviewed } = input
   const body = extractBody(content)
   const name = studentName ? `**${studentName}**` : '학생'
 
@@ -39,7 +48,7 @@ export function buildAnswerParts(input: AnswerFormatInput): { greeting: string; 
     ? `\n\n*본 답변은 AI가 작성한 초안을 조교가 검수·수정한 것입니다. (인공지능기본법 제31조에 따른 고지)*`
     : ''
   return {
-    greeting: `안녕하세요 ${name} 학생, **${taName}** 조교입니다.`,
+    greeting: `안녕하세요 ${name} 학생, ${responderTitle(taName, taRole, taIsSuperAdmin)}`,
     body,
     closing: `감사합니다. 더 궁금하신 내용이 있다면 언제든 질문해주시기 바랍니다.${aiNotice}`,
   }

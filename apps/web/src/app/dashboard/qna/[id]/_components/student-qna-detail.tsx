@@ -35,6 +35,8 @@ type Answer = {
   media_urls: string[]
   answered_at: string
   taName: string
+  taRole?: string
+  taIsSuperAdmin?: boolean
   studentRating: number | null
   isAiDraft: boolean
   isTaReviewed: boolean
@@ -417,6 +419,8 @@ export function StudentQnaDetail({ question, answers, aiDraft, studentName, rela
                         content: a.content,
                         studentName,
                         taName: a.taName,
+                        taRole: a.taRole,
+                        taIsSuperAdmin: a.taIsSuperAdmin,
                         isAiDraft: a.isAiDraft,
                         isTaReviewed: a.isTaReviewed,
                       })}

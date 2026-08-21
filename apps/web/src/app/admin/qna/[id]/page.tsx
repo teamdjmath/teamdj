@@ -48,7 +48,7 @@ export default async function QnaDetailPage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: answerRows } = await (supabase as any)
     .from('qna_answers')
-    .select('id, content, media_urls, answered_at, ta_id, is_ai_draft, adopted_from_question_id, difficulty, student_rating, ta:users!ta_id(name)')
+    .select('id, content, media_urls, answered_at, ta_id, is_ai_draft, adopted_from_question_id, difficulty, student_rating, ta:users!ta_id(name, role, is_super_admin)')
     .eq('question_id', id)
     .order('answered_at', { ascending: true })
 
@@ -81,6 +81,8 @@ export default async function QnaDetailPage({
       taName: ar.ta_id
         ? (((ar.ta as { name?: string } | null)?.name ?? '') as string)
         : (ar.is_ai_draft ? 'AI (학생 확정)' : '이전 답변 연결 (학생 확정)'),
+      taRole: ((ar.ta as { role?: string } | null)?.role ?? undefined) as string | undefined,
+      taIsSuperAdmin: ((ar.ta as { is_super_admin?: boolean } | null)?.is_super_admin ?? false) as boolean,
       isAiDraft: (ar.is_ai_draft as boolean | null) ?? false,
       difficulty: (ar.difficulty as number | null) ?? null,
       studentRating: (ar.student_rating as number | null) ?? null,
@@ -88,6 +90,9 @@ export default async function QnaDetailPage({
 
   const currentUserName = (user.user_metadata?.name as string | undefined) ?? ''
   const currentUserRole = (user.user_metadata?.role as string | undefined) ?? ''
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: currentUserRow } = await (supabase as any).from('users').select('is_super_admin').eq('id', user.id).maybeSingle()
+  const currentUserIsSuperAdmin = (currentUserRow?.is_super_admin as boolean | null) ?? false
 
   // 유사 문항(같은 교재+문항)의 기존 답변 자동 연결 + 추천 난이도 근거 —
   // 이미 답변된 질문은 답변 작성 UI 자체가 숨겨지므로 조회할 필요가 없다
@@ -141,6 +146,7 @@ export default async function QnaDetailPage({
         currentUserId={user.id}
         currentUserName={currentUserName}
         currentUserRole={currentUserRole}
+        currentUserIsSuperAdmin={currentUserIsSuperAdmin}
         relatedAnswers={relatedAnswers}
         difficultyHint={difficultyHint}
       />

@@ -39,6 +39,8 @@ type Answer = {
   answered_at: string
   taId: string
   taName: string
+  taRole?: string
+  taIsSuperAdmin?: boolean
   isAiDraft?: boolean
   difficulty?: number | null
   studentRating?: number | null
@@ -67,6 +69,7 @@ interface Props {
   currentUserId: string
   currentUserName: string
   currentUserRole: string
+  currentUserIsSuperAdmin: boolean
   relatedAnswers?: RelatedAnswer[]
   difficultyHint?: DifficultyHint
 }
@@ -98,7 +101,7 @@ function AnswerEditor({
   difficulty, onDifficultyChange,
   relatedDifficulty, difficultyHint,
   errMsg, onSubmit, submitLabel, isPending, onCancel,
-  studentName, taName, isAiDraft,
+  studentName, taName, taRole, taIsSuperAdmin, isAiDraft,
 }: {
   content: string
   onContentChange: (v: string) => void
@@ -125,12 +128,14 @@ function AnswerEditor({
   onCancel?: () => void
   studentName: string
   taName: string
+  taRole?: string
+  taIsSuperAdmin?: boolean
   isAiDraft: boolean
 }) {
   // 조교가 입력하는 content는 항상 본문(body)만 — 인사말/맺음말은 제출 시 자동으로 붙는다.
   // 여기서는 그 완성된 형태를 미리 계산해 입력 탭엔 위/아래 회색 박스로, 미리보기 탭엔
   // 실제 전송문 그대로 보여줘 조교가 학생에게 뭐가 나가는지 정확히 알 수 있게 한다.
-  const parts = buildAnswerParts({ content, studentName, taName, isAiDraft, isTaReviewed: true })
+  const parts = buildAnswerParts({ content, studentName, taName, taRole, taIsSuperAdmin, isAiDraft, isTaReviewed: true })
   return (
     <div className="space-y-3">
       {/* 탭 + AI 버튼 */}
@@ -216,7 +221,7 @@ function AnswerEditor({
           {content.trim() ? (
             <div className="prose prose-sm prose-zinc dark:prose-invert max-w-none text-sm leading-relaxed">
               <ReactMarkdown remarkPlugins={mdPlugins.remark} rehypePlugins={mdPlugins.rehype}>
-                {buildStudentContent({ content, studentName, taName, isAiDraft, isTaReviewed: true })}
+                {buildStudentContent({ content, studentName, taName, taRole, taIsSuperAdmin, isAiDraft, isTaReviewed: true })}
               </ReactMarkdown>
             </div>
           ) : (
@@ -396,7 +401,7 @@ function AnswerEditor({
   )
 }
 
-export function QnaDetailClient({ question, answers, aiDraft, currentUserId, currentUserName, currentUserRole, relatedAnswers, difficultyHint }: Props) {
+export function QnaDetailClient({ question, answers, aiDraft, currentUserId, currentUserName, currentUserRole, currentUserIsSuperAdmin, relatedAnswers, difficultyHint }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -747,7 +752,7 @@ export function QnaDetailClient({ question, answers, aiDraft, currentUserId, cur
                   errMsg={editErr} onSubmit={handleUpdateAnswer}
                   submitLabel="수정 완료" isPending={pending}
                   onCancel={() => setEditingAnswerId(null)}
-                  studentName={question.studentName} taName={a.taName} isAiDraft={a.isAiDraft ?? false}
+                  studentName={question.studentName} taName={a.taName} taRole={a.taRole} taIsSuperAdmin={a.taIsSuperAdmin} isAiDraft={a.isAiDraft ?? false}
                 />
               </div>
             ) : (
@@ -835,7 +840,7 @@ export function QnaDetailClient({ question, answers, aiDraft, currentUserId, cur
             relatedDifficulty={primaryDifficulty} difficultyHint={difficultyHint}
             errMsg={errMsg} onSubmit={handleSubmit}
             submitLabel={usedAiDraft ? '답변 확정' : '답변 제출하기'} isPending={pending}
-            studentName={question.studentName} taName={currentUserName} isAiDraft={usedAiDraft}
+            studentName={question.studentName} taName={currentUserName} taRole={currentUserRole} taIsSuperAdmin={currentUserIsSuperAdmin} isAiDraft={usedAiDraft}
           />
         </div>
       )}
