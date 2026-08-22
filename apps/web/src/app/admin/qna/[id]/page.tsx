@@ -1,16 +1,22 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { findRelatedAnswers, getDifficultyHint } from '@/lib/data/qna-related'
+import { translateAiFailureReason } from '@/lib/qna-status'
 import { QnaDetailClient } from './_components/qna-detail-client'
 
 export default async function QnaDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ queue?: string }>
 }) {
   const { id } = await params
+  const { queue } = await searchParams
+  const queueMode = queue === '1'
   const supabase = await createClient()
 
   const user = await getVerifiedUser()
@@ -88,6 +94,26 @@ export default async function QnaDetailPage({
       studentRating: (ar.student_rating as number | null) ?? null,
     }))
 
+  // AI 1차 답변 생성이 실패했으면 학생 눈에는 그냥 "아직 무응답"으로만 보여서 조교가 실패
+  // 사실 자체를 알 방법이 없었다 — 이 질문에 남은 error_logs를 조회해 조교 화면에만 사유를 보여준다.
+  // 초안이 이미 붙어 있거나(성공) 이미 답변완료면 과거 실패 이력은 더 이상 의미가 없어 조회하지 않는다.
+  let aiFailure: { reason: string; message: string; createdAt: string } | null = null
+  if (!aiDraft && question.status !== 'answered') {
+    const admin = createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: errorRow } = await (admin as any)
+      .from('error_logs')
+      .select('message, created_at')
+      .filter('context->>questionId', 'eq', id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (errorRow) {
+      const message = errorRow.message as string
+      aiFailure = { reason: translateAiFailureReason(message), message, createdAt: errorRow.created_at as string }
+    }
+  }
+
   const currentUserName = (user.user_metadata?.name as string | undefined) ?? ''
   const currentUserRole = (user.user_metadata?.role as string | undefined) ?? ''
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -143,6 +169,8 @@ export default async function QnaDetailPage({
         question={question}
         answers={answers}
         aiDraft={aiDraft}
+        aiFailure={aiFailure}
+        queueMode={queueMode}
         currentUserId={user.id}
         currentUserName={currentUserName}
         currentUserRole={currentUserRole}

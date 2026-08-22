@@ -43,6 +43,7 @@ const STATUS_OPTIONS = [
   { value: 'open', label: '미답변' },
   { value: 'in_progress', label: '답변중' },
   { value: 'answered', label: '답변완료' },
+  { value: 'ai_draft', label: 'AI 초안 대기' },
 ] as const
 
 const STATUS_BADGE: Record<string, string> = {
@@ -73,7 +74,7 @@ interface Props {
   selectedProblemNumber: string
   selectedTaId: string | null
   questions: Question[]
-  statusCounts?: { all: number; open: number; in_progress: number; answered: number }
+  statusCounts?: { all: number; open: number; in_progress: number; answered: number; ai_draft: number }
   myStats: MyStats | null
   currentUserId: string | null
 }
@@ -259,6 +260,7 @@ export function QnaClient({
     open: questions.filter((q) => q.status === 'open').length,
     in_progress: questions.filter((q) => q.status === 'in_progress').length,
     answered: questions.filter((q) => q.status === 'answered').length,
+    ai_draft: questions.filter((q) => q.hasAiDraft && q.status !== 'answered').length,
   }
 
   const isMyFilter = !!selectedTaId && selectedTaId === currentUserId
@@ -452,7 +454,8 @@ export function QnaClient({
               onClick={(e) => {
                 // 카드 내부 버튼(담당 조교 필터) 클릭은 제외
                 if ((e.target as HTMLElement).closest('a, button')) return
-                router.push(`/admin/qna/${q.id}`)
+                // "AI 초안 대기" 탭에서 들어가면 확인/제출 시 다음 미검토 건으로 자동 이동(순차 검토)
+                router.push(selectedStatus === 'ai_draft' ? `/admin/qna/${q.id}?queue=1` : `/admin/qna/${q.id}`)
               }}
               className={[
                 'group cursor-pointer rounded-2xl border bg-white dark:bg-zinc-900 px-5 py-4 transition-all',

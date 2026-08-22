@@ -13,6 +13,7 @@ import { findRelatedAnswers } from '@/lib/data/qna-related'
 import { sendKakaoText } from '@/lib/kakao'
 import { logAudit } from '@/lib/audit'
 import { reportError } from '@/lib/error-report'
+import { getOldestAiDraftQuestionId } from '@/lib/qna-status'
 
 export async function assignQuestion(questionId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
@@ -681,6 +682,15 @@ export async function generateAiDraft(
   if (!['teacher', 'ta_desk', 'ta_assistant'].includes(role ?? '')) return { error: '권한이 없습니다.' }
 
   return runAiDraftGeneration(questionContent, imageUrls, mode, user.id, subjectName)
+}
+
+// AI 초안 순차 검토 — 확인/제출 직후 클라이언트가 호출해 다음으로 넘어갈 질문 id를 받는다.
+// 없으면 null → 클라이언트가 "AI 초안 대기" 탭(목록)으로 돌아간다.
+export async function getNextAiDraftQuestionId(): Promise<string | null> {
+  const user = await getVerifiedUser()
+  if (!user) return null
+  const admin = createAdminClient()
+  return getOldestAiDraftQuestionId(admin)
 }
 
 export async function createQuestion(data: {

@@ -1,13 +1,14 @@
 'use client'
 
 import 'katex/dist/katex.min.css'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import { createClient } from '@/lib/supabase/client'
-import { assignQuestion, submitAnswer, generateAiDraft, updateAnswer, cancelAnswer, adoptRelatedAnswer } from '@/lib/actions/qna'
+import { assignQuestion, submitAnswer, generateAiDraft, updateAnswer, cancelAnswer, adoptRelatedAnswer, getNextAiDraftQuestionId } from '@/lib/actions/qna'
 import { buildAnswerParts, buildStudentContent } from '@/lib/qna-format'
 import { QNA_STATUS_LABEL } from '@/lib/qna-status'
 
@@ -67,6 +68,8 @@ interface Props {
   question: Question
   answers: Answer[]
   aiDraft?: AiDraft | null
+  aiFailure?: { reason: string; message: string; createdAt: string } | null
+  queueMode?: boolean
   currentUserId: string
   currentUserName: string
   currentUserRole: string
@@ -397,7 +400,7 @@ function AnswerEditor({
   )
 }
 
-export function QnaDetailClient({ question, answers, aiDraft, currentUserId, currentUserName, currentUserRole, currentUserIsSuperAdmin, relatedAnswers, difficultyHint }: Props) {
+export function QnaDetailClient({ question, answers, aiDraft, aiFailure, queueMode, currentUserId, currentUserName, currentUserRole, currentUserIsSuperAdmin, relatedAnswers, difficultyHint }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -442,6 +445,13 @@ export function QnaDetailClient({ question, answers, aiDraft, currentUserId, cur
   const [adoptingId, setAdoptingId] = useState<string | null>(null)
   const [adoptErr, setAdoptErr] = useState('')
 
+  // 순차 검토 모드에서 확인/제출 직후 호출 — 다음 미검토 AI 초안 질문으로 바로 이동, 없으면
+  // "AI 초안 대기" 탭(목록)으로 돌아간다. 별도 페이지 없이 클라이언트에서 다음 id만 물어본다.
+  async function goToNextInQueue() {
+    const nextId = await getNextAiDraftQuestionId()
+    router.push(nextId ? `/admin/qna/${nextId}?queue=1` : '/admin/qna?status=ai_draft')
+  }
+
   // 이 답변이 맞다고 확인만 하면 그대로 채택 — 조교가 다시 타이핑할 필요 없음.
   // 채택 후에도 이 질문은 답변완료 상태의 다른 질문과 동일하게 계속 수정·재답변할 수 있다.
   function handleAdopt(ra: RelatedAnswer) {
@@ -451,6 +461,7 @@ export function QnaDetailClient({ question, answers, aiDraft, currentUserId, cur
       const res = await adoptRelatedAnswer({ questionId: question.id, sourceQuestionId: ra.questionId })
       setAdoptingId(null)
       if (res.error) setAdoptErr(res.error)
+      else if (queueMode) void goToNextInQueue()
       else router.refresh()
     })
   }
@@ -506,7 +517,8 @@ export function QnaDetailClient({ question, answers, aiDraft, currentUserId, cur
         setFiles([])
         setDifficulty(null)
         setUsedAiDraft(false)
-        router.refresh()
+        if (queueMode) void goToNextInQueue()
+        else router.refresh()
       } catch (err: unknown) {
         if (err instanceof Error) {
           setErrMsg(err.message || '답변 등록 중 오류가 발생했습니다.')
@@ -573,6 +585,14 @@ export function QnaDetailClient({ question, answers, aiDraft, currentUserId, cur
 
   return (
     <div className="space-y-5">
+      {queueMode && (
+        <div className="flex items-center justify-between rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-900 px-4 py-2.5">
+          <span className="text-xs font-medium text-violet-700 dark:text-violet-400">AI 초안 순차 검토 중 · 확인/제출하면 다음 건으로 자동 이동합니다</span>
+          <Link href="/admin/qna" className="text-xs font-medium text-violet-700 dark:text-violet-400 hover:underline">
+            그만 보기
+          </Link>
+        </div>
+      )}
       {/* 질문 카드 */}
       <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -609,6 +629,12 @@ export function QnaDetailClient({ question, answers, aiDraft, currentUserId, cur
             )}
           </div>
         </div>
+        {aiFailure && (
+          <div className="mb-3 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 px-3 py-2 text-xs text-red-700 dark:text-red-400">
+            <p><span className="font-semibold">AI 답변 실패:</span> {aiFailure.reason}</p>
+            <p className="mt-0.5 text-[11px] text-red-500 dark:text-red-500/80">{aiFailure.message}</p>
+          </div>
+        )}
         <div className="whitespace-pre-wrap text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed">{question.content}</div>
         {question.image_urls.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">

@@ -45,3 +45,37 @@ export async function getQnaAttentionCounts(supabase: QueryableClient): Promise<
     additionalRequested,
   }
 }
+
+// AI 초안 순차 검토 — 가장 오래 기다린(생성일 오름차순) 미검토 AI 초안 질문 id 하나만 뽑는다.
+// 조교가 "AI 초안 대기" 탭에서 한 건 확인/제출하면 다시 이 함수를 호출해 다음 건으로 넘어간다.
+export async function getOldestAiDraftQuestionId(supabase: QueryableClient): Promise<string | null> {
+  const { data: openRows } = await supabase
+    .from('qna_questions')
+    .select('id, created_at')
+    .eq('status', 'open')
+    .order('created_at', { ascending: true })
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = (openRows ?? []) as any[]
+  if (rows.length === 0) return null
+  const ids = rows.map((r) => r.id as string)
+
+  const { data: drafts } = await supabase
+    .from('qna_answers')
+    .select('question_id')
+    .is('ta_id', null)
+    .in('question_id', ids)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const draftIds = new Set(((drafts ?? []) as any[]).map((d) => d.question_id as string))
+
+  const oldest = rows.find((r) => draftIds.has(r.id as string))
+  return (oldest?.id as string | undefined) ?? null
+}
+
+// error_logs에 남는 원문 메시지는 프로그래밍 배경이 없으면 못 알아본다 — 조교 화면에는
+// 원인 종류만 짧게 번역해서 보여준다 (원문은 그 아래에 작게 참고용으로 같이 노출).
+export function translateAiFailureReason(message: string): string {
+  if (message.includes('저장 실패')) return '답변 저장 실패'
+  if (/image|이미지|mime/i.test(message)) return '이미지 인식 실패'
+  return '문제 풀이 실패'
+}

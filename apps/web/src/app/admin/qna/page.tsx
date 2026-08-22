@@ -47,7 +47,11 @@ export default async function QnaPage({
     )
     .order('created_at', { ascending: false })
 
-  if (selectedStatus && selectedStatus !== 'all') {
+  // "AI 초안 대기"는 실제 status 값이 아니라 open 중 조교 미검토 초안이 붙은 것만 골라내는
+  // 파생 필터라, DB엔 항상 status='open'으로 걸고 아래에서 hasAiDraft로 한 번 더 걸러낸다.
+  if (selectedStatus === 'ai_draft') {
+    query = query.eq('status', 'open')
+  } else if (selectedStatus && selectedStatus !== 'all') {
     query = query.eq('status', selectedStatus)
   }
   if (selectedClassId) {
@@ -63,10 +67,9 @@ export default async function QnaPage({
     query = query.eq('assigned_ta_id', selectedTaId)
   }
 
-  // 상태별 카운트 — status 필터와 무관하게 별도 집계 (다른 필터는 동일 적용)
-  // 미답변 토글 중에도 답변중/답변완료 개수가 유지되도록 head-count 쿼리로 계산
-  function countQuery(status: string) {
-    let q = db.from('qna_questions').select('id', { count: 'exact', head: true }).eq('status', status)
+  // 분반/교재/문항/담당조교 필터를 그대로 적용하는 공통 헬퍼 — status 카운트와 AI초안 카운트가 공유
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function applyCommonFilters(q: any) {
     if (selectedClassId)      q = q.eq('class_id', selectedClassId)
     if (selectedTextbookId)   q = q.eq('textbook_id', selectedTextbookId)
     if (selectedProblemNumber) q = q.ilike('problem_number', `%${selectedProblemNumber}%`)
@@ -74,7 +77,13 @@ export default async function QnaPage({
     return q
   }
 
-  const [{ data: rows }, openCnt, progressCnt, answeredCnt, { data: aiDraftRows }] = await Promise.all([
+  // 상태별 카운트 — status 필터와 무관하게 별도 집계 (다른 필터는 동일 적용)
+  // 미답변 토글 중에도 답변중/답변완료 개수가 유지되도록 head-count 쿼리로 계산
+  function countQuery(status: string) {
+    return applyCommonFilters(db.from('qna_questions').select('id', { count: 'exact', head: true }).eq('status', status))
+  }
+
+  const [{ data: rows }, openCnt, progressCnt, answeredCnt, { data: aiDraftRows }, { data: filteredOpenRows }] = await Promise.all([
     query,
     countQuery('open'),
     countQuery('in_progress'),
@@ -82,14 +91,19 @@ export default async function QnaPage({
     // 조교가 아직 확정 안 한 답변(AI 생성 또는 유사 문항 자동 연결)이 붙어있는 질문 id 목록 —
     // 목록에 AI 뱃지 표시용
     db.from('qna_answers').select('question_id').is('ta_id', null),
+    // "AI 초안 대기" 탭 카운트용 — 다른 필터(분반/교재/문항/담당조교)는 그대로 적용된 open 질문 id
+    applyCommonFilters(db.from('qna_questions').select('id').eq('status', 'open')),
   ])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const aiDraftQuestionIds = new Set((aiDraftRows ?? []).map((a: any) => a.question_id as string))
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aiDraftCount = ((filteredOpenRows ?? []) as any[]).filter((r) => aiDraftQuestionIds.has(r.id as string)).length
 
   const statusCounts = {
     open:        openCnt.count ?? 0,
     in_progress: progressCnt.count ?? 0,
     answered:    answeredCnt.count ?? 0,
+    ai_draft:    aiDraftCount,
     all:         (openCnt.count ?? 0) + (progressCnt.count ?? 0) + (answeredCnt.count ?? 0),
   }
 
@@ -112,7 +126,7 @@ export default async function QnaPage({
       additionalRequestedAt: (r.additional_requested_at ?? null) as string | null,
       hasAiDraft: aiDraftQuestionIds.has(r.id as string),
     }
-  })
+  }).filter((q: { hasAiDraft: boolean }) => selectedStatus !== 'ai_draft' || q.hasAiDraft)
 
   // 같은 교재+문항 중복 질문 식별
   const dupKey = (q: (typeof questions)[number]) =>
