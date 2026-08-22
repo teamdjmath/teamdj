@@ -4,6 +4,7 @@ import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { categoryBadgeStyle } from '@/lib/category-style'
+import { QNA_STATUS_LABEL } from '@/lib/qna-status'
 import { expandClassSlots } from '@/lib/class-slots'
 import { DdayCard } from './_components/dday-card'
 
@@ -284,9 +285,9 @@ export default async function DashboardPage() {
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    open:        { label: '미답변', cls: 'bg-zinc-100 text-zinc-500' },
-    in_progress: { label: '답변중', cls: 'bg-zinc-900 text-white' },
-    answered:    { label: '답변완료', cls: 'bg-zinc-200 text-zinc-600' },
+    open:        { label: QNA_STATUS_LABEL.open,        cls: 'bg-zinc-100 text-zinc-500' },
+    in_progress: { label: QNA_STATUS_LABEL.in_progress, cls: 'bg-zinc-900 text-white' },
+    answered:    { label: QNA_STATUS_LABEL.answered,    cls: 'bg-zinc-200 text-zinc-600' },
   }
   const { label, cls } = map[status] ?? { label: status, cls: 'bg-zinc-100 text-zinc-500' }
   return (

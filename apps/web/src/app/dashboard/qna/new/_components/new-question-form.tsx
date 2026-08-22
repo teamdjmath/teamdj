@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { createQuestion } from '@/lib/actions/qna'
+import { QNA_STATUS_LABEL } from '@/lib/qna-status'
 import { InputField, SelectField, TextareaField } from '@/components/ui/form-field'
 
 interface ClassGroup {
@@ -28,12 +29,6 @@ interface SimilarQuestion {
   title: string
   status: string
   studentName: string
-}
-
-const STATUS_LABEL: Record<string, string> = {
-  open: '미답변',
-  in_progress: '답변중',
-  answered: '답변완료',
 }
 
 const STATUS_CLS: Record<string, string> = {
@@ -260,7 +255,7 @@ export function NewQuestionForm({
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_CLS[q.status] ?? 'bg-zinc-100 text-zinc-400'}`}>
-                    {STATUS_LABEL[q.status] ?? q.status}
+                    {QNA_STATUS_LABEL[q.status] ?? q.status}
                   </span>
                   <Link
                     href={`/dashboard/qna/${q.id}`}

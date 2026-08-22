@@ -8,6 +8,7 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import { deleteQuestion, rateAnswer, requestAdditionalAnswer, confirmAiDraft, type AiFeedbackCategory } from '@/lib/actions/qna'
 import { buildStudentContent } from '@/lib/qna-format'
+import { QNA_STATUS_LABEL } from '@/lib/qna-status'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Modal } from '@/components/ui/modal'
 
@@ -116,11 +117,6 @@ interface Props {
   relatedAnswer?: RelatedAnswer | null
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  open: '미답변',
-  in_progress: '답변중',
-  answered: '답변완료',
-}
 const STATUS_BADGE: Record<string, string> = {
   open: 'bg-zinc-100 text-zinc-500',
   in_progress: 'bg-zinc-900 text-white',
@@ -202,7 +198,7 @@ export function StudentQnaDetail({ question, answers, aiDraft, studentName, rela
         <CardContent className="space-y-6">
           <div className="flex items-center gap-3">
             <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${STATUS_BADGE[question.status]}`}>
-              {STATUS_LABEL[question.status]}
+              {QNA_STATUS_LABEL[question.status]}
             </span>
             <span className="text-xs font-bold text-zinc-300">{formatDatetime(question.created_at)}</span>
             <div className="h-1 w-1 rounded-full bg-zinc-200" />

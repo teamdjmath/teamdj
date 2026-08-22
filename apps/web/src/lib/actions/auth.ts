@@ -88,10 +88,18 @@ export async function signIn(
 
   const role = user?.user_metadata?.role as string | undefined
   if (!isE2eBot) {
+    // user_metadata는 세션 발급 시점 스냅샷이라 이름이 바뀌어도 재로그인 전까지 옛 이름을 그대로
+    // 들고 있다 — 로그인 기록에는 users 테이블의 현재 이름을 조회해 남긴다.
+    let liveName = user?.user_metadata?.name as string | undefined
+    if (user?.id) {
+      const admin = createAdminClient()
+      const { data: liveUser } = await admin.from('users').select('name').eq('id', user.id).maybeSingle()
+      liveName = (liveUser?.name as string | undefined) ?? liveName
+    }
     await logLoginAttempt({
       success: true,
       userId: user?.id,
-      name: (user?.user_metadata?.name as string | undefined) ?? '',
+      name: liveName ?? '',
       role: role ?? '',
     })
     // 스태프가 로그인하면 근무 상태를 자동으로 온라인 전환 (E2E 봇 제외)

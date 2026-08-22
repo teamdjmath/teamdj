@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { EmptyState } from '@/components/ui/empty-state'
+import { QNA_STATUS_LABEL } from '@/lib/qna-status'
 
 type ClassOption = { id: string; name: string }
 type TextbookOption = { id: string; name: string }
@@ -48,12 +49,6 @@ const STATUS_BADGE: Record<string, string> = {
   open: 'bg-red-50 text-red-600',
   in_progress: 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900',
   answered: 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-500',
-}
-
-const STATUS_LABEL: Record<string, string> = {
-  open: '미답변',
-  in_progress: '답변중',
-  answered: '답변완료',
 }
 
 function roleLabel(role: string) {
@@ -470,7 +465,7 @@ export function QnaClient({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1.5">
                     <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_BADGE[q.status]}`}>
-                      {STATUS_LABEL[q.status]}
+                      {QNA_STATUS_LABEL[q.status]}
                     </span>
                     {q.hasAiDraft && q.status !== 'answered' && (
                       <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700">

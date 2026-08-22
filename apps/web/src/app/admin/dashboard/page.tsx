@@ -8,6 +8,7 @@ import { DashboardScheduleClient } from './_components/dashboard-schedule-client
 import { ContactRequestQueue, type PendingRequest } from './_components/contact-request-queue'
 import { expandClassSlots } from '@/lib/class-slots'
 import type { StaffStatus } from '@/lib/actions/staff'
+import { getQnaAttentionCounts } from '@/lib/qna-status'
 
 function getMonthRange() {
   const now   = new Date()
@@ -100,16 +101,13 @@ export default async function AdminDashboardPage() {
   const isTeacher = role === 'teacher'
 
   // ── 병렬 fetch ──
-  const [noticesRes, openQnaRes, staffUsersRes, extraSchedulesRes, taAccessRes, contactRequestsRes, absenceRowsRes] = await Promise.all([
+  const [noticesRes, qnaAttention, staffUsersRes, extraSchedulesRes, taAccessRes, contactRequestsRes, absenceRowsRes] = await Promise.all([
     db.from('notices')
       .select('id, title, created_at, is_pinned, class_id, class_groups!class_id(name)')
       .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(4),
-    supabase
-      .from('qna_questions')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'open'),
+    getQnaAttentionCounts(adminDb),
     supabase
       .from('users')
       .select('id, name, role, is_super_admin')
@@ -179,7 +177,9 @@ export default async function AdminDashboardPage() {
     // 테스트 분반 대상 공지는 관리자에게만 (제목 기준 필터는 일반 공지 오탐 위험이 있어 분반명만)
     .filter((n: NoticeRow) => currentUserIsSuperAdmin || !n.className || !isTestName(n.className))
 
-  const openQnaCount = openQnaRes.count ?? 0
+  // "미답변"에는 정말 급한 것만 — AI 초안조차 없는 질문 + 학생이 추가 답변을 요청한 질문.
+  // AI 초안이 붙어 조교 검토만 남은 건 정상 워크플로우라 급한 축에 안 넣고 따로 보여준다.
+  const openQnaCount = qnaAttention.trueUnanswered + qnaAttention.additionalRequested
 
   // ── TA 수 계산 (오늘 기준 — 담당 요일이 지정된 조교는 오늘이 담당 요일일 때만 집계) ──
   const taAccessRows = (taAccessRes.data ?? []) as {
@@ -251,7 +251,7 @@ export default async function AdminDashboardPage() {
       {/* 학생 연락처 열람 승인 대기 — 요청이 있을 때만 표시 (선생님 전용) */}
       {isTeacher && <ContactRequestQueue initial={pendingContactRequests} />}
 
-      {/* 미답변 질문 */}
+      {/* 미답변 질문 — AI 초안조차 없는 것 + 추가 답변 요청만 급한 것으로 집계 */}
       <div className={[
         'rounded-2xl border p-5 flex items-center justify-between',
         openQnaCount > 0
@@ -266,6 +266,11 @@ export default async function AdminDashboardPage() {
               건
             </span>
           </p>
+          {qnaAttention.aiDraftPending > 0 && (
+            <p className={`mt-1 text-xs ${openQnaCount > 0 ? 'text-zinc-400' : 'text-zinc-400 dark:text-zinc-600'}`}>
+              AI 초안 검토 대기 {qnaAttention.aiDraftPending}건
+            </p>
+          )}
         </div>
         <Link
           href="/admin/qna?status=open"

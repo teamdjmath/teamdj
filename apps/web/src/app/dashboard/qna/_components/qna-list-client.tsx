@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { QNA_STATUS_LABEL } from '@/lib/qna-status'
 
 type Textbook = { id: string; name: string }
 
@@ -24,9 +25,9 @@ interface ClassQuestion {
 }
 
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {
-  open:        { label: '미답변',   cls: 'bg-zinc-100 text-zinc-400' },
-  in_progress: { label: '답변중',   cls: 'bg-zinc-950 text-white' },
-  answered:    { label: '답변완료', cls: 'bg-zinc-100 text-zinc-900 font-bold' },
+  open:        { label: QNA_STATUS_LABEL.open,        cls: 'bg-zinc-100 text-zinc-400' },
+  in_progress: { label: QNA_STATUS_LABEL.in_progress, cls: 'bg-zinc-950 text-white' },
+  answered:    { label: QNA_STATUS_LABEL.answered,    cls: 'bg-zinc-100 text-zinc-900 font-bold' },
 }
 
 function StatusBadge({ status }: { status: string }) {

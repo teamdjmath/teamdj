@@ -702,7 +702,11 @@ export async function createQuestion(data: {
   const { suspended } = await checkSuspension(user.id)
   if (suspended) return { error: '휴원 중에는 질문 등록이 제한됩니다.' }
 
-  const studentName = (user.user_metadata?.name as string | undefined) ?? '학생'
+  // user_metadata는 세션 발급 시점 스냅샷이라 이름이 바뀌어도 재로그인 전까지 옛 이름을 그대로
+  // 들고 있다 — 알림·카카오 문구에는 users 테이블의 현재 이름을 조회해 쓴다.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: liveStudent } = await (supabase as any).from('users').select('name').eq('id', user.id).maybeSingle()
+  const studentName = (liveStudent?.name as string | undefined) ?? (user.user_metadata?.name as string | undefined) ?? '학생'
 
   // textbook_id and problem_number columns added via migration 026
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

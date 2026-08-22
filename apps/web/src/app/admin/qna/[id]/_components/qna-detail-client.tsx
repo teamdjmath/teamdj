@@ -9,6 +9,7 @@ import rehypeKatex from 'rehype-katex'
 import { createClient } from '@/lib/supabase/client'
 import { assignQuestion, submitAnswer, generateAiDraft, updateAnswer, cancelAnswer, adoptRelatedAnswer } from '@/lib/actions/qna'
 import { buildAnswerParts, buildStudentContent } from '@/lib/qna-format'
+import { QNA_STATUS_LABEL } from '@/lib/qna-status'
 
 type Question = {
   id: string
@@ -74,11 +75,6 @@ interface Props {
   difficultyHint?: DifficultyHint
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  open: '미답변',
-  in_progress: '답변중',
-  answered: '답변완료',
-}
 const STATUS_BADGE: Record<string, string> = {
   open: 'bg-red-50 text-red-600',
   in_progress: 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900',
@@ -582,7 +578,7 @@ export function QnaDetailClient({ question, answers, aiDraft, currentUserId, cur
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[question.status]}`}>
-              {STATUS_LABEL[question.status]}
+              {QNA_STATUS_LABEL[question.status]}
             </span>
             {aiDraft && question.status !== 'answered' && (
               <span className="flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-700">

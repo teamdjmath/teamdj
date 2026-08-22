@@ -15,11 +15,15 @@ type AuditActor = { id: string; user_metadata?: { name?: string; role?: string }
 export async function logAudit(actor: AuditActor, entry: AuditEntry): Promise<void> {
   try {
     const admin = createAdminClient()
+    // actor.user_metadata는 세션 발급 시점의 스냅샷이라 이름이 바뀌어도 재로그인 전까지 옛 이름을
+    // 계속 들고 있다 — 감사 로그에는 항상 users 테이블의 현재 이름을 조회해 기록한다.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: liveActor } = await (admin as any).from('users').select('name, role').eq('id', actor.id).maybeSingle()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (admin as any).from('audit_logs').insert({
       actor_id:     actor.id,
-      actor_name:   (actor.user_metadata?.name as string | undefined) ?? '',
-      actor_role:   (actor.user_metadata?.role as string | undefined) ?? '',
+      actor_name:   (liveActor?.name as string | undefined) ?? (actor.user_metadata?.name as string | undefined) ?? '',
+      actor_role:   (liveActor?.role as string | undefined) ?? (actor.user_metadata?.role as string | undefined) ?? '',
       action:       entry.action,
       target_type:  entry.targetType,
       target_id:    entry.targetId ?? '',
