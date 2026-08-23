@@ -82,19 +82,23 @@ async function isLastTeacher(adminSupabase: ReturnType<typeof createAdminClient>
   return (count ?? 0) === 0
 }
 
-// 선생님 본인 탈퇴 — teacher 본인만 자신의 계정을 삭제할 수 있음 (다른 선생님은 삭제 불가)
-export async function withdrawOwnTeacherAccount(): Promise<ActionResult> {
+// 스태프 본인 탈퇴 — teacher/ta_desk/ta_assistant 누구나 자기 계정만 탈퇴할 수 있음
+// (다른 사람 계정은 deleteTaAccount/deleteTeacherAccount로만 삭제 가능). 선생님은 마지막 한 명이면
+// 관리 기능 전체가 잠기므로 탈퇴를 막고, 조교는 그런 제약이 없어 그대로 진행한다.
+export async function withdrawOwnAccount(): Promise<ActionResult> {
   const caller = await getVerifiedUser()
 
-  return withAction('withdrawOwnTeacherAccount', caller?.id, async () => {
+  return withAction('withdrawOwnAccount', caller?.id, async () => {
     if (!caller) return { success: false, error: '인증이 필요합니다.' }
 
     const callerRole = caller.user_metadata?.role as string | undefined
-    if (callerRole !== 'teacher') return { success: false, error: '선생님 계정만 탈퇴할 수 있습니다.' }
+    if (!callerRole || !['teacher', 'ta_desk', 'ta_assistant'].includes(callerRole)) {
+      return { success: false, error: '스태프 계정만 탈퇴할 수 있습니다.' }
+    }
 
     const adminSupabase = createAdminClient()
 
-    if (await isLastTeacher(adminSupabase, caller.id)) {
+    if (callerRole === 'teacher' && await isLastTeacher(adminSupabase, caller.id)) {
       return { success: false, error: '마지막 남은 선생님 계정은 탈퇴할 수 없습니다.' }
     }
 
@@ -103,7 +107,7 @@ export async function withdrawOwnTeacherAccount(): Promise<ActionResult> {
     if (dbErr) throw dbErr
 
     const { error: authErr } = await adminSupabase.auth.admin.deleteUser(caller.id)
-    if (authErr) logger.warn('withdrawOwnTeacherAccount:auth-delete-failed', { action: 'withdrawOwnTeacherAccount', userId: caller.id, error: authErr })
+    if (authErr) logger.warn('withdrawOwnAccount:auth-delete-failed', { action: 'withdrawOwnAccount', userId: caller.id, error: authErr })
 
     await logAudit(caller, {
       action: 'staff.withdraw', targetType: 'staff',

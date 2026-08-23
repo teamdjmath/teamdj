@@ -10,8 +10,9 @@ import {
   type ScheduleAbsenceRow,
 } from '@/lib/actions/schedule'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import {
-  updateStaffStatus, deleteTaAccount, deleteTeacherAccount, withdrawOwnTeacherAccount,
+  updateStaffStatus, deleteTaAccount, deleteTeacherAccount, withdrawOwnAccount,
   type StaffStatus,
 } from '@/lib/actions/staff'
 
@@ -385,7 +386,7 @@ export function DashboardScheduleClient({
     if (!window.confirm('정말 탈퇴하시겠어요? 계정이 완전히 삭제되며 되돌릴 수 없습니다.')) return
     setDeleteErr(null)
     startTransition(async () => {
-      const res = await withdrawOwnTeacherAccount()
+      const res = await withdrawOwnAccount()
       if (!res.success) { setDeleteErr(res.error); return }
       router.push('/login')
     })
@@ -818,18 +819,23 @@ export function DashboardScheduleClient({
               )
             })}
           </div>
-          {currentUserRole === 'teacher' && (
-            <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-900">
-              <button
-                type="button"
-                onClick={handleWithdraw}
-                disabled={isPending}
-                className="text-xs font-medium text-zinc-400 dark:text-zinc-600 hover:text-red-500 transition-colors disabled:opacity-50"
-              >
-                계정 탈퇴
-              </button>
-            </div>
-          )}
+          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-900 flex items-center gap-3">
+            <Link
+              href="/change-password"
+              className="text-xs font-medium text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
+            >
+              비밀번호 변경
+            </Link>
+            <span className="text-zinc-200 dark:text-zinc-800">·</span>
+            <button
+              type="button"
+              onClick={handleWithdraw}
+              disabled={isPending}
+              className="text-xs font-medium text-zinc-400 dark:text-zinc-600 hover:text-red-500 transition-colors disabled:opacity-50"
+            >
+              계정 탈퇴
+            </button>
+          </div>
         </div>
 
         {/* 스태프 현황 */}

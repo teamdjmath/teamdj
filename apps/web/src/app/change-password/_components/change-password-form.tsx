@@ -4,8 +4,9 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { changePassword } from '@/lib/actions/password'
 
-export function ChangePasswordForm({ role }: { role: string }) {
+export function ChangePasswordForm({ role, forced }: { role: string; forced: boolean }) {
   const router = useRouter()
+  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword]     = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError]   = useState<string | null>(null)
@@ -25,7 +26,7 @@ export function ChangePasswordForm({ role }: { role: string }) {
     }
 
     startTransition(async () => {
-      const res = await changePassword(newPassword)
+      const res = await changePassword(newPassword, forced ? undefined : currentPassword)
       if (!res.success) { setError(res.error); return }
       const dest = ['teacher', 'ta_desk', 'ta_assistant'].includes(role) ? '/admin/dashboard' : '/dashboard'
       router.replace(dest)
@@ -34,6 +35,19 @@ export function ChangePasswordForm({ role }: { role: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {!forced && (
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium text-zinc-600">현재 비밀번호</label>
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+            className="w-full rounded-2xl border border-zinc-200 bg-zinc-50/50 px-5 py-3.5 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 placeholder:font-normal focus:border-zinc-900 focus:bg-white focus:outline-none transition-all"
+          />
+        </div>
+      )}
       <div className="space-y-1.5">
         <label className="block text-xs font-medium text-zinc-600">새 비밀번호</label>
         <input

@@ -111,6 +111,13 @@ export default function LoginPage() {
                       required
                       className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-950 placeholder:text-zinc-400 focus:bg-white focus:border-zinc-950 focus:ring-0 outline-none transition-all"
                     />
+                    {tab === 'staff' && (
+                      <p className="text-right">
+                        <Link href="/forgot-password" className="text-xs font-medium text-zinc-400 hover:text-zinc-700">
+                          비밀번호를 잊으셨나요?
+                        </Link>
+                      </p>
+                    )}
                   </div>
                 </motion.div>
               </AnimatePresence>
