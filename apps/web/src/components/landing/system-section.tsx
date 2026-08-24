@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { MATERIAL_LEVELS } from "@/lib/materials-data";
 import { AttendanceKioskGraphic } from "./attendance-kiosk-graphic";
+import { MidtermScheduleGraphic } from "./midterm-schedule-graphic";
 
 const SYSTEMS = [
   {
@@ -223,6 +224,8 @@ export function SystemSection() {
                   <div className="aspect-4/3 p-3">
                     <AttendanceKioskGraphic />
                   </div>
+                ) : sys.icon === "exam" ? (
+                  <MidtermScheduleGraphic />
                 ) : (
                   <div className="aspect-4/3 rounded-3xl bg-zinc-50 border border-zinc-200 flex items-center justify-center">
                     <SystemIcon type={sys.icon} className="w-14 h-14 md:w-16 md:h-16 text-zinc-300" />
