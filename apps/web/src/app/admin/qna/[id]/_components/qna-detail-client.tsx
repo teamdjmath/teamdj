@@ -428,6 +428,15 @@ export function QnaDetailClient({ question, answers, aiDraft, aiFailure, queueMo
   const isAssigned = question.assigned_ta_id === currentUserId
   const canAnswer = question.status !== 'answered'
 
+  // 추가 답변 요청으로 원래 답변한 조교와 다른 조교가 다시 답변을 달 수 있다 — 담당을 최신
+  // assigned_ta_id 하나만 보여주면 앞서 답변한 조교가 누구였는지 사라져서, 실제 답변한
+  // 순서대로 조교 이름을 전부 나열한다 (같은 사람이 연달아 또 달면 중복 없이 한 번만).
+  const answeredByNames = [...answers]
+    .filter((a) => a.taId)
+    .sort((a, b) => new Date(a.answered_at).getTime() - new Date(b.answered_at).getTime())
+    .map((a) => a.taName)
+    .filter((name, i, arr) => name !== arr[i - 1])
+
   // 유사 답변 후보 목록 — 첫 항목만 펼친 채로 시작, 조교가 확인 후 채택
   const related = relatedAnswers ?? []
   const [expandedRelatedId, setExpandedRelatedId] = useState<string | null>(related[0]?.questionId ?? null)
@@ -616,7 +625,9 @@ export function QnaDetailClient({ question, answers, aiDraft, aiFailure, queueMo
             <span className="text-xs text-zinc-400 dark:text-zinc-600">{formatDatetime(question.created_at)}</span>
           </div>
           <div className="flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-500">
-            {question.assignedTaName ? (
+            {answeredByNames.length > 0 ? (
+              <span>담당: <strong className="text-zinc-800 dark:text-zinc-200">{answeredByNames.join(' | ')}</strong></span>
+            ) : question.assignedTaName ? (
               <span>담당: <strong className="text-zinc-800 dark:text-zinc-200">{question.assignedTaName}</strong></span>
             ) : question.status === 'answered' && answers.some((a) => !a.taId) ? (
               // 조교 배정 없이 학생이 AI 초안을 직접 확정한 경우 — "담당 없음"으로 보이면

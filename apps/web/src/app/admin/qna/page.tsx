@@ -83,7 +83,7 @@ export default async function QnaPage({
     return applyCommonFilters(db.from('qna_questions').select('id', { count: 'exact', head: true }).eq('status', status))
   }
 
-  const [{ data: rows }, openCnt, progressCnt, answeredCnt, { data: aiDraftRows }, { data: filteredOpenRows }] = await Promise.all([
+  const [{ data: rows }, openCnt, progressCnt, answeredCnt, { data: aiDraftRows }, { data: filteredOpenRows }, { data: taAnswerRows }] = await Promise.all([
     query,
     countQuery('open'),
     countQuery('in_progress'),
@@ -93,11 +93,25 @@ export default async function QnaPage({
     db.from('qna_answers').select('question_id').is('ta_id', null),
     // "AI 초안 대기" 탭 카운트용 — 다른 필터(분반/교재/문항/담당조교)는 그대로 적용된 open 질문 id
     applyCommonFilters(db.from('qna_questions').select('id').eq('status', 'open')),
+    // 추가 답변 요청으로 다른 조교가 다시 답변할 수 있어 — 실제 답변한 조교를 순서대로
+    // 전부 보여주기 위한 이력 (assigned_ta_id는 최신 한 명만 남아 이전 답변자가 사라짐)
+    db.from('qna_answers').select('question_id, ta_id, answered_at, ta:users!ta_id(name)').not('ta_id', 'is', null).order('answered_at', { ascending: true }),
   ])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const aiDraftQuestionIds = new Set((aiDraftRows ?? []).map((a: any) => a.question_id as string))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const aiDraftCount = ((filteredOpenRows ?? []) as any[]).filter((r) => aiDraftQuestionIds.has(r.id as string)).length
+
+  const answeredByNamesMap = new Map<string, string[]>()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const a of ((taAnswerRows ?? []) as any[])) {
+    const qid = a.question_id as string
+    const name = (a.ta as { name?: string } | null)?.name
+    if (!name) continue
+    const names = answeredByNamesMap.get(qid) ?? []
+    if (names[names.length - 1] !== name) names.push(name)
+    answeredByNamesMap.set(qid, names)
+  }
 
   const statusCounts = {
     open:        openCnt.count ?? 0,
@@ -125,6 +139,7 @@ export default async function QnaPage({
       textbookName: ((r.textbook as { name?: string } | null)?.name ?? null) as string | null,
       additionalRequestedAt: (r.additional_requested_at ?? null) as string | null,
       hasAiDraft: aiDraftQuestionIds.has(r.id as string),
+      answeredByNames: answeredByNamesMap.get(r.id as string) ?? [],
     }
   }).filter((q: { hasAiDraft: boolean }) => selectedStatus !== 'ai_draft' || q.hasAiDraft)
 

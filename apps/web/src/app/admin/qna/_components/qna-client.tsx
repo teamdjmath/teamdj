@@ -26,6 +26,7 @@ type Question = {
   isDuplicate: boolean
   additionalRequestedAt: string | null
   hasAiDraft: boolean
+  answeredByNames: string[]
 }
 type MyStats = {
   total: number
@@ -498,14 +499,16 @@ export function QnaClient({
                 </div>
 
                 <div className="shrink-0 flex flex-col items-end gap-2 pt-0.5">
-                  {q.assignedTaName ? (
+                  {q.answeredByNames.length > 0 || q.assignedTaName ? (
                     <button
                       type="button"
                       onClick={() => applyFilter({ taId: q.assigned_ta_id ?? '' })}
                       title="이 조교의 질문만 보기"
                       className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2.5 py-1 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
                     >
-                      {q.assignedTaName}
+                      {/* 추가 답변 요청으로 다른 조교가 다시 답변하면 실제 답변한 순서대로 전부 보여준다 —
+                          아직 아무도 안 답변했고 자기담당만 한 경우엔 담당자 한 명만 표시 */}
+                      {q.answeredByNames.length > 0 ? q.answeredByNames.join(' | ') : q.assignedTaName}
                     </button>
                   ) : q.status === 'answered' && q.hasAiDraft ? (
                     // 조교 배정 없이 학생이 AI 초안을 직접 확정한 경우 — "담당 없음"으로 보이면
