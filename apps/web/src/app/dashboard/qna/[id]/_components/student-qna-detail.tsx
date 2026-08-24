@@ -146,6 +146,10 @@ export function StudentQnaDetail({ question, answers, aiDraft, studentName, rela
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [feedbackDetail, setFeedbackDetail] = useState('')
   const [showDetailInput, setShowDetailInput] = useState(false)
+  // 조교/선생님이 실제로 답변한 뒤에 여는 "추가 질문하기" — AI 피드백 모달과 달리 카테고리
+  // 없이 바로 자유 입력만 받는다 (사유 자체가 항상 '직접 입력').
+  const [taFollowUpOpen, setTaFollowUpOpen] = useState(false)
+  const [taFollowUpDetail, setTaFollowUpDetail] = useState('')
 
   function handleDelete() {
     if (!confirm('정말 삭제하시겠습니까?')) return
@@ -165,6 +169,11 @@ export function StudentQnaDetail({ question, answers, aiDraft, studentName, rela
       setFeedbackOpen(false)
       setShowDetailInput(false)
       setFeedbackDetail('')
+      setTaFollowUpOpen(false)
+      setTaFollowUpDetail('')
+      // 답변완료 → 답변중으로 상태가 바뀌었는데 새로고침 전엔 상단 상태 뱃지가 그대로 "답변완료"로
+      // 남아있어 헷갈릴 수 있다 — 서버 데이터를 다시 가져와 뱃지도 바로 반영되게 한다.
+      router.refresh()
     })
   }
 
@@ -432,6 +441,19 @@ export function StudentQnaDetail({ question, answers, aiDraft, studentName, rela
                 </CardContent>
               </Card>
             ))}
+            {question.status === 'answered' && answers.some((a) => a.isTaReviewed) && (
+              requested ? (
+                <p className="text-center text-xs font-bold text-zinc-400">조교님께 요청을 보냈어요. 답변을 기다려주세요.</p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setTaFollowUpOpen(true)}
+                  className="w-full rounded-2xl border border-dashed border-zinc-200 py-3 text-xs font-bold text-zinc-400 hover:border-zinc-400 hover:text-zinc-700 transition-colors"
+                >
+                  더 궁금한 점이 있으신가요? 추가 질문하기
+                </button>
+              )
+            )}
           </div>
         ) : !aiDraft ? (
           <Card>
@@ -505,6 +527,40 @@ export function StudentQnaDetail({ question, answers, aiDraft, studentName, rela
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        open={taFollowUpOpen}
+        onClose={() => { setTaFollowUpOpen(false); setTaFollowUpDetail('') }}
+        title="어떤 점이 더 궁금하신가요?"
+      >
+        <div className="space-y-3">
+          <textarea
+            rows={4}
+            value={taFollowUpDetail}
+            onChange={(e) => setTaFollowUpDetail(e.target.value)}
+            placeholder="궁금한 점을 자유롭게 적어주세요."
+            className="w-full resize-none rounded-xl border border-zinc-200 px-4 py-3 text-sm leading-relaxed text-zinc-900 placeholder:text-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 focus:outline-none transition-all"
+          />
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => { setTaFollowUpOpen(false); setTaFollowUpDetail('') }}
+              disabled={requestPending}
+              className="rounded-xl border border-zinc-200 px-4 py-2 text-xs font-bold text-zinc-500 hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-50 transition-colors"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={() => submitFeedback('other', taFollowUpDetail)}
+              disabled={requestPending || !taFollowUpDetail.trim()}
+              className="rounded-xl bg-zinc-950 px-4 py-2 text-xs font-bold text-white hover:bg-zinc-800 disabled:pointer-events-none disabled:bg-zinc-300 disabled:text-zinc-500 transition-colors"
+            >
+              {requestPending ? '요청 중...' : '요청 보내기'}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   )

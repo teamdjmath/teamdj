@@ -56,7 +56,20 @@ export async function requestAdditionalAnswer(
 
   if (!question) return { error: '질문을 찾을 수 없습니다.' }
   if (question.student_id !== user.id) return { error: '본인의 질문만 요청할 수 있습니다.' }
-  if (question.status === 'answered') return { error: '이미 답변이 완료된 질문입니다.' }
+
+  if (question.status === 'answered') {
+    // AI 자기확정 답변은 확정 전에 이미 추가 요청 기회가 있었으니 그대로 막는다. 하지만
+    // 조교/선생님이 실제로 답변한 경우엔 학생이 사전에 확인할 기회가 없었으므로,
+    // 답변완료 상태라도 추가 질문을 계속 받는다.
+    const { data: lastAnswer } = await supabase
+      .from('qna_answers')
+      .select('ta_id')
+      .eq('question_id', questionId)
+      .order('answered_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (!lastAnswer?.ta_id) return { error: '이미 답변이 완료된 질문입니다.' }
+  }
 
   const now = new Date().toISOString()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
