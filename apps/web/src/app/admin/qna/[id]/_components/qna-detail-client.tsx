@@ -618,6 +618,10 @@ export function QnaDetailClient({ question, answers, aiDraft, aiFailure, queueMo
           <div className="flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-500">
             {question.assignedTaName ? (
               <span>담당: <strong className="text-zinc-800 dark:text-zinc-200">{question.assignedTaName}</strong></span>
+            ) : question.status === 'answered' && answers.some((a) => !a.taId) ? (
+              // 조교 배정 없이 학생이 AI 초안을 직접 확정한 경우 — "담당 없음"으로 보이면
+              // 조교 미개입 정상 케이스인지 방치된 건지 구분이 안 돼서 헷갈릴 수 있다.
+              <span className="rounded-full bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-700">담당: AI (학생 자기확정)</span>
             ) : (
               <span className="text-zinc-400 dark:text-zinc-600">담당 조교 없음</span>
             )}

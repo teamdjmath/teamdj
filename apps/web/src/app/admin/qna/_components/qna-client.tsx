@@ -507,6 +507,12 @@ export function QnaClient({
                     >
                       {q.assignedTaName}
                     </button>
+                  ) : q.status === 'answered' && q.hasAiDraft ? (
+                    // 조교 배정 없이 학생이 AI 초안을 직접 확정한 경우 — "담당 없음"으로 보이면
+                    // 조교 미개입 정상 케이스인지 방치된 건지 구분이 안 돼서 헷갈릴 수 있다.
+                    <span className="rounded-full bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-700">
+                      AI
+                    </span>
                   ) : (
                     <span className="rounded-full border border-dashed border-zinc-200 dark:border-zinc-800 px-2.5 py-1 text-xs text-zinc-300 dark:text-zinc-700">
                       담당 없음
