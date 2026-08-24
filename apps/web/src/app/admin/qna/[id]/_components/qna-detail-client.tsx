@@ -323,6 +323,9 @@ function AnswerEditor({
         <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-600">
           난이도 (1–8, <span className="text-red-500">필수</span>) · 하 1–4 / 중 5–6 / 상 7–8
         </label>
+        <p className="text-[11px] text-zinc-400 dark:text-zinc-600">
+          이미지에 난이도가 표기되어있으면 반드시 해당 난이도로 설정해주세요. 이외의 경우 문항 수준을 보시고 설정하시면 됩니다.
+        </p>
         <div className="flex flex-wrap items-center gap-3">
           <input
             type="range"
@@ -331,7 +334,7 @@ function AnswerEditor({
             step={1}
             value={difficulty ?? 4}
             onChange={(e) => onDifficultyChange(parseInt(e.target.value, 10))}
-            disabled={isPending || difficulty === null}
+            disabled={isPending}
             className="h-1.5 w-48 accent-zinc-950 dark:accent-zinc-50 disabled:opacity-50"
           />
           <span className="min-w-10 text-sm font-medium text-zinc-700 dark:text-zinc-300">
