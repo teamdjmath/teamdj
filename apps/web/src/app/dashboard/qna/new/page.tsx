@@ -37,7 +37,7 @@ export default async function NewQuestionPage() {
   const [membershipsRes, textbooksRes, subjectsRes] = await Promise.all([
     supabase
       .from('class_members')
-      .select('class_id, class_groups(id, name, subject)')
+      .select('class_id, class_groups(id, name, subject, grade)')
       .eq('student_id', user.id)
       .eq('is_active', true),
     db.from('textbooks').select('id, name').order('name'),
@@ -46,7 +46,7 @@ export default async function NewQuestionPage() {
 
   const classes = (membershipsRes.data || [])
     .map((m: { class_groups: unknown }) => m.class_groups)
-    .filter(Boolean) as { id: string; name: string; subject: string }[]
+    .filter(Boolean) as { id: string; name: string; subject: string; grade: string }[]
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const textbooks = (textbooksRes.data ?? []).map((t: any) => ({ id: t.id as string, name: t.name as string }))

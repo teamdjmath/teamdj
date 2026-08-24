@@ -12,7 +12,10 @@ interface ClassGroup {
   id: string
   name: string
   subject: string
+  grade: string
 }
+
+const EXTERNAL_TEXTBOOK_NAME = '외부교재'
 
 interface Textbook {
   id: string
@@ -61,6 +64,11 @@ export function NewQuestionForm({
 
   const [similarQuestions, setSimilarQuestions] = useState<SimilarQuestion[]>([])
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // 고3 분반은 학원 자체 교재 대신 수능특강 등 외부 교재로 질문하는 경우가 많아 "외부교재"
+  // 선택지를 추가로 보여준다 — 다른 학년에는 안 보이게 목록에서 제외.
+  const isGrade3 = classes.find((c) => c.id === classId)?.grade?.replace(/\s/g, '') === '고3'
+  const visibleTextbooks = isGrade3 ? textbooks : textbooks.filter((t) => t.name !== EXTERNAL_TEXTBOOK_NAME)
 
   // 같은 분반 내 유사 질문 조회
   useEffect(() => {
@@ -191,7 +199,14 @@ export function NewQuestionForm({
       <SelectField
         label="분반"
         value={classId}
-        onChange={(e) => setClassId(e.target.value)}
+        onChange={(e) => {
+          const nextClassId = e.target.value
+          setClassId(nextClassId)
+          // 고3이 아닌 분반으로 바뀌면 이미 골라둔 "외부교재" 선택이 무효가 되니 초기화
+          const nextIsGrade3 = classes.find((c) => c.id === nextClassId)?.grade?.replace(/\s/g, '') === '고3'
+          const selectedTextbook = textbooks.find((t) => t.id === textbookId)
+          if (!nextIsGrade3 && selectedTextbook?.name === EXTERNAL_TEXTBOOK_NAME) setTextbookId('')
+        }}
         required
       >
         <option value="">분반을 선택해주세요</option>
@@ -210,7 +225,7 @@ export function NewQuestionForm({
         required
       >
         <option value="">교재를 선택해주세요</option>
-        {textbooks.map((t) => (
+        {visibleTextbooks.map((t) => (
           <option key={t.id} value={t.id}>
             {t.name}
           </option>
