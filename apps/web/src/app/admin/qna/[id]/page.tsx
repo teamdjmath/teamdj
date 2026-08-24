@@ -4,7 +4,7 @@ import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { findRelatedAnswers, getDifficultyHint } from '@/lib/data/qna-related'
-import { translateAiFailureReason } from '@/lib/qna-status'
+import { translateAiFailureReason, QNA_FEEDBACK_CATEGORY_LABEL } from '@/lib/qna-status'
 import { QnaDetailClient } from './_components/qna-detail-client'
 
 export default async function QnaDetailPage({
@@ -114,6 +114,27 @@ export default async function QnaDetailPage({
     }
   }
 
+  // 추가 답변을 요청하며 학생이 남긴 사유 — 조교가 뭘 고쳐야 할지 모른 채로 다시 쓰지 않게
+  // "추가 답변 작성" 칸 위에 보여준다. 요청이 여러 번 있었어도 지금 대기 중인 가장 최근 것만.
+  let requestReason: { categoryLabel: string; detail: string | null; createdAt: string } | null = null
+  if (question.additionalRequestedAt) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: feedbackRow } = await (supabase as any)
+      .from('qna_ai_feedback')
+      .select('category, detail, created_at')
+      .eq('question_id', id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (feedbackRow) {
+      requestReason = {
+        categoryLabel: QNA_FEEDBACK_CATEGORY_LABEL[feedbackRow.category as string] ?? feedbackRow.category,
+        detail: (feedbackRow.detail as string | null) ?? null,
+        createdAt: feedbackRow.created_at as string,
+      }
+    }
+  }
+
   const currentUserName = (user.user_metadata?.name as string | undefined) ?? ''
   const currentUserRole = (user.user_metadata?.role as string | undefined) ?? ''
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -170,6 +191,7 @@ export default async function QnaDetailPage({
         answers={answers}
         aiDraft={aiDraft}
         aiFailure={aiFailure}
+        requestReason={requestReason}
         queueMode={queueMode}
         currentUserId={user.id}
         currentUserName={currentUserName}

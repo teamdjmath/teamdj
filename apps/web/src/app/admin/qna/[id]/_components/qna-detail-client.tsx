@@ -69,6 +69,7 @@ interface Props {
   answers: Answer[]
   aiDraft?: AiDraft | null
   aiFailure?: { reason: string; message: string; createdAt: string } | null
+  requestReason?: { categoryLabel: string; detail: string | null; createdAt: string } | null
   queueMode?: boolean
   currentUserId: string
   currentUserName: string
@@ -400,7 +401,7 @@ function AnswerEditor({
   )
 }
 
-export function QnaDetailClient({ question, answers, aiDraft, aiFailure, queueMode, currentUserId, currentUserName, currentUserRole, currentUserIsSuperAdmin, relatedAnswers, difficultyHint }: Props) {
+export function QnaDetailClient({ question, answers, aiDraft, aiFailure, requestReason, queueMode, currentUserId, currentUserName, currentUserRole, currentUserIsSuperAdmin, relatedAnswers, difficultyHint }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -858,6 +859,12 @@ export function QnaDetailClient({ question, answers, aiDraft, aiFailure, queueMo
                 ? 'AI가 1차로 작성한 답변이에요. 그대로 괜찮으면 "답변 확정"을 누르고, 고칠 부분이 있으면 아래에서 수정한 뒤 제출하세요.'
                 : '유사 문항의 기존 답변을 자동으로 연결했어요. 같은 문항이 맞는지 확인하고, 다르면 아래에서 수정한 뒤 제출하세요.'}
             </p>
+          )}
+          {requestReason && (
+            <div className="mb-4 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-3 py-2.5 text-xs text-amber-800 dark:text-amber-400">
+              <p className="font-semibold">요청 사유: {requestReason.categoryLabel}</p>
+              {requestReason.detail && <p className="mt-1 whitespace-pre-wrap leading-relaxed">{requestReason.detail}</p>}
+            </div>
           )}
           <AnswerEditor
             content={content} onContentChange={handleContentChange}

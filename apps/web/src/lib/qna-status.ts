@@ -72,6 +72,15 @@ export async function getOldestAiDraftQuestionId(supabase: QueryableClient): Pro
   return (oldest?.id as string | undefined) ?? null
 }
 
+// 학생이 추가 답변을 요청할 때 고르는 사유 — 답변 통계(모니터링)와 조교 답변 화면(요청 사유
+// 표시) 둘 다에서 쓰므로 한 곳에 모아둔다.
+export const QNA_FEEDBACK_CATEGORY_LABEL: Record<string, string> = {
+  wrong_answer: '정답을 출력하지 못함',
+  unclear_explanation: '풀이과정 설명이 부족함',
+  mismatched_problem: '유사 문항이 실제 문항과 다름',
+  other: '기타(직접 서술)',
+}
+
 // error_logs에 남는 원문 메시지는 프로그래밍 배경이 없으면 못 알아본다 — 조교 화면에는
 // 원인 종류만 짧게 번역해서 보여준다 (원문은 그 아래에 작게 참고용으로 같이 노출).
 export function translateAiFailureReason(message: string): string {

@@ -4,13 +4,7 @@ import { estimateCostKrw } from '@/lib/ai-pricing'
 import { redirect } from 'next/navigation'
 import { unstable_cache } from 'next/cache'
 import { MonitoringClient, type BehaviorStats, type AiUsageStats, type AiFeedbackStats } from './_components/monitoring-client'
-
-const FEEDBACK_CATEGORY_LABEL: Record<string, string> = {
-  wrong_answer: '정답을 출력하지 못함',
-  unclear_explanation: '풀이과정 설명이 부족함',
-  mismatched_problem: '유사 문항이 실제 문항과 다름',
-  other: '기타(직접 서술)',
-}
+import { QNA_FEEDBACK_CATEGORY_LABEL as FEEDBACK_CATEGORY_LABEL } from '@/lib/qna-status'
 
 // "AI 답변이 부족했다"는 학생 피드백을 문항/카테고리별로 집계 — 어떤 문항에서 AI가
 // 자주 틀리는지, 어떤 유형의 부족함이 많은지 파악하기 위함 (최근 90일)
