@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { Card, CardHeader } from '@/components/ui/card'
 import { LogoutButton } from '@/components/ui/logout-button'
 import { submitInquiry } from '@/lib/actions/consultations'
+import { usePushSubscription } from '@/hooks/usePushSubscription'
 
-const LS_NOTIFICATIONS = 'teamdj_notifications'
 const LS_MARKETING = 'teamdj_marketing'
 
 type FaqItem = { q: string; a: string }
@@ -17,10 +17,13 @@ export function MoreClient({
   faqItems: FaqItem[]
 }) {
   const [settings, setSettings] = useState({
-    notifications: true,
     marketing: false,
     mounted: false,
   })
+
+  // "알림 허용" 스위치는 실제 웹 푸시 구독 상태를 그대로 반영한다 — 예전엔 localStorage에만
+  // 저장하고 아무 데도 안 쓰이는 장식용 스위치였는데, 실제 브라우저 알림 켜기/끄기로 바꿨다.
+  const { supported: pushSupported, subscribed: pushSubscribed, isPending: pushPending, subscribe, unsubscribe } = usePushSubscription()
 
   const [faqOpen, setFaqOpen] = useState(false)
   const [openFaqItem, setOpenFaqItem] = useState<number | null>(null)
@@ -32,11 +35,9 @@ export function MoreClient({
   const [isSubmitting, startSubmit] = useTransition()
 
   useEffect(() => {
-    const n = localStorage.getItem(LS_NOTIFICATIONS)
     const m = localStorage.getItem(LS_MARKETING)
     requestAnimationFrame(() => {
       setSettings({
-        notifications: n !== null ? n === 'true' : true,
         marketing: m !== null ? m === 'true' : false,
         mounted: true,
       })
@@ -44,8 +45,8 @@ export function MoreClient({
   }, [])
 
   function handleNotifications(v: boolean) {
-    setSettings(s => ({ ...s, notifications: v }))
-    localStorage.setItem(LS_NOTIFICATIONS, String(v))
+    if (v) subscribe()
+    else unsubscribe()
   }
 
   function handleMarketing(v: boolean) {
@@ -178,9 +179,11 @@ export function MoreClient({
         <ul className="divide-y divide-zinc-50">
           <ToggleItem
             label="알림 허용"
-            description="수업, 과제, 공지 알림"
-            value={settings.notifications}
+            description={pushSupported ? '수업, 과제, 공지 알림' : '이 브라우저는 알림을 지원하지 않아요'}
+            value={pushSubscribed}
             onChange={handleNotifications}
+            disabled={!pushSupported || pushPending}
+            note={pushSubscribed ? '아이폰·아이패드는 홈 화면에 추가해야 알림을 받을 수 있어요.' : undefined}
           />
           <ToggleItem
             label="마케팅 알림"
@@ -266,35 +269,43 @@ function ToggleItem({
   description,
   value,
   onChange,
+  disabled,
+  note,
 }: {
   label: string
   description: string
   value: boolean
   onChange: (v: boolean) => void
+  disabled?: boolean
+  note?: string
 }) {
   return (
-    <li className="flex items-center justify-between px-6 py-5">
-      <div>
-        <p className="text-[15px] font-bold text-zinc-800">{label}</p>
-        <p className="text-xs font-medium text-zinc-400 mt-0.5">{description}</p>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={value}
-        onClick={() => onChange(!value)}
-        className={[
-          'relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 shadow-inner',
-          value ? 'bg-zinc-950' : 'bg-zinc-200',
-        ].join(' ')}
-      >
-        <span
+    <li className="px-6 py-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[15px] font-bold text-zinc-800">{label}</p>
+          <p className="text-xs font-medium text-zinc-400 mt-0.5">{description}</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={value}
+          disabled={disabled}
+          onClick={() => onChange(!value)}
           className={[
-            'pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200',
-            value ? 'translate-x-5' : 'translate-x-0',
+            'relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 shadow-inner disabled:opacity-50 disabled:cursor-not-allowed',
+            value ? 'bg-zinc-950' : 'bg-zinc-200',
           ].join(' ')}
-        />
-      </button>
+        >
+          <span
+            className={[
+              'pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200',
+              value ? 'translate-x-5' : 'translate-x-0',
+            ].join(' ')}
+          />
+        </button>
+      </div>
+      {note && <p className="mt-2 text-xs font-medium text-zinc-400">{note}</p>}
     </li>
   )
 }

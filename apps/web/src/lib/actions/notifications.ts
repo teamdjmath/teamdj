@@ -3,6 +3,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendPushToUser } from '@/lib/push'
+import { logger } from '@/lib/logger'
 
 export type NotificationType =
   | 'qna_new'
@@ -38,6 +40,15 @@ export async function createNotification(
     body,
     link: link ?? null,
   })
+
+  // 이 앱의 모든 알림(질문/답변/공지/쪽지/출석)이 여기 한 곳을 거치므로, 여기서만 웹 푸시를
+  // 같이 보내면 호출부를 하나하나 안 고쳐도 전부 웹 푸시가 함께 나간다. 구독이 없거나 VAPID
+  // 설정이 없으면 sendPushToUser가 조용히 아무 것도 안 하므로 실패해도 알림 생성 자체는 유지.
+  try {
+    await sendPushToUser(userId, { title, body, url: link })
+  } catch (err) {
+    logger.warn('createNotification:push-failed', { action: 'createNotification', userId, error: err })
+  }
 }
 
 export async function getNotifications(): Promise<NotificationRow[]> {

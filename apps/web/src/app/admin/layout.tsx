@@ -8,6 +8,7 @@ import { MobileNav } from './_components/mobile-nav'
 import { SidebarNav } from './_components/sidebar-nav'
 import { NotificationsProvider } from '@/contexts/notifications-context'
 import { NotificationBell } from '@/components/ui/notification-bell'
+import { PushNotificationToggle } from '@/components/ui/push-notification-toggle'
 import { ToastContainer } from '@/components/ui/toast'
 import { InactivityGuard } from '@/components/ui/inactivity-guard'
 import { NativePickerOpener } from '@/components/ui/native-picker-opener'
@@ -105,6 +106,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">{displayName}</p>
               <div className="flex items-center gap-1 shrink-0">
                 <ThemeToggle className="w-7 h-7" />
+                <PushNotificationToggle />
                 <NotificationBell placement="up" />
               </div>
             </div>
@@ -117,6 +119,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <Link href="/admin/dashboard" className="text-base font-bold text-zinc-950 dark:text-zinc-50">TeamDJ</Link>
           <div className="flex items-center gap-2">
             <ThemeToggle className="w-7 h-7" />
+            <PushNotificationToggle />
             <NotificationBell />
             <span className="text-sm text-zinc-500 dark:text-zinc-500">{displayName}</span>
             <MobileNav items={visibleItems} badges={badges} />
