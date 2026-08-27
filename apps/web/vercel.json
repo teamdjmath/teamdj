@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/overdue-assignments", "schedule": "0 10 * * *" },
-    { "path": "/api/cron/qna-answer-reminder", "schedule": "0 * * * *" }
+    { "path": "/api/cron/qna-answer-reminder", "schedule": "0 * * * *" },
+    { "path": "/api/cron/retry-failed-ai-drafts", "schedule": "30 * * * *" }
   ]
 }

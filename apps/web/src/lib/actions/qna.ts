@@ -707,6 +707,125 @@ export async function getNextAiDraftQuestionId(): Promise<string | null> {
   return getOldestAiDraftQuestionId(admin)
 }
 
+// AI 1차 답변 준비(유사 문항 재활용 또는 새로 생성) — 질문 등록 직후 자동 실행과, 실패한 질문을
+// 나중에 다시 시도하는 재시도 cron이 공유하는 핵심 로직. 항상 DB에서 최신 상태를 다시 읽어와
+// 확인한다 — 그 사이 질문이 삭제됐거나(학생이 등록 직후 지우는 레이스), 이미 다른 경로로 답변이
+// 붙었으면 조용히 아무 것도 안 하고 리턴한다.
+async function attemptAiDraftForQuestion(questionId: string): Promise<{ attempted: boolean }> {
+  const admin = createAdminClient()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: question } = await (admin as any)
+    .from('qna_questions')
+    .select('id, title, content, image_urls, status, textbook_id, problem_number, subject_id, student_id')
+    .eq('id', questionId)
+    .maybeSingle()
+
+  if (!question || question.status !== 'open') return { attempted: false }
+
+  const { count: existingAnswerCount } = await admin
+    .from('qna_answers')
+    .select('id', { count: 'exact', head: true })
+    .eq('question_id', questionId)
+  if ((existingAnswerCount ?? 0) > 0) return { attempted: false }
+
+  const studentId = question.student_id as string
+  let subjectName: string | null = null
+  if (question.subject_id) {
+    const { data: subjectRow } = await admin.from('subjects').select('name').eq('id', question.subject_id).maybeSingle()
+    subjectName = (subjectRow?.name as string | undefined) ?? null
+  }
+
+  const related = await findRelatedAnswers({
+    excludeQuestionId: questionId,
+    textbookId: (question.textbook_id ?? null) as string | null,
+    problemNumber: (question.problem_number ?? null) as string | null,
+    title: question.title as string,
+    content: question.content as string,
+  })
+  const bestMatch = related[0]
+
+  // 23503 = FK 위반 — 이 사이 질문이 삭제된 것(학생이 등록 직후 지웠거나, 재시도 cron이 먼저
+  // 처리한 레이스)일 뿐 실제 버그가 아니므로 Slack까지 띄우지 않는다(severity: warn = DB 기록만).
+  if (bestMatch) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: linkError } = await (admin as any).from('qna_answers').insert({
+      question_id: questionId,
+      ta_id: null,
+      content: bestMatch.content,
+      media_urls: bestMatch.mediaUrls,
+      is_ai_draft: false,
+      adopted_from_question_id: bestMatch.questionId,
+      difficulty: bestMatch.difficulty,
+    })
+    if (linkError) {
+      const isDeletedRace = linkError.code === '23503'
+      logger[isDeletedRace ? 'warn' : 'error']('attemptAiDraftForQuestion:related-link-failed', { action: 'attemptAiDraftForQuestion', userId: studentId, error: linkError })
+      await reportError({
+        source: 'server', severity: isDeletedRace ? 'warn' : 'error',
+        message: isDeletedRace
+          ? '유사 문항 자동연결 저장 실패: 질문이 이미 삭제됨(정상적인 경쟁 상황)'
+          : `유사 문항 자동연결 저장 실패: ${linkError.message ?? '알 수 없는 오류'}`,
+        userId: studentId, context: { questionId, step: 'related-link' },
+      })
+      return { attempted: true }
+    }
+    revalidatePath('/admin/qna')
+    revalidatePath(`/admin/qna/${questionId}`)
+    revalidatePath('/dashboard/qna')
+    revalidatePath(`/dashboard/qna/${questionId}`)
+    return { attempted: true }
+  }
+
+  const result = await runAiDraftGeneration(question.content as string, (question.image_urls as string[]) ?? [], 'full', studentId, subjectName)
+  if (result.error || !result.draft) {
+    logger.warn('attemptAiDraftForQuestion:ai-draft-failed', { action: 'attemptAiDraftForQuestion', userId: studentId, error: result.error })
+    // 실패해도 아무 데도 기록이 안 남으면 "실패인지 그냥 안 됐는지" 나중에 구분할 방법이 없다 —
+    // error_logs에 남기고(추후 조회 가능) Slack으로도 바로 알린다. 재시도 cron이 다음 주기에
+    // 다시 시도하므로, 모델 과부하 같은 일시적 오류는 자연히 회복된다.
+    await reportError({
+      source: 'server', severity: 'error',
+      message: `QnA AI 1차 답변 생성 실패: ${result.error ?? '빈 응답'}`,
+      userId: studentId, context: { questionId, step: 'ai-draft-generate' },
+    })
+    return { attempted: true }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: draftError } = await (admin as any).from('qna_answers').insert({
+    question_id: questionId,
+    ta_id: null,
+    content: result.draft,
+    media_urls: result.mediaUrls ?? [],
+    is_ai_draft: true,
+    difficulty: null,
+  })
+  if (draftError) {
+    const isDeletedRace = draftError.code === '23503'
+    logger[isDeletedRace ? 'warn' : 'error']('attemptAiDraftForQuestion:ai-draft-save-failed', { action: 'attemptAiDraftForQuestion', userId: studentId, error: draftError })
+    await reportError({
+      source: 'server', severity: isDeletedRace ? 'warn' : 'error',
+      message: isDeletedRace
+        ? 'QnA AI 1차 답변 저장 실패: 질문이 이미 삭제됨(정상적인 경쟁 상황)'
+        : `QnA AI 1차 답변 저장 실패: ${draftError.message ?? '알 수 없는 오류'}`,
+      userId: studentId, context: { questionId, step: 'ai-draft-save' },
+    })
+    return { attempted: true }
+  }
+
+  revalidatePath('/admin/qna')
+  revalidatePath(`/admin/qna/${questionId}`)
+  revalidatePath('/dashboard/qna')
+  revalidatePath(`/dashboard/qna/${questionId}`)
+  return { attempted: true }
+}
+
+// 실패한 AI 1차 답변을 나중에 다시 시도하는 재시도 cron 전용 진입점 — 인증은 cron 라우트에서
+// CRON_SECRET으로 처리하므로 여기선 별도 권한 체크 없이 바로 실행한다.
+export async function retryAiDraftForQuestion(questionId: string): Promise<{ attempted: boolean }> {
+  return attemptAiDraftForQuestion(questionId)
+}
+
 export async function createQuestion(data: {
   title: string
   content: string
@@ -800,101 +919,13 @@ export async function createQuestion(data: {
   }
 
   // 1차 답변 자동 준비 — 학생 응답을 기다리게 하면 안 되므로 응답 전송 후 백그라운드에서 실행.
-  // 조교가 검토 전까지는 ta_id가 null인 미확정 상태로만 존재한다(AI 생성이든, 아래 유사 문항
-  // 재활용이든 동일). 같은/비슷한 문항에 이미 답변이 있으면 AI를 호출하지 않고 그 답변을 그대로
-  // 재사용해 비용을 아낀다 — 다만 실제로 다른 문항일 수 있어(특히 유사도 매칭) 학생이 "유사 문항이
-  // 실제 문항과 다름"으로 피드백하며 추가 요청할 수 있게 해둔다.
+  // 조교가 검토 전까지는 ta_id가 null인 미확정 상태로만 존재한다(AI 생성이든, 유사 문항 재활용
+  // 이든 동일). 실제 로직은 attemptAiDraftForQuestion에 있다 — 재시도 cron과 공유하기 위해
+  // DB에서 질문을 다시 읽어와 처리하므로 여기서 따로 값을 넘길 필요가 없다.
   if (inserted?.id) {
     const questionId = inserted.id as string
-    const questionContent = data.content
-    const imageUrls = data.imageUrls
-    const studentId = user.id
-    const textbookId = data.textbookId ?? null
-    const problemNumber = data.problemNumber ?? null
-    const subjectId = data.subjectId ?? null
-    const title = data.title
-
     after(async () => {
-      const admin = createAdminClient()
-
-      let subjectName: string | null = null
-      if (subjectId) {
-        const { data: subjectRow } = await admin.from('subjects').select('name').eq('id', subjectId).maybeSingle()
-        subjectName = (subjectRow?.name as string | undefined) ?? null
-      }
-
-      const related = await findRelatedAnswers({
-        excludeQuestionId: questionId,
-        textbookId,
-        problemNumber,
-        title,
-        content: questionContent,
-      })
-      const bestMatch = related[0]
-
-      if (bestMatch) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: linkError } = await (admin as any).from('qna_answers').insert({
-          question_id: questionId,
-          ta_id: null,
-          content: bestMatch.content,
-          media_urls: bestMatch.mediaUrls,
-          is_ai_draft: false,
-          adopted_from_question_id: bestMatch.questionId,
-          difficulty: bestMatch.difficulty,
-        })
-        if (linkError) {
-          logger.error('createQuestion:related-link-failed', { action: 'createQuestion', userId: studentId, error: linkError })
-          await reportError({
-            source: 'server', severity: 'error',
-            message: `유사 문항 자동연결 저장 실패: ${linkError.message ?? '알 수 없는 오류'}`,
-            userId: studentId, context: { questionId, step: 'related-link' },
-          })
-        } else {
-          revalidatePath('/admin/qna')
-          revalidatePath(`/admin/qna/${questionId}`)
-          revalidatePath('/dashboard/qna')
-          revalidatePath(`/dashboard/qna/${questionId}`)
-        }
-        return
-      }
-
-      const result = await runAiDraftGeneration(questionContent, imageUrls, 'full', studentId, subjectName)
-      if (result.error || !result.draft) {
-        logger.warn('createQuestion:ai-draft-failed', { action: 'createQuestion', userId: studentId, error: result.error })
-        // 실패해도 아무 데도 기록이 안 남으면 "실패인지 그냥 안 됐는지" 나중에 구분할 방법이 없다 —
-        // error_logs에 남기고(추후 조회 가능) Slack으로도 바로 알린다.
-        await reportError({
-          source: 'server', severity: 'error',
-          message: `QnA AI 1차 답변 생성 실패: ${result.error ?? '빈 응답'}`,
-          userId: studentId, context: { questionId, step: 'ai-draft-generate' },
-        })
-        return
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: draftError } = await (admin as any).from('qna_answers').insert({
-        question_id: questionId,
-        ta_id: null,
-        content: result.draft,
-        media_urls: result.mediaUrls ?? [],
-        is_ai_draft: true,
-        difficulty: null,
-      })
-      if (draftError) {
-        logger.error('createQuestion:ai-draft-save-failed', { action: 'createQuestion', userId: studentId, error: draftError })
-        await reportError({
-          source: 'server', severity: 'error',
-          message: `QnA AI 1차 답변 저장 실패: ${draftError.message ?? '알 수 없는 오류'}`,
-          userId: studentId, context: { questionId, step: 'ai-draft-save' },
-        })
-        return
-      }
-
-      revalidatePath('/admin/qna')
-      revalidatePath(`/admin/qna/${questionId}`)
-      revalidatePath('/dashboard/qna')
-      revalidatePath(`/dashboard/qna/${questionId}`)
+      await attemptAiDraftForQuestion(questionId)
     })
   }
 
