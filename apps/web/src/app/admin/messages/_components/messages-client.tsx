@@ -7,6 +7,7 @@ import { sendMessage } from '@/lib/actions/messages'
 import { sendKakaoBroadcast } from '@/lib/actions/kakao-broadcast'
 import { markInquiryRead } from '@/lib/actions/consultations'
 import { createClient } from '@/lib/supabase/client'
+import { ImageLightbox } from '@/components/ui/image-lightbox'
 
 interface ClassOption {
   id: string
@@ -23,6 +24,7 @@ interface MessageRecord {
   id: string
   content: string
   createdAt: string
+  imageUrls: string[]
   targetLabel: string
 }
 
@@ -126,6 +128,9 @@ export function MessagesClient({
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null)
   const [inquiryPending, startInquiryTransition] = useTransition()
   const unreadInquiries = inquiries.filter((i) => !i.is_read).length
+
+  const [selectedMessage, setSelectedMessage] = useState<MessageRecord | null>(null)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   const [channel, setChannel] = useState<Channel>('push')
   const [audience, setAudience] = useState<Audience>('student')
@@ -470,7 +475,12 @@ export function MessagesClient({
                       {imageUrls.map((url) => (
                         <div key={url} className="relative">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={url} alt="첨부" className="h-20 w-20 rounded-lg border border-zinc-200 dark:border-zinc-800 object-cover" />
+                          <img
+                            src={url}
+                            alt="첨부"
+                            onClick={() => setLightboxUrl(url)}
+                            className="h-20 w-20 cursor-zoom-in rounded-lg border border-zinc-200 dark:border-zinc-800 object-cover"
+                          />
                           <button
                             type="button"
                             onClick={() => removeImage(url)}
@@ -509,14 +519,23 @@ export function MessagesClient({
             ) : (
               <ul className="divide-y divide-zinc-100 dark:divide-zinc-900">
                 {messages.map((m) => (
-                  <li key={m.id} className="px-5 py-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-500 mb-1">{m.targetLabel}</p>
-                        <p className="text-sm text-zinc-800 dark:text-zinc-200 line-clamp-2">{m.content}</p>
+                  <li key={m.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMessage(m)}
+                      className="w-full px-5 py-4 text-left hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-500 mb-1">{m.targetLabel}</p>
+                          <p className="text-sm text-zinc-800 dark:text-zinc-200 line-clamp-2">{m.content}</p>
+                          {m.imageUrls.length > 0 && (
+                            <p className="mt-1 text-[11px] text-zinc-400 dark:text-zinc-600">이미지 {m.imageUrls.length}장</p>
+                          )}
+                        </div>
+                        <span className="shrink-0 text-[10px] text-zinc-400 dark:text-zinc-600 mt-0.5">{formatDatetime(m.createdAt)}</span>
                       </div>
-                      <span className="shrink-0 text-[10px] text-zinc-400 dark:text-zinc-600 mt-0.5">{formatDatetime(m.createdAt)}</span>
-                    </div>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -549,6 +568,50 @@ export function MessagesClient({
           </div>
         </div>
       )}
+
+      {/* 쪽지 상세보기 */}
+      {selectedMessage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          onClick={() => setSelectedMessage(null)}
+        >
+          <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-zinc-900 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-base font-bold text-zinc-950 dark:text-zinc-50">쪽지 상세</h2>
+              <button type="button" onClick={() => setSelectedMessage(null)} className="text-sm text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300">닫기</button>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-zinc-400 dark:text-zinc-600">대상</span>
+                <span className="font-medium text-zinc-900 dark:text-zinc-100">{selectedMessage.targetLabel}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-zinc-400 dark:text-zinc-600">발송일</span>
+                <span className="text-zinc-600 dark:text-zinc-400">{formatDatetime(selectedMessage.createdAt)}</span>
+              </div>
+              <p className="rounded-xl bg-zinc-50 dark:bg-zinc-950 px-4 py-3 text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap leading-relaxed">
+                {selectedMessage.content}
+              </p>
+              {selectedMessage.imageUrls.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {selectedMessage.imageUrls.map((url) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={url}
+                      src={url}
+                      alt="첨부 이미지"
+                      onClick={() => setLightboxUrl(url)}
+                      className="h-28 w-28 cursor-zoom-in rounded-lg border border-zinc-200 dark:border-zinc-800 object-cover"
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
     </div>
   )
 }

@@ -27,7 +27,7 @@ export default async function MessagesPage({
     supabase
       .from('push_messages')
       .select(
-        'id, content, created_at, class_id, student_id, class_groups!class_id(name), users!student_id(name)',
+        'id, content, created_at, class_id, student_id, image_urls, class_groups!class_id(name), users!student_id(name)',
       )
       .eq('sender_id', userId)
       .eq('is_system', false)
@@ -63,7 +63,8 @@ export default async function MessagesPage({
   }
   students.sort((a, b) => a.name.localeCompare(b.name, 'ko'))
 
-  const messages = (messagesResult.data ?? []).map((m) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const messages = ((messagesResult.data ?? []) as any[]).map((m) => {
     const cg = m.class_groups as { name: string } | null
     const u = m.users as { name: string } | null
     const targetLabel = cg?.name ? `분반: ${cg.name}` : u?.name ? `학생: ${u.name}` : '전체 학생'
@@ -71,6 +72,7 @@ export default async function MessagesPage({
       id: m.id as string,
       content: m.content as string,
       createdAt: m.created_at as string,
+      imageUrls: (m.image_urls as string[] | null) ?? [],
       targetLabel,
     }
   })

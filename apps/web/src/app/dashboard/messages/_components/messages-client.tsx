@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { markAllAsRead } from '@/lib/actions/messages'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
+import { ImageLightbox } from '@/components/ui/image-lightbox'
 
 interface Message {
   id: string
@@ -16,6 +17,7 @@ interface Message {
 
 export function MessagesClient({ initialMessages }: { initialMessages: Message[] }) {
   const messages = initialMessages
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   useEffect(() => {
     // 페이지 진입 시 모든 메시지 읽음 처리
@@ -51,7 +53,13 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
                   <div className="flex flex-wrap gap-2 pt-1">
                     {m.image_urls.map((url) => (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img key={url} src={url} alt="첨부 이미지" className="h-24 w-24 rounded-lg border border-zinc-200 object-cover" />
+                      <img
+                        key={url}
+                        src={url}
+                        alt="첨부 이미지"
+                        onClick={() => setLightboxUrl(url)}
+                        className="h-24 w-24 cursor-zoom-in rounded-lg border border-zinc-200 object-cover"
+                      />
                     ))}
                   </div>
                 )}
@@ -68,6 +76,7 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
           </CardContent>
         </Card>
       ))}
+      <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
     </div>
   )
 }
