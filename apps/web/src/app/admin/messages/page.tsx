@@ -110,6 +110,7 @@ export default async function MessagesPage({
         <p className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-600">학생 문의 확인, 쪽지·카카오톡 발송을 한 곳에서 관리하세요.</p>
       </div>
       <MessagesClient
+        key={`${preselectedStudentId ?? ''}:${tab ?? ''}`}
         classes={classes}
         students={students}
         messages={messages}

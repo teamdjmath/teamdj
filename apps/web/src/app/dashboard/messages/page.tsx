@@ -16,13 +16,15 @@ export default async function StudentMessagesPage() {
   const classIds = (memberships ?? []).map(m => m.class_id)
 
   // 메시지 목록 조회 (개인 + 반 전체)
-  const { data: messages } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: messages } = await (supabase as any)
     .from('push_messages')
     .select(`
       id,
       content,
       created_at,
       is_read,
+      image_urls,
       sender:users!push_messages_sender_id_fkey(name)
     `)
     .or(`student_id.eq.${userId}${classIds.length > 0 ? `,class_id.in.(${classIds.join(',')})` : ''}`)
@@ -33,9 +35,11 @@ export default async function StudentMessagesPage() {
     content: string
     created_at: string
     is_read: boolean
+    image_urls: string[] | null
     sender: { name: string | null } | { name: string | null }[]
   }) => ({
     ...m,
+    image_urls: m.image_urls ?? [],
     sender: Array.isArray(m.sender) ? m.sender[0] : m.sender
   }))
 

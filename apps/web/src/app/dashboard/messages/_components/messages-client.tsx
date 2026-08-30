@@ -10,6 +10,7 @@ interface Message {
   content: string
   created_at: string
   is_read: boolean
+  image_urls: string[]
   sender: { name: string | null } | null
 }
 
@@ -46,6 +47,14 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
                 <p className="text-sm font-medium leading-relaxed text-zinc-800 whitespace-pre-wrap">
                   {m.content}
                 </p>
+                {m.image_urls.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {m.image_urls.map((url) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img key={url} src={url} alt="첨부 이미지" className="h-24 w-24 rounded-lg border border-zinc-200 object-cover" />
+                    ))}
+                  </div>
+                )}
                 <p className="text-[10px] text-zinc-400">
                   {new Date(m.created_at).toLocaleString('ko-KR', {
                     month: 'long',

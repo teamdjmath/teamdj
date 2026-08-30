@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { sendMessage } from '@/lib/actions/messages'
 import { sendKakaoBroadcast } from '@/lib/actions/kakao-broadcast'
 import { markInquiryRead } from '@/lib/actions/consultations'
+import { createClient } from '@/lib/supabase/client'
 
 interface ClassOption {
   id: string
@@ -134,6 +135,8 @@ export function MessagesClient({
   const [filterClassId, setFilterClassId] = useState('')
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
+  const [imageUrls, setImageUrls] = useState<string[]>([])
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -143,6 +146,35 @@ export function MessagesClient({
   function handleChannelChange(c: Channel) {
     setChannel(c)
     if (c === 'push') setAudience('student') // 쪽지는 인앱 수신함이 있는 학생에게만 가능 (학부모 수신함 없음)
+  }
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    if (files.length === 0) return
+    e.target.value = ''
+    setUploading(true)
+    setError(null)
+    try {
+      const supabase = createClient()
+      const uploaded: string[] = []
+      for (const file of files) {
+        const ext = file.name.split('.').pop() || 'png'
+        const path = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
+        const { error: upErr } = await supabase.storage.from('message-images').upload(path, file)
+        if (upErr) throw new Error('이미지 업로드에 실패했습니다.')
+        const { data: { publicUrl } } = supabase.storage.from('message-images').getPublicUrl(path)
+        uploaded.push(publicUrl)
+      }
+      setImageUrls((prev) => [...prev, ...uploaded])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '이미지 업로드에 실패했습니다.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function removeImage(url: string) {
+    setImageUrls((prev) => prev.filter((u) => u !== url))
   }
 
   function handleMarkInquiryRead(id: string) {
@@ -164,6 +196,7 @@ export function MessagesClient({
             classId: scope === 'class' ? classId : null,
             studentId: scope === 'individual' ? studentId : null,
             content,
+            imageUrls,
           })
         : await sendKakaoBroadcast({
             audience,
@@ -176,6 +209,7 @@ export function MessagesClient({
       if (!res.success) { setError(res.error); return }
       setContent('')
       setTitle('')
+      setImageUrls([])
       setSuccess(channel === 'push' ? '쪽지가 발송되었습니다.' : `카카오톡이 발송되었습니다. (${res.data?.sentCount ?? 0}건)`)
       setTimeout(() => setSuccess(null), 3000)
     })
@@ -419,12 +453,45 @@ export function MessagesClient({
                 />
               </div>
 
+              {channel === 'push' && (
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">이미지 첨부</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    disabled={uploading}
+                    className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 file:mr-3 file:rounded file:border-0 file:bg-zinc-200 dark:file:bg-zinc-800 file:px-2 file:py-1 file:text-xs file:text-zinc-700 dark:file:text-zinc-300 disabled:opacity-50"
+                  />
+                  {uploading && <p className="text-xs text-zinc-400 dark:text-zinc-600">업로드 중…</p>}
+                  {imageUrls.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {imageUrls.map((url) => (
+                        <div key={url} className="relative">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={url} alt="첨부" className="h-20 w-20 rounded-lg border border-zinc-200 dark:border-zinc-800 object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(url)}
+                            className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-zinc-900 dark:bg-zinc-100 text-[10px] text-white dark:text-zinc-900 hover:bg-red-500 transition-colors"
+                            aria-label="이미지 삭제"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {error && <p className="text-xs text-red-500">{error}</p>}
               {success && <p className="text-xs text-emerald-600">{success}</p>}
 
               <button
                 type="submit"
-                disabled={isPending || !content.trim() || (channel === 'kakao' && !title.trim())}
+                disabled={isPending || uploading || !content.trim() || (channel === 'kakao' && !title.trim())}
                 className="w-full rounded-xl bg-zinc-950 dark:bg-zinc-50 py-3 text-sm font-medium text-white dark:text-zinc-900 transition-colors hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:bg-zinc-200 dark:disabled:bg-zinc-800 disabled:text-zinc-400 dark:disabled:text-zinc-600"
               >
                 {isPending ? '발송 중…' : channel === 'push' ? '쪽지 발송' : '카카오톡 발송'}

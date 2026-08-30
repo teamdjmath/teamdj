@@ -16,6 +16,7 @@ export async function sendMessage(data: {
   classId: string | null
   studentId: string | null
   content: string
+  imageUrls?: string[]
 }): Promise<ActionResult> {
   const supabase = await createClient()
   const user = await getVerifiedUser()
@@ -33,10 +34,12 @@ export async function sendMessage(data: {
     const content = data.content.trim()
     const preview = content.slice(0, 30) + (content.length > 30 ? '...' : '')
     const admin = createAdminClient()
+    const imageUrls = data.imageUrls ?? []
 
     if (data.scope === 'individual') {
-      const { error } = await supabase.from('push_messages').insert({
-        sender_id: user.id, student_id: data.studentId, content,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).from('push_messages').insert({
+        sender_id: user.id, student_id: data.studentId, content, image_urls: imageUrls,
       })
       if (error) throw error
 
@@ -65,8 +68,9 @@ export async function sendMessage(data: {
       }
 
       if (targets.length > 0) {
-        await supabase.from('push_messages').insert(
-          targets.map((t) => ({ sender_id: user.id, student_id: t.id, content })),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any).from('push_messages').insert(
+          targets.map((t) => ({ sender_id: user.id, student_id: t.id, content, image_urls: imageUrls })),
         )
         try {
           await Promise.all(
