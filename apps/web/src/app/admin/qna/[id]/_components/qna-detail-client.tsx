@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client'
 import { assignQuestion, submitAnswer, generateAiDraft, updateAnswer, cancelAnswer, adoptRelatedAnswer, getNextAiDraftQuestionId } from '@/lib/actions/qna'
 import { buildAnswerParts, buildStudentContent } from '@/lib/qna-format'
 import { QNA_STATUS_LABEL } from '@/lib/qna-status'
+import { ImageLightbox } from '@/components/ui/image-lightbox'
 
 type Question = {
   id: string
@@ -409,6 +410,7 @@ export function QnaDetailClient({ question, answers, aiDraft, aiFailure, request
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [errMsg, setErrMsg] = useState('')
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   // 조교가 열자마자 AI가 미리 써둔 1차 답변이 채워져 있다 — 그대로 제출(확정)하거나 고쳐서 제출.
   const [content, setContent] = useState(aiDraft?.content ?? '')
@@ -826,12 +828,27 @@ export function QnaDetailClient({ question, answers, aiDraft, aiFailure, request
                 </div>
                 {a.media_urls.length > 0 && (
                   <div className="mb-3 flex flex-wrap gap-2">
-                    {a.media_urls.map((url, i) => (
-                      <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                        className="rounded-md bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors">
-                        미디어 {i + 1}
-                      </a>
-                    ))}
+                    {a.media_urls.map((url, i) => {
+                      const raw = url.split('/').pop()?.split('?')[0] ?? ''
+                      const ext = raw.split('.').pop()?.toLowerCase() ?? ''
+                      const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)
+                      return isImage ? (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setLightboxUrl(url)}
+                          className="block h-20 w-20 cursor-zoom-in rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-900 hover:opacity-90 transition-opacity"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={url} alt={raw} className="h-full w-full object-contain" />
+                        </button>
+                      ) : (
+                        <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                          className="rounded-md bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors">
+                          {raw || `미디어 ${i + 1}`}
+                        </a>
+                      )
+                    })}
                   </div>
                 )}
                 <div className="prose prose-sm prose-zinc dark:prose-invert max-w-none text-sm leading-relaxed">
@@ -897,6 +914,8 @@ export function QnaDetailClient({ question, answers, aiDraft, aiFailure, request
           답변이 완료된 질문입니다.
         </div>
       )}
+
+      <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
     </div>
   )
 }
