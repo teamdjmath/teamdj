@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 
 // 시간표 이미지 준비되면 이 경로에 파일을 두고 문자열을 채우세요 (예: "/timetable.png").
@@ -11,9 +12,12 @@ const TIMETABLE_IMAGE = "";
 const DAYS = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"];
 
 type TimetableEvent = { day: number; start: string; end: string; title: string; sub: string };
+type TimetableRow = { grade: string; name: string; day: string; time: string };
+type Schedule = { events: TimetableEvent[]; rows: TimetableRow[]; notes: string[] };
 
-// 2학기 정규반 기준 (8/13~)
-const EVENTS: TimetableEvent[] = [
+// 현재(2학기 정규반, 8/13~) 시간표 — 아래 SCHEDULED_PERIODS가 시작되기 전까지, 그리고 향후 기간이
+// 새로 안 잡혀있는 공백기에는 이게 기본값으로 보인다.
+const CURRENT_EVENTS: TimetableEvent[] = [
   { day: 0, start: "19:00", end: "22:00", title: "고1 공통수학2", sub: "월목 심화반" },
   { day: 1, start: "19:00", end: "22:00", title: "고1 공통수학2", sub: "화금 고난도반" },
   { day: 3, start: "19:00", end: "22:00", title: "고1 공통수학2", sub: "월목 심화반" },
@@ -27,15 +31,7 @@ const EVENTS: TimetableEvent[] = [
   { day: 6, start: "19:00", end: "21:50", title: "고3 팀수업", sub: "일 파이널" },
 ];
 
-const NOTES = [
-  "토요일 미적분2 A반과 B반은 완전히 동일한 수업입니다.",
-  "확률과통계 A반과 B반은 동일한 수업이며, C반도 교재가 같으나 개념설명이 더 자세히 들어가고, 대신 고난도 문제풀이의 비중이 축소됩니다.",
-  "고1 월목반과 화금반의 주 교재 및 숙제장은 통합본이 제공됩니다. 교재 내에서 월목반과 화금반의 수업내용 및 과제가 나뉘어집니다.",
-];
-
-// 모바일 블록 목록용 — EVENTS와 별개 표현(요일 묶어서 표기)이라 따로 관리합니다.
-type TimetableRow = { grade: string; name: string; day: string; time: string };
-const TIMETABLE_ROWS: TimetableRow[] = [
+const CURRENT_ROWS: TimetableRow[] = [
   { grade: "고1", name: "공통수학2 월목 심화반", day: "월·목", time: "19:00 ~ 22:00" },
   { grade: "고1", name: "공통수학2 화금 고난도반", day: "화·금", time: "19:00 ~ 22:00" },
   { grade: "고2", name: "미적분2 토 심화+고난도A", day: "토", time: "9:00 ~ 11:50" },
@@ -46,6 +42,107 @@ const TIMETABLE_ROWS: TimetableRow[] = [
   { grade: "고2", name: "확률과통계 일 실력+심화C", day: "일", time: "16:00 ~ 18:50" },
   { grade: "고3", name: "팀수업 일 파이널", day: "일", time: "19:00 ~ 21:50" },
 ];
+
+const CURRENT_NOTES = [
+  "토요일 미적분2 A반과 B반은 완전히 동일한 수업입니다.",
+  "확률과통계 A반과 B반은 동일한 수업이며, C반도 교재가 같으나 개념설명이 더 자세히 들어가고, 대신 고난도 문제풀이의 비중이 축소됩니다.",
+  "고1 월목반과 화금반의 주 교재 및 숙제장은 통합본이 제공됩니다. 교재 내에서 월목반과 화금반의 수업내용 및 과제가 나뉘어집니다.",
+];
+
+const CURRENT_SCHEDULE: Schedule = { events: CURRENT_EVENTS, rows: CURRENT_ROWS, notes: CURRENT_NOTES };
+
+// 예정된 시간표 — from~to(포함) 기간에 자동으로 노출된다. 날짜가 되면 별도 배포 없이도
+// (클라이언트에서 오늘 날짜를 계산해) 바로 바뀐다. ⚠️ 아직 가안 — 확정되면 날짜·문구 재검토 필요.
+type SchedulePeriod = Schedule & { from: string; to: string };
+
+const SCHEDULED_PERIODS: SchedulePeriod[] = [
+  {
+    from: "2026-11-01",
+    to: "2026-12-31",
+    events: [
+      { day: 0, start: "18:00", end: "20:00", title: "예비고1 월목", sub: "" },
+      { day: 0, start: "20:00", end: "22:00", title: "고1 월목", sub: "" },
+      { day: 1, start: "18:00", end: "20:00", title: "예비고1 화금", sub: "" },
+      { day: 1, start: "20:00", end: "22:00", title: "고1 화금", sub: "" },
+      { day: 3, start: "18:00", end: "20:00", title: "예비고1 월목", sub: "" },
+      { day: 3, start: "20:00", end: "22:00", title: "고1 월목", sub: "" },
+      { day: 4, start: "18:00", end: "20:00", title: "예비고1 화금", sub: "" },
+      { day: 4, start: "20:00", end: "22:00", title: "고1 화금", sub: "" },
+      { day: 5, start: "9:00", end: "12:00", title: "고2 미적분2", sub: "" },
+      { day: 5, start: "13:00", end: "16:00", title: "고2 확률과통계", sub: "" },
+      { day: 5, start: "16:00", end: "19:00", title: "고2 미적분2", sub: "" },
+      { day: 5, start: "19:00", end: "22:00", title: "고2 미적분1", sub: "" },
+      { day: 6, start: "13:00", end: "16:00", title: "고2 확률과통계", sub: "" },
+      { day: 6, start: "16:00", end: "19:00", title: "고2 확률과통계", sub: "" },
+    ],
+    rows: [
+      { grade: "예비고1", name: "예비고1 월목", day: "월·목", time: "18:00 ~ 20:00" },
+      { grade: "예비고1", name: "예비고1 화금", day: "화·금", time: "18:00 ~ 20:00" },
+      { grade: "고1", name: "고1 월목", day: "월·목", time: "20:00 ~ 22:00" },
+      { grade: "고1", name: "고1 화금", day: "화·금", time: "20:00 ~ 22:00" },
+      { grade: "고2", name: "미적분2", day: "토", time: "9:00 ~ 12:00" },
+      { grade: "고2", name: "확률과통계", day: "토", time: "13:00 ~ 16:00" },
+      { grade: "고2", name: "미적분2", day: "토", time: "16:00 ~ 19:00" },
+      { grade: "고2", name: "미적분1", day: "토", time: "19:00 ~ 22:00" },
+      { grade: "고2", name: "확률과통계", day: "일", time: "13:00 ~ 16:00" },
+      { grade: "고2", name: "확률과통계", day: "일", time: "16:00 ~ 19:00" },
+    ],
+    notes: [],
+  },
+  {
+    from: "2027-01-01",
+    to: "2027-02-28",
+    events: [
+      { day: 0, start: "9:00", end: "12:00", title: "예비고3 스파르타", sub: "" },
+      { day: 0, start: "13:00", end: "16:00", title: "예비고1,2 대수", sub: "" },
+      { day: 0, start: "20:00", end: "22:00", title: "예비고1 월목", sub: "" },
+      { day: 1, start: "9:00", end: "12:00", title: "예비고3 스파르타", sub: "" },
+      { day: 1, start: "13:00", end: "16:00", title: "예비고1,2 미적분1", sub: "" },
+      { day: 1, start: "20:00", end: "22:00", title: "예비고1 화금", sub: "" },
+      { day: 2, start: "9:00", end: "12:00", title: "미적분2 단과특강", sub: "" },
+      { day: 2, start: "13:00", end: "16:00", title: "예비고1,2 확률과통계", sub: "" },
+      { day: 3, start: "9:00", end: "12:00", title: "예비고3 스파르타", sub: "" },
+      { day: 3, start: "13:00", end: "16:00", title: "예비고1,2 대수", sub: "" },
+      { day: 3, start: "20:00", end: "22:00", title: "예비고1 월목", sub: "" },
+      { day: 4, start: "9:00", end: "12:00", title: "예비고3 스파르타", sub: "" },
+      { day: 4, start: "13:00", end: "16:00", title: "예비고1,2 미적분1", sub: "" },
+      { day: 4, start: "20:00", end: "22:00", title: "예비고1 화금", sub: "" },
+      { day: 5, start: "13:00", end: "16:00", title: "예비고2 미적분1", sub: "정규" },
+      { day: 5, start: "16:00", end: "19:00", title: "예비고2 미적분1", sub: "정규" },
+      { day: 6, start: "13:00", end: "16:00", title: "예비고2 대수", sub: "정규" },
+      { day: 6, start: "16:00", end: "19:00", title: "예비고2 대수", sub: "정규" },
+      { day: 6, start: "19:00", end: "22:00", title: "예비고3 팀수업", sub: "정규" },
+    ],
+    rows: [
+      { grade: "예비고1", name: "예비고1 월목", day: "월·목", time: "20:00 ~ 22:00" },
+      { grade: "예비고1", name: "예비고1 화금", day: "화·금", time: "20:00 ~ 22:00" },
+      { grade: "예비고2", name: "대수", day: "월·목", time: "13:00 ~ 16:00" },
+      { grade: "예비고2", name: "미적분1", day: "화·금", time: "13:00 ~ 16:00" },
+      { grade: "예비고2", name: "확률과통계", day: "수", time: "13:00 ~ 16:00" },
+      { grade: "예비고2", name: "미적분1 [정규]", day: "토", time: "13:00 ~ 19:00" },
+      { grade: "예비고2", name: "대수 [정규]", day: "일", time: "13:00 ~ 19:00" },
+      { grade: "예비고3", name: "스파르타", day: "월·화·목·금", time: "9:00 ~ 12:00" },
+      { grade: "예비고3", name: "팀수업 [정규]", day: "일", time: "19:00 ~ 22:00" },
+      { grade: "단과특강", name: "미적분2 단과특강", day: "수", time: "9:00 ~ 12:00" },
+    ],
+    notes: [],
+  },
+];
+
+function toDateKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// 오늘 날짜에 맞는 시간표를 고른다. 정해진 기간 이전이면 현재 시간표, 기간 중이면 그 기간 시간표,
+// 마지막 기간 이후(다음 기간이 아직 안 잡혔을 때)면 최신 기간을 계속 보여준다(옛 시간표로 되돌아가지 않도록).
+function getActiveSchedule(now: Date): Schedule {
+  const today = toDateKey(now);
+  const period = SCHEDULED_PERIODS.find((p) => today >= p.from && today <= p.to);
+  if (period) return period;
+  const first = SCHEDULED_PERIODS[0];
+  if (!first || today < first.from) return CURRENT_SCHEDULE;
+  return SCHEDULED_PERIODS[SCHEDULED_PERIODS.length - 1];
+}
 
 const START_HOUR = 9;
 const END_HOUR = 22;
@@ -70,7 +167,7 @@ const SLOTS = Array.from({ length: SLOT_COUNT }, (_, i) => {
   return { start: fmtMin(startMin), end: fmtMin(startMin + SLOT_MIN) };
 });
 
-function TimetableGrid() {
+function TimetableGrid({ events }: { events: TimetableEvent[] }) {
   const bodyHeight = SLOT_COUNT * ROW_PX;
 
   return (
@@ -109,9 +206,10 @@ function TimetableGrid() {
             {SLOTS.map((_, i) => (
               <div key={i} className="border-b border-zinc-100" style={{ height: ROW_PX }} />
             ))}
-            {EVENTS.filter((ev) => ev.day === di).map((ev, i) => {
-              const top = slotOffset(ev.start) * ROW_PX;
-              const height = (slotOffset(ev.end) - slotOffset(ev.start)) * ROW_PX;
+            {events.filter((ev) => ev.day === di).map((ev, i) => {
+              // 위아래로 살짝 여백을 둬서 바로 이어지는 블록끼리 안 붙어보이게 한다
+              const top = slotOffset(ev.start) * ROW_PX + 2;
+              const height = Math.max((slotOffset(ev.end) - slotOffset(ev.start)) * ROW_PX - 4, 4);
               return (
                 <div
                   key={i}
@@ -119,7 +217,7 @@ function TimetableGrid() {
                   style={{ top, height }}
                 >
                   <p className="text-[11px] font-bold text-zinc-900 break-keep leading-tight">{ev.title}</p>
-                  <p className="text-[10px] text-emerald-700 break-keep leading-tight">{ev.sub}</p>
+                  {ev.sub && <p className="text-[10px] text-emerald-700 break-keep leading-tight">{ev.sub}</p>}
                 </div>
               );
             })}
@@ -131,6 +229,16 @@ function TimetableGrid() {
 }
 
 export function TimetableSection() {
+  // SSR/빌드 시점엔 항상 CURRENT_SCHEDULE로 렌더(정적 페이지라 배포 시점 날짜로 굳어있음) —
+  // 마운트 직후 클라이언트의 실제 오늘 날짜로 다시 계산해서, 재배포 없이도 기간이 되면 바로 바뀐다.
+  const [schedule, setSchedule] = useState<Schedule>(CURRENT_SCHEDULE);
+  useEffect(() => {
+    // ?asOf=2026-11-15 처럼 붙이면 그 날짜 기준으로 미리보기 가능 (테스트용, 없으면 실제 오늘 날짜 사용)
+    const asOf = new URLSearchParams(window.location.search).get("asOf");
+    const now = asOf ? new Date(asOf) : new Date();
+    requestAnimationFrame(() => setSchedule(getActiveSchedule(now)));
+  }, []);
+
   return (
     <section className="w-full py-14 md:py-24 bg-white overflow-hidden" id="timetable">
       <div className="container max-w-5xl mx-auto px-4">
@@ -155,7 +263,7 @@ export function TimetableSection() {
           ) : (
             <div className="overflow-x-auto">
               <div className="min-w-[720px]">
-                <TimetableGrid />
+                <TimetableGrid events={schedule.events} />
               </div>
             </div>
           )}
@@ -164,7 +272,7 @@ export function TimetableSection() {
         {/* 모바일: 블록으로 나열 */}
         <div className="sm:hidden space-y-6">
           {Object.entries(
-            TIMETABLE_ROWS.reduce<Record<string, TimetableRow[]>>((acc, row) => {
+            schedule.rows.reduce<Record<string, TimetableRow[]>>((acc, row) => {
               (acc[row.grade] ??= []).push(row);
               return acc;
             }, {}),
@@ -187,16 +295,18 @@ export function TimetableSection() {
         </div>
 
         {/* 안내사항 */}
-        <div className="mt-8 rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
-          <ol className="space-y-1.5">
-            {NOTES.map((note, i) => (
-              <li key={i} className="flex gap-2 text-xs leading-relaxed text-zinc-500 break-keep">
-                <span className="shrink-0 font-bold text-zinc-400">{i + 1}.</span>
-                {note}
-              </li>
-            ))}
-          </ol>
-        </div>
+        {schedule.notes.length > 0 && (
+          <div className="mt-8 rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
+            <ol className="space-y-1.5">
+              {schedule.notes.map((note, i) => (
+                <li key={i} className="flex gap-2 text-xs leading-relaxed text-zinc-500 break-keep">
+                  <span className="shrink-0 font-bold text-zinc-400">{i + 1}.</span>
+                  {note}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
       </div>
     </section>
   );
