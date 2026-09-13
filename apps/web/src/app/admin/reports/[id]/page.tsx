@@ -21,7 +21,7 @@ export default async function ReportDetailPage({
   const { data: row } = await admin
     .from('reports')
     .select(
-      'id, report_date, image_url, kakao_sent_at, content_json, created_at, student:users!student_id(name, school, grade), class:class_groups!class_id(name)',
+      'id, report_date, report_type, image_url, kakao_sent_at, content_json, created_at, student:users!student_id(name, school, grade), class:class_groups!class_id(name)',
     )
     .eq('id', id)
     .single()
@@ -44,6 +44,12 @@ export default async function ReportDetailPage({
     className:   ((r.class as { name?: string } | null)?.name     ?? '') as string,
   }
 
+  const reportTitle = r.report_type === 'clinic'
+    ? '클리닉 리포트'
+    : r.report_type === 'exam_prep'
+    ? '내신대비 리포트'
+    : '학습 리포트'
+
   return (
     <div>
       <div className="mb-6">
@@ -57,7 +63,7 @@ export default async function ReportDetailPage({
           리포트 목록
         </Link>
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">학습 리포트</h1>
+          <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">{reportTitle}</h1>
           <span className="rounded-full bg-zinc-100 dark:bg-zinc-900 px-2.5 py-0.5 text-xs text-zinc-600 dark:text-zinc-400">
             {report.studentName} · {report.school} {report.grade} {report.className}
           </span>
