@@ -828,6 +828,9 @@ export async function sendBatchClinicKakao(
 
 export type ExamPrepContent = {
   type: 'exam_prep'
+  // 중간/기말 내신대비 기간 구분 — 학습 내용 누적과 모의고사 성적 추이를 이 값으로 스코핑해서,
+  // 기말고사 기간에 중간고사 때 기록이 섞여 들어오지 않게 한다.
+  examType: 'midterm' | 'final'
   school: string
   grade: string
   arrivalTime: string   // "HH:MM"
@@ -899,6 +902,7 @@ export async function getExamPrepReportsForDate(
 export async function getExamPrepHistoryForStudent(
   studentId: string,
   throughDate: string,
+  examType: ExamPrepContent['examType'],
 ): Promise<{ error?: string; history: Array<{ date: string; studyContent: string; mockExam: ExamPrepContent['mockExam'] }> }> {
   const auth = await assertStaff()
   if (!auth.ok) return { error: auth.error, history: [] }
@@ -910,6 +914,7 @@ export async function getExamPrepHistoryForStudent(
     .eq('report_type', 'exam_prep')
     .eq('student_id', studentId)
     .lte('report_date', throughDate)
+    .filter('content_json->>examType', 'eq', examType)
     .order('report_date', { ascending: true })
 
   if (error) return { error: '이력 조회에 실패했습니다.', history: [] }

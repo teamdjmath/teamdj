@@ -77,6 +77,9 @@ function formFromLogged(row: LoggedRow): FormState {
 
 export function ExamPrepBuilderClient() {
   const [reportDate, setReportDate] = useState(todayString())
+  // 중간/기말 내신대비 기간 구분 — 세션 전체에 적용되는 설정. 학습 내용 누적·모의고사 성적
+  // 추이가 이 값으로 스코핑되어, 기말고사 기간에 중간고사 때 기록이 섞이지 않는다.
+  const [examType, setExamType] = useState<ExamPrepContent['examType']>('midterm')
   const [logged, setLogged] = useState<LoggedRow[]>([])
 
   const [query, setQuery] = useState('')
@@ -113,9 +116,9 @@ export function ExamPrepBuilderClient() {
     loadLogged(reportDate)
   }, [reportDate, loadLogged])
 
-  const loadHistory = useCallback((studentId: string, throughDate: string) => {
+  const loadHistory = useCallback((studentId: string, throughDate: string, type: ExamPrepContent['examType']) => {
     startHistoryTransition(async () => {
-      const res = await getExamPrepHistoryForStudent(studentId, throughDate)
+      const res = await getExamPrepHistoryForStudent(studentId, throughDate, type)
       if (!res.error) setHistory(res.history)
     })
   }, [])
@@ -123,8 +126,8 @@ export function ExamPrepBuilderClient() {
   const selectedStudentId = form?.studentId ?? null
   useEffect(() => {
     if (!selectedStudentId) return
-    loadHistory(selectedStudentId, reportDate)
-  }, [selectedStudentId, reportDate, loadHistory])
+    loadHistory(selectedStudentId, reportDate, examType)
+  }, [selectedStudentId, reportDate, examType, loadHistory])
 
   // 학생 검색 (300ms 디바운스) — query가 비면 이전 결과를 그냥 안 보여주기만 하면 되므로
   // 별도 setState로 리셋하지 않고 렌더링 시점에 파생시킨다 (visibleHits 참고)
@@ -144,6 +147,7 @@ export function ExamPrepBuilderClient() {
   function selectHit(hit: StudentHit) {
     const existing = logged.find((l) => l.studentId === hit.id)
     setForm(existing ? formFromLogged(existing) : blankForm(hit))
+    if (existing) setExamType(existing.content.examType)
     setHistory([])
     setQuery('')
     setHits([])
@@ -153,6 +157,7 @@ export function ExamPrepBuilderClient() {
 
   function selectLogged(row: LoggedRow) {
     setForm(formFromLogged(row))
+    setExamType(row.content.examType)
     setHistory([])
     setSavedAt(null)
     setErr('')
@@ -182,6 +187,7 @@ export function ExamPrepBuilderClient() {
 
       const content: ExamPrepContent = {
         type: 'exam_prep',
+        examType,
         school: form.school,
         grade: form.grade,
         arrivalTime: form.arrivalTime,
@@ -205,13 +211,13 @@ export function ExamPrepBuilderClient() {
       if (res.error) { setErr(res.error); return }
       setSavedAt(Date.now())
       await loadLogged(reportDate)
-      loadHistory(form.studentId, reportDate)
+      loadHistory(form.studentId, reportDate, examType)
     } catch (e) {
       setErr(e instanceof Error ? e.message : '저장 중 오류가 발생했습니다.')
     } finally {
       setSaving(false)
     }
-  }, [form, reportDate, loadLogged, loadHistory])
+  }, [form, reportDate, examType, loadLogged, loadHistory])
 
   const handleSend = useCallback(async () => {
     if (!confirm(`${reportDate} 내신대비 리포트를 전체 학부모에게 카카오톡으로 발송하시겠습니까?`)) return
@@ -340,6 +346,30 @@ export function ExamPrepBuilderClient() {
               </div>
             </div>
           </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-zinc-500 dark:text-zinc-500">내신대비 기간</label>
+            <div className="flex items-center gap-1.5">
+              {([
+                { value: 'midterm', label: '모의 중간고사' },
+                { value: 'final', label: '모의 기말고사' },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setExamType(opt.value)}
+                  className={`rounded-xl px-4 py-3 text-sm font-bold transition-colors whitespace-nowrap ${
+                    examType === opt.value
+                      ? 'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900'
+                      : 'border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-950'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="flex-1" />
           {logged.length > 0 && (
             <div className="flex items-center gap-2">
