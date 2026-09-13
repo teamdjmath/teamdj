@@ -40,14 +40,17 @@ export default async function ReportsPage({
   }>()
 
   for (const row of rows ?? []) {
-    const r        = row as Record<string, unknown>
-    const isClinic = r.report_type === 'clinic'
-    const classId  = isClinic ? 'clinic' : (r.class_id as string)
-    const date     = r.report_date as string
-    const className = isClinic
+    const r          = row as Record<string, unknown>
+    const isClinic   = r.report_type === 'clinic'
+    const isExamPrep = r.report_type === 'exam_prep'
+    const classId    = isClinic ? 'clinic' : isExamPrep ? 'exam_prep' : (r.class_id as string)
+    const date       = r.report_date as string
+    const className  = isClinic
       ? '클리닉'
+      : isExamPrep
+      ? '내신대비'
       : (((r.class as { name?: string } | null)?.name ?? '') as string)
-    const key       = `${date}__${classId}`
+    const key        = `${date}__${classId}`
 
     if (!sessionMap.has(key)) {
       sessionMap.set(key, { classId, className, date, total: 0, sentCount: 0, sampleImageUrl: null })

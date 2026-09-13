@@ -92,6 +92,8 @@ export function ReportsClient({ classOptions, selectedClassId, selectedDate, ses
               key={`${s.date}__${s.classId}`}
               href={s.classId === 'clinic'
                 ? `/admin/reports/clinic/session/${s.date}`
+                : s.classId === 'exam_prep'
+                ? `/admin/reports/exam-prep/session/${s.date}`
                 : `/admin/reports/session/${s.classId}/${s.date}`}
               className="group rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-sm transition-all"
             >

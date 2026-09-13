@@ -1,0 +1,60 @@
+import { getVerifiedUser } from '@/lib/supabase/verified-user'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { ExamPrepSessionClient } from './_components/exam-prep-session-client'
+
+export default async function ExamPrepSessionPage({
+  params,
+}: {
+  params: Promise<{ date: string }>
+}) {
+  const { date } = await params
+
+  const user = await getVerifiedUser()
+  const role = user?.user_metadata?.role as string | undefined
+  if (!user || !['teacher', 'ta_desk'].includes(role ?? '')) redirect('/admin/dashboard')
+
+  const admin = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: rows } = await (admin as any)
+    .from('reports')
+    .select('id, image_url, kakao_sent_at, student_id, student:users!student_id(name, school)')
+    .eq('report_type', 'exam_prep')
+    .eq('report_date', date)
+    .order('student_id')
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const reports = ((rows ?? []) as any[])
+    .map((r) => {
+      const student = r.student as { name?: string; school?: string } | null
+      return {
+        id:          r.id as string,
+        imageUrl:    (r.image_url ?? null) as string | null,
+        kakaoSentAt: (r.kakao_sent_at ?? null) as string | null,
+        studentName: student?.name ?? '',
+        school:      student?.school ?? '',
+      }
+    })
+    .sort((a, b) => a.studentName.localeCompare(b.studentName, 'ko'))
+
+  return (
+    <div>
+      <div className="mb-6">
+        <Link
+          href="/admin/reports"
+          className="mb-3 inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
+          </svg>
+          리포트 목록
+        </Link>
+        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">내신대비 리포트 · {date}</h1>
+        <p className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-600">{reports.length}명</p>
+      </div>
+
+      <ExamPrepSessionClient date={date} reports={reports} />
+    </div>
+  )
+}

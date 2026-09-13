@@ -71,6 +71,25 @@ export function NewReportButton() {
                   구글 스프레드시트(엑셀) 파일을 업로드하면 학생별 클리닉 리포트 이미지를 만듭니다.
                 </p>
               </button>
+
+              <button
+                type="button"
+                onClick={() => router.push('/admin/reports/exam-prep')}
+                className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 text-left hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-all group"
+              >
+                <div className="flex items-center gap-3 mb-1.5">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 text-white shrink-0">
+                    <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h3m-7 5h11a2 2 0 002-2V7.414a1 1 0 00-.293-.707l-3.414-3.414A1 1 0 0013.586 3H6a2 2 0 00-2 2v13a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">내신대비 리포트</span>
+                  <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">개발중</span>
+                </div>
+                <p className="text-xs text-zinc-500 dark:text-zinc-500 leading-relaxed">
+                  학생을 검색해 등하원 시각·학습 내용·모의고사 응시 여부를 바로 입력합니다.
+                </p>
+              </button>
             </div>
           </div>
         </div>

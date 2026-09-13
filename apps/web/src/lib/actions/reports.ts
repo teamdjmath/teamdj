@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { logger } from '@/lib/logger'
 import { logAudit } from '@/lib/audit'
-import { asJson } from '@/types/db'
+import { asJson, fromJson } from '@/types/db'
 export type { ReportContent } from '@/types/db'
 import type { ReportContent } from '@/types/db' // used in function signatures below
 import { SolapiMessageService } from 'solapi'
@@ -581,8 +581,8 @@ export type ClinicContent = {
   clinicContent: string
 }
 
-// 엑셀의 이름/학교를 users 테이블 학생과 매칭 (카카오 발송에 student_id 필요)
-export async function matchClinicStudents(
+// 엑셀의 이름/학교를 users 테이블 학생과 매칭 (카카오 발송에 student_id 필요) — 클리닉/내신대비 공용
+export async function matchStudentsByNameSchool(
   entries: Array<{ name: string; school: string }>,
 ): Promise<{ error?: string; matches: Array<{ name: string; school: string; studentId: string | null }> }> {
   const auth = await assertStaff()
@@ -812,6 +812,311 @@ export async function sendBatchClinicKakao(
   await logAudit(auth.user, {
     action: 'report.kakao_batch_send', targetType: 'report',
     targetId: `clinic/${date}`, targetLabel: `${date} 클리닉 카카오 일괄 발송`,
+    detail: { sent: sentReportIds.size, failed: failedReportIds.size + noImageFailed + noLinkFailed },
+  })
+
+  revalidatePath('/admin/reports')
+  return {
+    sent:   sentReportIds.size,
+    failed: failedReportIds.size + noImageFailed + noLinkFailed,
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// 내신대비 리포트 (등하원 시각 + 학습내용 + 모의고사 응시여부, report_type = 'exam_prep')
+// ════════════════════════════════════════════════════════════════
+
+export type ExamPrepContent = {
+  type: 'exam_prep'
+  school: string
+  grade: string
+  arrivalTime: string   // "HH:MM"
+  departureTime: string // "HH:MM"
+  studyContent: string
+  mockExam: {
+    status: 'none' | 'attended' | 'absent'
+    examLabel?: string
+    difficulty?: number | null // 1~5
+    score?: number | null
+    note?: string // 특이사항
+  }
+}
+
+// 실시간 개별 입력 화면의 학생 검색 — 분반 무관, 이름으로 전체 학생 검색
+export async function searchStudentsByName(
+  query: string,
+): Promise<{ error?: string; students: Array<{ id: string; name: string; school: string | null; grade: string | null }> }> {
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error, students: [] }
+
+  const q = query.trim()
+  if (!q) return { students: [] }
+
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('users')
+    .select('id, name, school, grade')
+    .eq('role', 'student')
+    .ilike('name', `%${q}%`)
+    .order('name')
+    .limit(20)
+
+  if (error) return { error: '학생 검색에 실패했습니다.', students: [] }
+  return { students: (data ?? []) as Array<{ id: string; name: string; school: string | null; grade: string | null }> }
+}
+
+// 특정 날짜에 이미 입력된 내신대비 리포트 조회 — 실시간 입력 화면에서 이어서 수정할 때 사용
+export async function getExamPrepReportsForDate(
+  date: string,
+): Promise<{ error?: string; reports: Array<{ id: string; studentId: string; studentName: string; imageUrl: string | null; content: ExamPrepContent }> }> {
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error, reports: [] }
+
+  const admin = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (admin as any)
+    .from('reports')
+    .select('id, student_id, content_json, image_url, student:users!student_id(name)')
+    .eq('report_type', 'exam_prep')
+    .eq('report_date', date)
+
+  if (error) return { error: '조회에 실패했습니다.', reports: [] }
+
+  const reports = ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+    id: r.id as string,
+    studentId: r.student_id as string,
+    studentName: ((r.student as { name?: string } | null)?.name ?? '') as string,
+    imageUrl: (r.image_url ?? null) as string | null,
+    content: fromJson<ExamPrepContent>(r.content_json),
+  }))
+  reports.sort((a, b) => a.studentName.localeCompare(b.studentName, 'ko'))
+
+  return { reports }
+}
+
+// 학생의 내신대비 기간 전체 누적 기록 (해당 날짜까지) — 리포트 카드에 "학습 내용 누적표"와
+// "모의고사 성적 추이"를 함께 보여주기 위해 이 학생의 exam_prep 리포트를 날짜순으로 전부 가져온다.
+export async function getExamPrepHistoryForStudent(
+  studentId: string,
+  throughDate: string,
+): Promise<{ error?: string; history: Array<{ date: string; studyContent: string; mockExam: ExamPrepContent['mockExam'] }> }> {
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error, history: [] }
+
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('reports')
+    .select('report_date, content_json')
+    .eq('report_type', 'exam_prep')
+    .eq('student_id', studentId)
+    .lte('report_date', throughDate)
+    .order('report_date', { ascending: true })
+
+  if (error) return { error: '이력 조회에 실패했습니다.', history: [] }
+
+  const history = (data ?? []).map((r) => {
+    const content = fromJson<ExamPrepContent>(r.content_json)
+    return {
+      date: r.report_date as string,
+      studyContent: content.studyContent,
+      mockExam: content.mockExam,
+    }
+  })
+
+  return { history }
+}
+
+// 저장 (같은 학생+날짜의 exam_prep 리포트가 있으면 덮어씀 = 수정) — 실시간 개별 입력/엑셀 일괄 공용
+export async function saveExamPrepReports(
+  items: Array<{
+    studentId: string
+    reportDate: string
+    contentJson: ExamPrepContent
+    imageBase64: string
+  }>,
+): Promise<{ error?: string; saved: number }> {
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error, saved: 0 }
+
+  const admin = createAdminClient()
+  let saved = 0
+
+  for (const item of items) {
+    const { error: uploadErr, publicUrl } = await uploadReportImage(
+      admin, item.studentId, item.reportDate, item.imageBase64,
+    )
+    if (uploadErr || !publicUrl) continue
+
+    // 기존 exam_prep 리포트 교체 (partial unique index는 upsert 타겟이 안 되므로 delete → insert)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = admin as any
+    await db.from('reports').delete()
+      .eq('student_id', item.studentId)
+      .eq('report_date', item.reportDate)
+      .eq('report_type', 'exam_prep')
+
+    const { error: insertErr } = await db.from('reports').insert({
+      class_id:     null,
+      student_id:   item.studentId,
+      report_date:  item.reportDate,
+      report_type:  'exam_prep',
+      content_json: asJson(item.contentJson),
+      image_url:    publicUrl,
+    })
+    if (!insertErr) saved++
+  }
+
+  await logAudit(auth.user, {
+    action: 'report.exam_prep_save', targetType: 'report',
+    targetId: items[0]?.reportDate ?? '', targetLabel: `내신대비 리포트 저장`,
+    detail: { count: saved, date: items[0]?.reportDate },
+  })
+
+  revalidatePath('/admin/reports')
+  return { saved }
+}
+
+// 날짜별 내신대비 리포트 전체 삭제 (이미지 포함)
+export async function deleteExamPrepSession(date: string): Promise<{ error?: string }> {
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error }
+
+  const admin = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = admin as any
+
+  const { data: reports } = await db
+    .from('reports')
+    .select('image_url')
+    .eq('report_type', 'exam_prep')
+    .eq('report_date', date)
+
+  const bucket = 'reports'
+  const marker = `/object/public/${bucket}/`
+  const filePaths = ((reports ?? []) as Array<{ image_url: string | null }>)
+    .map((r) => {
+      if (!r.image_url) return null
+      const idx = r.image_url.indexOf(marker)
+      return idx !== -1 ? decodeURIComponent(r.image_url.slice(idx + marker.length)) : null
+    })
+    .filter((p): p is string => !!p)
+
+  if (filePaths.length > 0) await admin.storage.from(bucket).remove(filePaths)
+
+  const { error } = await db
+    .from('reports')
+    .delete()
+    .eq('report_type', 'exam_prep')
+    .eq('report_date', date)
+
+  if (error) return { error: `삭제 실패: ${error.message}` }
+
+  await logAudit(auth.user, {
+    action: 'report.delete_session', targetType: 'report',
+    targetId: `exam_prep/${date}`, targetLabel: `${date} 내신대비 리포트`,
+    detail: { count: reports?.length ?? 0 },
+  })
+
+  revalidatePath('/admin/reports')
+  return {}
+}
+
+// 날짜별 내신대비 리포트 카카오 일괄 발송
+export async function sendBatchExamPrepKakao(
+  date: string,
+): Promise<{ error?: string; sent: number; failed: number }> {
+  const config = getSolapiConfig()
+  if (!config) return { error: '카카오 발송 설정(Solapi)이 아직 준비되지 않았습니다.', sent: 0, failed: 0 }
+
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error, sent: 0, failed: 0 }
+
+  const admin = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = admin as any
+
+  const { data: reports } = await db
+    .from('reports')
+    .select('id, student_id, image_url, report_date, student:users!student_id(name)')
+    .eq('report_type', 'exam_prep')
+    .eq('report_date', date)
+
+  if (!reports?.length) return { error: '해당 날짜의 내신대비 리포트가 없습니다.', sent: 0, failed: 0 }
+
+  const now = new Date().toISOString()
+  const validReports = (reports as Array<Record<string, unknown>>).filter((r) => !!r.image_url)
+  const studentIds   = validReports.map((r) => r.student_id as string)
+
+  const { data: allLinks } = await admin
+    .from('parent_links')
+    .select('student_id, parent:users!parent_id(phone)')
+    .in('student_id', studentIds)
+
+  const linksByStudent = new Map<string, string[]>()
+  for (const link of allLinks ?? []) {
+    const lr    = link as Record<string, unknown>
+    const phone = (lr.parent as { phone?: string } | null)?.phone
+    const sid   = lr.student_id as string
+    if (!phone || !sid) continue
+    const phones = linksByStudent.get(sid) ?? []
+    phones.push(phone.replace(/\D/g, ''))
+    linksByStudent.set(sid, phones)
+  }
+
+  const messageService = new SolapiMessageService(config.apiKey, config.apiSecret)
+
+  const sendJobs: Array<{ reportId: string; phone: string; fileId: string; studentName: string; reportLabel: string; reportDate: string; imageUrl: string }> = []
+  const uploadFailedReportIds = new Set<string>()
+
+  for (const r of validReports) {
+    const sid    = r.student_id as string
+    const phones = linksByStudent.get(sid) ?? []
+    if (phones.length === 0) continue
+
+    const imageUrl = r.image_url as string
+    let fileId: string
+    try {
+      fileId = await uploadImageToSolapi(messageService, imageUrl)
+    } catch {
+      uploadFailedReportIds.add(r.id as string)
+      continue
+    }
+
+    const studentName = ((r.student as { name?: string } | null)?.name ?? '학생') as string
+    const reportDate  = r.report_date as string
+
+    for (const phone of phones) {
+      sendJobs.push({ reportId: r.id as string, phone, fileId, studentName, reportLabel: '내신대비 리포트', reportDate, imageUrl })
+    }
+  }
+
+  const sendResults = await Promise.allSettled(
+    sendJobs.map((job) =>
+      messageService.send(buildKakaoMessage({ ...config, ...job })),
+    ),
+  )
+
+  const sentReportIds = new Set<string>()
+  const failedReportIds = new Set<string>()
+  sendResults.forEach((result, i) => {
+    const { reportId } = sendJobs[i]
+    if (result.status === 'fulfilled') sentReportIds.add(reportId)
+    else if (!sentReportIds.has(reportId)) failedReportIds.add(reportId)
+  })
+  for (const reportId of uploadFailedReportIds) {
+    if (!sentReportIds.has(reportId)) failedReportIds.add(reportId)
+  }
+
+  if (sentReportIds.size > 0) {
+    await admin.from('reports').update({ kakao_sent_at: now }).in('id', [...sentReportIds])
+  }
+
+  const noImageFailed = reports.length - validReports.length
+  const noLinkFailed  = validReports.filter((r) => !linksByStudent.has(r.student_id as string)).length
+
+  await logAudit(auth.user, {
+    action: 'report.kakao_batch_send', targetType: 'report',
+    targetId: `exam_prep/${date}`, targetLabel: `${date} 내신대비 카카오 일괄 발송`,
     detail: { sent: sentReportIds.size, failed: failedReportIds.size + noImageFailed + noLinkFailed },
   })
 

@@ -9,32 +9,10 @@ import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
 import { ClinicReportCard, type ClinicStudentData } from './clinic-report-card'
 import { DatePicker } from '@/components/ui/date-picker'
-import { matchClinicStudents, saveClinicReports, sendBatchClinicKakao, type ClinicContent } from '@/lib/actions/reports'
+import { matchStudentsByNameSchool, saveClinicReports, sendBatchClinicKakao, type ClinicContent } from '@/lib/actions/reports'
+import { excelTimeToString } from '@/lib/excel-time'
 
 const PREVIEW_COUNT = 4
-
-// ── helpers (report-builder와 동일 규칙) ─────────────────────────────────────
-
-function excelTimeToString(value: unknown): string {
-  if (value === null || value === undefined || value === '') return ''
-  if (typeof value === 'string') {
-    const t = value.trim()
-    if (/^\d{1,2}:\d{2}/.test(t)) return t
-    return t
-  }
-  if (typeof value === 'number' && value >= 0 && value < 1) {
-    const total = Math.round(value * 24 * 60)
-    const h = Math.floor(total / 60)
-    const m = total % 60
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-  }
-  if (value instanceof Date) {
-    const h = value.getHours()
-    const m = value.getMinutes()
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-  }
-  return String(value)
-}
 
 function todayString(): string {
   const d = new Date()
@@ -162,7 +140,7 @@ export function ClinicBuilderClient() {
         setPreviewIndices(sampleIndices(parsed.length, PREVIEW_COUNT))
 
         // 학생 계정 매칭 (카카오 발송·저장에 필요)
-        const { matches } = await matchClinicStudents(
+        const { matches } = await matchStudentsByNameSchool(
           parsed.map((s) => ({ name: s.name, school: s.school })),
         )
         const map: Record<number, string | null> = {}

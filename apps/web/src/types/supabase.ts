@@ -207,7 +207,7 @@ export type Database = {
           id: string
           session_date: string
           status: string
-          student_id: string
+          student_id: string | null
           student_name_snapshot: string | null
         }
         Insert: {
@@ -216,7 +216,7 @@ export type Database = {
           id?: string
           session_date: string
           status: string
-          student_id: string
+          student_id?: string | null
           student_name_snapshot?: string | null
         }
         Update: {
@@ -225,7 +225,7 @@ export type Database = {
           id?: string
           session_date?: string
           status?: string
-          student_id?: string
+          student_id?: string | null
           student_name_snapshot?: string | null
         }
         Relationships: [
@@ -651,6 +651,67 @@ export type Database = {
           },
         ]
       }
+      kakao_broadcasts: {
+        Row: {
+          audience: string
+          class_id: string | null
+          content: string
+          created_at: string
+          id: string
+          scope: string
+          sender_id: string
+          sent_count: number
+          student_id: string | null
+          title: string
+        }
+        Insert: {
+          audience: string
+          class_id?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          scope: string
+          sender_id: string
+          sent_count?: number
+          student_id?: string | null
+          title: string
+        }
+        Update: {
+          audience?: string
+          class_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          scope?: string
+          sender_id?: string
+          sent_count?: number
+          student_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kakao_broadcasts_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "class_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kakao_broadcasts_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kakao_broadcasts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lecture_class_access: {
         Row: {
           class_id: string | null
@@ -930,6 +991,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          image_urls: string[]
           is_read: boolean
           is_system: boolean
           sender_id: string
@@ -940,6 +1002,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          image_urls?: string[]
           is_read?: boolean
           is_system?: boolean
           sender_id: string
@@ -950,6 +1013,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          image_urls?: string[]
           is_read?: boolean
           is_system?: boolean
           sender_id?: string
@@ -979,6 +1043,83 @@ export type Database = {
           },
         ]
       }
+      push_subscriptions: {
+        Row: {
+          auth_key: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          auth_key: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id: string
+        }
+        Update: {
+          auth_key?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qna_ai_feedback: {
+        Row: {
+          category: string
+          created_at: string
+          detail: string | null
+          id: string
+          question_id: string
+          student_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          question_id: string
+          student_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          question_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qna_ai_feedback_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "qna_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qna_ai_feedback_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       qna_answers: {
         Row: {
           adopted_from_question_id: string | null
@@ -991,7 +1132,7 @@ export type Database = {
           question_id: string
           rated_at: string | null
           student_rating: number | null
-          ta_id: string
+          ta_id: string | null
         }
         Insert: {
           adopted_from_question_id?: string | null
@@ -1004,7 +1145,7 @@ export type Database = {
           question_id: string
           rated_at?: string | null
           student_rating?: number | null
-          ta_id: string
+          ta_id?: string | null
         }
         Update: {
           adopted_from_question_id?: string | null
@@ -1017,7 +1158,7 @@ export type Database = {
           question_id?: string
           rated_at?: string | null
           student_rating?: number | null
-          ta_id?: string
+          ta_id?: string | null
         }
         Relationships: [
           {
@@ -1045,6 +1186,7 @@ export type Database = {
       }
       qna_questions: {
         Row: {
+          additional_requested_at: string | null
           assigned_ta_id: string | null
           class_id: string | null
           content: string
@@ -1052,6 +1194,7 @@ export type Database = {
           id: string
           image_urls: string[]
           problem_number: string | null
+          reminder_sent_at: string | null
           status: string
           student_id: string
           subject_id: string | null
@@ -1059,6 +1202,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          additional_requested_at?: string | null
           assigned_ta_id?: string | null
           class_id?: string | null
           content: string
@@ -1066,6 +1210,7 @@ export type Database = {
           id?: string
           image_urls?: string[]
           problem_number?: string | null
+          reminder_sent_at?: string | null
           status?: string
           student_id: string
           subject_id?: string | null
@@ -1073,6 +1218,7 @@ export type Database = {
           title?: string
         }
         Update: {
+          additional_requested_at?: string | null
           assigned_ta_id?: string | null
           class_id?: string | null
           content?: string
@@ -1080,6 +1226,7 @@ export type Database = {
           id?: string
           image_urls?: string[]
           problem_number?: string | null
+          reminder_sent_at?: string | null
           status?: string
           student_id?: string
           subject_id?: string | null
@@ -1774,7 +1921,9 @@ export type Database = {
         Returns: {
           content: string
           id: string
+          problem_number: string
           sim: number
+          textbook_id: string
           title: string
         }[]
       }
@@ -1820,12 +1969,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1849,11 +1998,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1874,11 +2023,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1899,11 +2048,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1916,11 +2065,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

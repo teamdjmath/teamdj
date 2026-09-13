@@ -178,11 +178,12 @@ export default async function NewReportPage({
       // 마이그레이션 미적용 환경에서도 리포트 생성 자체가 막히지 않도록 실패 시 폴백 조회.
       type ProgressRow = { student_id: string; assignment_id: string; completion_pct: number | null; submit_date: string | null; before_enrollment?: boolean | null }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let { data: progress, error: progressError } = (await (admin as any)
+      const { data: progressData, error: progressError } = (await (admin as any)
         .from('assignment_progress')
         .select('student_id, assignment_id, completion_pct, submit_date, before_enrollment')
         .in('assignment_id', aIds)
         .in('student_id', studentIds)) as unknown as { data: ProgressRow[] | null; error: { code?: string } | null }
+      let progress = progressData
 
       if (progressError?.code === 'PGRST204' || progressError?.code === '42703') {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -222,6 +223,7 @@ export default async function NewReportPage({
     // 출석 맵 (병렬로 이미 받은 attRows 처리)
     const attendanceMap: Record<string, { status: 'present' | 'late' | 'absent' | 'absent_video'; reason: string }> = {}
     for (const row of attRows ?? []) {
+      if (!row.student_id) continue
       attendanceMap[row.student_id] = {
         status: row.status as 'present' | 'late' | 'absent' | 'absent_video',
         reason: row.absence_reason ?? '',
