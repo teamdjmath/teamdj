@@ -29,7 +29,8 @@ export interface ExamPrepHistoryEntry {
 interface Props {
   student: ExamPrepStudentData
   dateString: string // "9/17"
-  history?: ExamPrepHistoryEntry[] // 누적 기록 (오늘 포함, 날짜순) — 없으면 누적 섹션 생략
+  history?: ExamPrepHistoryEntry[] // 전체 기간 누적 기록 (오늘 포함, 날짜순) — 모의고사 추이는 전체,
+                                    // 학습 내용 누적은 이 중 이번 주(수~화)만 컴포넌트 내부에서 추려 사용
 }
 
 const C = {
@@ -63,6 +64,17 @@ function fmtShortDate(iso: string) {
   const [, m, d] = iso.split('-')
   if (!m || !d) return iso
   return `${parseInt(m, 10)}/${parseInt(d, 10)}`
+}
+
+// 학습 내용 누적이 내신대비 기간 내내 계속 쌓이면 이미지가 지나치게 길어지므로,
+// 수요일을 기준으로 한 주(수~화)만 보여준다. dateStr이 속한 주의 "그 주 수요일" 날짜를 구한다.
+function startOfWeekWednesday(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  const day = date.getDay() // 0=일 ~ 6=토, 3=수
+  const diff = (day - 3 + 7) % 7
+  date.setDate(date.getDate() - diff)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 // 2회 이상 응시 기록이 있을 때만 의미 있는 "추이" 그래프 — 1개뿐이면 점 하나만 찍혀
@@ -118,6 +130,11 @@ export const ExamPrepReportCard = forwardRef<HTMLDivElement, Props>(
       : '역전의 수학 내신대비 리포트'
 
     const attendedHistory = (history ?? []).filter((h) => h.mockExam.status === 'attended')
+
+    // 학습 내용 누적은 (수~화) 한 주 분량만 — 가장 최근 날짜가 속한 주만 남긴다
+    const latestDate = (history ?? []).reduce((max, h) => (h.date > max ? h.date : max), '')
+    const weekStart = latestDate ? startOfWeekWednesday(latestDate) : ''
+    const weeklyHistory = (history ?? []).filter((h) => h.date >= weekStart)
 
     const infoTh: React.CSSProperties = {
       padding: '7px 8px',
@@ -305,12 +322,12 @@ export const ExamPrepReportCard = forwardRef<HTMLDivElement, Props>(
           </>
         )}
 
-        {/* 학습 내용 누적 (오늘 포함, 날짜순) */}
-        {history && history.length > 0 && (
+        {/* 학습 내용 누적 (이번 주, 수~화) */}
+        {weeklyHistory.length > 0 && (
           <>
-            <SectionHeader label="학습 내용 누적" />
+            <SectionHeader label="학습 내용 누적 (이번 주)" />
             <div>
-              {history.map((h, i) => (
+              {weeklyHistory.map((h, i) => (
                 <div
                   key={h.date}
                   style={{ padding: '8px 14px', borderTop: i > 0 ? `1px solid ${C.border}` : 'none' }}
