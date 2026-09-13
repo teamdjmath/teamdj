@@ -2,16 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
+import * as XLSX from 'xlsx'
 import { toPng } from 'html-to-image'
 import { ExamPrepReportCard, type ExamPrepStudentData, type ExamPrepHistoryEntry } from './exam-prep-report-card'
 import { DatePicker } from '@/components/ui/date-picker'
 import { TimeInput } from '@/components/ui/time-input'
+import { excelTimeToString } from '@/lib/excel-time'
 import {
   searchStudentsByName,
   getExamPrepReportsForDate,
   getExamPrepHistoryForStudent,
   saveExamPrepReports,
   sendBatchExamPrepKakao,
+  matchStudentsByNameSchool,
   type ExamPrepContent,
 } from '@/lib/actions/reports'
 
@@ -58,6 +61,76 @@ function blankForm(hit: StudentHit): FormState {
   }
 }
 
+// ── 엑셀 일괄 업로드 ──────────────────────────────────────────────────────────
+// cols: 학교(0) | 학년(1) | 이름(2) | 등원시각(3) | 하원시각(4) | 학습내용(5) |
+//       모의고사(6: 응시/미응시, 공백=없음) | 시험명(7) | 난이도(8) | 점수(9) | 시험지특이사항(10)
+
+type ExamPrepExcelRow = {
+  school: string
+  grade: string
+  name: string
+  arrivalTime: string
+  departureTime: string
+  studyContent: string
+  mockExamStatus: ExamPrepContent['mockExam']['status']
+  examLabel: string
+  difficulty: number | null
+  score: number | null
+  note: string
+}
+
+function parseExamPrepExcel(buffer: ArrayBuffer): ExamPrepExcelRow[] {
+  const wb = XLSX.read(buffer, { type: 'array', cellDates: true })
+  const ws = wb.Sheets[wb.SheetNames[0]]
+  const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })
+  if (rows.length < 2) throw new Error('데이터가 없습니다. 헤더 포함 2행 이상이 필요합니다.')
+
+  const result: ExamPrepExcelRow[] = []
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i] as unknown[]
+    if (!row.some((c) => c !== '' && c !== null && c !== undefined)) continue
+    const name = String(row[2] ?? '').trim()
+    if (!name) continue
+
+    const mockRaw = String(row[6] ?? '').trim()
+    const mockExamStatus: ExamPrepContent['mockExam']['status'] =
+      mockRaw === '응시' ? 'attended' : mockRaw === '미응시' ? 'absent' : 'none'
+    const difficultyRaw = String(row[8] ?? '').trim()
+    const scoreRaw = String(row[9] ?? '').trim()
+
+    result.push({
+      school: String(row[0] ?? '').trim(),
+      grade: String(row[1] ?? '').trim(),
+      name,
+      arrivalTime: excelTimeToString(row[3]),
+      departureTime: excelTimeToString(row[4]),
+      studyContent: String(row[5] ?? '').trim(),
+      mockExamStatus,
+      examLabel: String(row[7] ?? '').trim(),
+      difficulty: difficultyRaw ? Number(difficultyRaw) : null,
+      score: scoreRaw ? Number(scoreRaw) : null,
+      note: String(row[10] ?? '').trim(),
+    })
+  }
+  if (result.length === 0) {
+    throw new Error('유효한 학생 데이터가 없습니다. 이름 컬럼(3번째)을 확인해주세요.')
+  }
+  return result
+}
+
+function downloadExamPrepSampleExcel() {
+  const aoa = [
+    ['학교', '학년', '이름', '등원시각', '하원시각', '학습내용', '모의고사', '시험명', '난이도', '점수', '시험지특이사항'],
+    ['대륜고', '3', '홍길동', '17:10', '20:40', 'DECISIVE 5~6회 오답 정리, 대륜고 기출 3세트 풀이', '응시', '미적분2 모의중간고사 1회', '4', '78', '15번 - N등급 킬러 문항'],
+    ['경신고', '2', '김철수', '17:00', '19:30', '기출 3세트 풀이 및 오답 정리', '', '', '', '', ''],
+  ]
+  const ws = XLSX.utils.aoa_to_sheet(aoa)
+  ws['!cols'] = [{ wch: 10 }, { wch: 6 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 45 }, { wch: 10 }, { wch: 22 }, { wch: 8 }, { wch: 8 }, { wch: 30 }]
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, '내신대비리포트')
+  XLSX.writeFile(wb, '내신대비리포트_샘플.xlsx')
+}
+
 function formFromLogged(row: LoggedRow): FormState {
   return {
     studentId: row.studentId,
@@ -81,6 +154,7 @@ export function ExamPrepBuilderClient() {
   // 추이가 이 값으로 스코핑되어, 기말고사 기간에 중간고사 때 기록이 섞이지 않는다.
   const [examType, setExamType] = useState<ExamPrepContent['examType']>('midterm')
   const [logged, setLogged] = useState<LoggedRow[]>([])
+  const [mode, setMode] = useState<'manual' | 'excel'>('manual')
 
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState<StudentHit[]>([])
@@ -97,6 +171,16 @@ export function ExamPrepBuilderClient() {
   const [listExpanded, setListExpanded] = useState(false)
 
   const [history, setHistory] = useState<ExamPrepHistoryEntry[]>([])
+
+  // 엑셀 일괄 업로드
+  const [excelRows, setExcelRows] = useState<ExamPrepExcelRow[]>([])
+  const [excelMatchMap, setExcelMatchMap] = useState<Record<number, string | null>>({})
+  const [excelHistoryMap, setExcelHistoryMap] = useState<Record<number, ExamPrepHistoryEntry[]>>({})
+  const [excelError, setExcelError] = useState('')
+  const [excelSaving, setExcelSaving] = useState(false)
+  const [excelSaveProgress, setExcelSaveProgress] = useState<{ cur: number; total: number } | null>(null)
+  const [excelSavedCount, setExcelSavedCount] = useState<number | null>(null)
+  const excelCaptureRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 
   const cardRef = useRef<HTMLDivElement>(null)
   const [loadPending, startLoadTransition] = useTransition()
@@ -231,6 +315,142 @@ export function ExamPrepBuilderClient() {
       setSending(false)
     }
   }, [reportDate])
+
+  // 엑셀 파일 처리 — 파싱 → 학생 매칭 → (매칭된 학생만) 누적 이력 미리 조회
+  const processExcelFile = useCallback((file: File) => {
+    setExcelError('')
+    setExcelRows([])
+    setExcelMatchMap({})
+    setExcelHistoryMap({})
+    setExcelSavedCount(null)
+
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      try {
+        const buffer = ev.target?.result as ArrayBuffer
+        const parsed = parseExamPrepExcel(buffer)
+        setExcelRows(parsed)
+
+        const { matches } = await matchStudentsByNameSchool(
+          parsed.map((r) => ({ name: r.name, school: r.school })),
+        )
+        const map: Record<number, string | null> = {}
+        matches.forEach((m, i) => { map[i] = m.studentId })
+        setExcelMatchMap(map)
+
+        const historyMap: Record<number, ExamPrepHistoryEntry[]> = {}
+        await Promise.all(
+          parsed.map(async (_, i) => {
+            const sid = map[i]
+            if (!sid) return
+            const res = await getExamPrepHistoryForStudent(sid, reportDate, examType)
+            if (!res.error) historyMap[i] = res.history
+          }),
+        )
+        setExcelHistoryMap(historyMap)
+      } catch (err) {
+        setExcelError(err instanceof Error ? err.message : '엑셀 파싱 중 오류가 발생했습니다.')
+      }
+    }
+    reader.readAsArrayBuffer(file)
+  }, [reportDate, examType])
+
+  const handleExcelFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) processExcelFile(file)
+    e.target.value = ''
+  }, [processExcelFile])
+
+  function buildExcelCardData(row: ExamPrepExcelRow): ExamPrepStudentData {
+    return {
+      school: row.school,
+      grade: row.grade,
+      name: row.name,
+      arrivalTime: row.arrivalTime,
+      departureTime: row.departureTime,
+      studyContent: row.studyContent,
+      mockExam: { status: row.mockExamStatus, examLabel: row.examLabel, difficulty: row.difficulty, score: row.score, note: row.note },
+    }
+  }
+
+  function buildExcelMergedHistory(row: ExamPrepExcelRow, index: number): ExamPrepHistoryEntry[] {
+    const prior = (excelHistoryMap[index] ?? []).filter((h) => h.date !== reportDate)
+    return [
+      ...prior,
+      {
+        date: reportDate,
+        studyContent: row.studyContent,
+        mockExam: { status: row.mockExamStatus, examLabel: row.examLabel, difficulty: row.difficulty, score: row.score, note: row.note },
+      },
+    ].sort((a, b) => a.date.localeCompare(b.date))
+  }
+
+  const excelMatchedCount = excelRows.filter((_, i) => excelMatchMap[i]).length
+
+  const handleExcelSave = useCallback(async () => {
+    const targets = excelRows
+      .map((row, index) => ({ row, index, studentId: excelMatchMap[index] }))
+      .filter((t): t is typeof t & { studentId: string } => !!t.studentId)
+    if (targets.length === 0) { setExcelError('매칭된 학생이 없어 저장할 수 없습니다.'); return }
+
+    setExcelError('')
+    setExcelSaving(true)
+    setExcelSavedCount(null)
+    setExcelSaveProgress({ cur: 0, total: targets.length })
+
+    try {
+      await document.fonts.ready
+      const items: Array<{ studentId: string; reportDate: string; contentJson: ExamPrepContent; imageBase64: string }> = []
+
+      for (let i = 0; i < targets.length; i++) {
+        const { row, index, studentId } = targets[i]
+        setExcelSaveProgress({ cur: i + 1, total: targets.length })
+        const node = excelCaptureRefs.current.get(index)
+        if (!node) continue
+
+        const imageBase64 = await toPng(node, {
+          cacheBust: true,
+          pixelRatio: 2,
+          backgroundColor: '#ffffff',
+          skipFonts: true,
+          width: node.offsetWidth,
+          height: node.offsetHeight,
+        })
+
+        items.push({
+          studentId,
+          reportDate,
+          contentJson: {
+            type: 'exam_prep',
+            examType,
+            school: row.school,
+            grade: row.grade,
+            arrivalTime: row.arrivalTime,
+            departureTime: row.departureTime,
+            studyContent: row.studyContent,
+            mockExam: {
+              status: row.mockExamStatus,
+              examLabel: row.mockExamStatus === 'attended' ? (row.examLabel || undefined) : undefined,
+              difficulty: row.mockExamStatus === 'attended' ? row.difficulty : null,
+              score: row.mockExamStatus === 'attended' ? row.score : null,
+              note: row.mockExamStatus === 'attended' ? (row.note || undefined) : undefined,
+            },
+          },
+          imageBase64,
+        })
+      }
+
+      const res = await saveExamPrepReports(items)
+      if (res.error) { setExcelError(res.error); return }
+      setExcelSavedCount(res.saved)
+      await loadLogged(reportDate)
+    } catch (e) {
+      setExcelError(e instanceof Error ? e.message : '저장 중 오류가 발생했습니다.')
+    } finally {
+      setExcelSaving(false)
+      setExcelSaveProgress(null)
+    }
+  }, [excelRows, excelMatchMap, reportDate, examType, loadLogged])
 
   // 카카오 자동 발송(Solapi)이 아직 설정 안 됐을 수 있으므로, 그동안 수동으로 전달할 수 있게
   // 이미지 다운로드(단일/전체 ZIP)를 지원한다.
@@ -395,6 +615,28 @@ export function ExamPrepBuilderClient() {
         </div>
       </div>
 
+      {/* 입력 방식 탭 */}
+      <div className="flex gap-1 mb-4 rounded-xl bg-zinc-100 dark:bg-zinc-900 p-1 w-fit">
+        {([
+          { value: 'manual', label: '실시간 개별 입력' },
+          { value: 'excel', label: '엑셀 일괄 업로드' },
+        ] as const).map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => setMode(opt.value)}
+            className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
+              mode === opt.value
+                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                : 'text-zinc-500 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {mode === 'manual' ? (
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
         {/* 입력 폼 */}
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 shadow-sm space-y-4">
@@ -604,6 +846,82 @@ export function ExamPrepBuilderClient() {
           )}
         </div>
       </div>
+      ) : (
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 shadow-sm space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="cursor-pointer rounded-xl border-2 border-zinc-200 dark:border-zinc-800 px-4 py-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              엑셀 업로드
+              <input type="file" accept=".xlsx,.xls" onChange={handleExcelFile} className="hidden" />
+            </label>
+            <button
+              type="button"
+              onClick={downloadExamPrepSampleExcel}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors"
+            >
+              샘플 엑셀 다운로드
+            </button>
+            <span className="text-xs text-zinc-400 dark:text-zinc-600">
+              {reportDate} · {examType === 'midterm' ? '모의 중간고사' : '모의 기말고사'} 기준으로 저장됩니다
+            </span>
+
+            {excelRows.length > 0 && (
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleExcelSave}
+                  disabled={excelSaving || excelMatchedCount === 0}
+                  className="rounded-xl bg-zinc-950 dark:bg-zinc-50 px-5 py-3 text-sm font-semibold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-60 flex items-center gap-2"
+                >
+                  {excelSaving
+                    ? (excelSaveProgress ? `저장 중… (${excelSaveProgress.cur}/${excelSaveProgress.total})` : '저장 중…')
+                    : `리포트 저장 (${excelMatchedCount}명)`}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {excelRows.length > 0 && excelRows.length - excelMatchedCount > 0 && (
+            <p className="text-xs text-amber-600">
+              학생 계정을 찾지 못한 {excelRows.length - excelMatchedCount}명은 저장에서 제외됩니다 (이름·학교로 매칭)
+            </p>
+          )}
+
+          {excelSavedCount !== null && (
+            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">✓ {excelSavedCount}명 저장 완료</p>
+          )}
+
+          {excelError && <p className="text-sm text-red-500 whitespace-pre-line">{excelError}</p>}
+
+          {excelRows.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-6 py-10 text-center">
+              <p className="text-sm font-bold text-zinc-600 dark:text-zinc-400 mb-2">시트 컬럼 순서 (첫 번째 시트 기준)</p>
+              <p className="text-xs text-zinc-400 dark:text-zinc-600">
+                학교 | 학년 | 이름 | 등원시각 | 하원시각 | 학습내용 | 모의고사(응시/미응시) | 시험명 | 난이도 | 점수 | 시험지특이사항
+              </p>
+              <p className="mt-1 text-xs text-zinc-300 dark:text-zinc-700">첫 행은 헤더 · 이름이 비어있는 행은 건너뜀 · 시각은 16:30 형식 · 모의고사가 없으면 6번 칸부터 비워두면 됨</p>
+            </div>
+          ) : (
+            <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, 420px)' }}>
+              {excelRows.slice(0, 4).map((row, i) => (
+                <div key={i} className="shadow-md rounded-sm overflow-hidden w-fit relative">
+                  {!excelMatchMap[i] && (
+                    <div className="absolute top-2 right-2 z-10 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">미매칭</div>
+                  )}
+                  <ExamPrepReportCard
+                    student={buildExcelCardData(row)}
+                    dateString={reportDate.slice(5).replace('-', '/')}
+                    history={buildExcelMergedHistory(row, i)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 오프스크린 캡처용 카드 */}
       {previewCard && (
@@ -612,6 +930,26 @@ export function ExamPrepBuilderClient() {
           style={{ position: 'fixed', left: -10000, top: 0, width: 420, pointerEvents: 'none', zIndex: -1 }}
         >
           <ExamPrepReportCard ref={cardRef} student={previewCard} dateString={reportDate.slice(5).replace('-', '/')} history={mergedHistory} />
+        </div>
+      )}
+
+      {excelRows.length > 0 && (
+        <div
+          aria-hidden="true"
+          style={{ position: 'fixed', left: -10000, top: 0, width: 420, pointerEvents: 'none', zIndex: -1 }}
+        >
+          {excelRows.map((row, i) => (
+            <ExamPrepReportCard
+              key={i}
+              ref={(el) => {
+                if (el) excelCaptureRefs.current.set(i, el)
+                else excelCaptureRefs.current.delete(i)
+              }}
+              student={buildExcelCardData(row)}
+              dateString={reportDate.slice(5).replace('-', '/')}
+              history={buildExcelMergedHistory(row, i)}
+            />
+          ))}
         </div>
       )}
     </div>
