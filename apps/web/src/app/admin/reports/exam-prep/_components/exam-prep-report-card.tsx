@@ -65,31 +65,45 @@ function fmtShortDate(iso: string) {
   return `${parseInt(m, 10)}/${parseInt(d, 10)}`
 }
 
+// 2회 이상 응시 기록이 있을 때만 의미 있는 "추이" 그래프 — 1개뿐이면 점 하나만 찍혀
+// 가독성이 떨어지므로 호출 쪽(ExamPrepReportCard)에서 아예 렌더링하지 않는다.
 function ScoreTrendChart({ scores }: { scores: number[] }) {
-  if (scores.length === 0) return null
   const W = 380
-  const H = 96
-  const padX = 16
-  const padY = 14
+  const H = 116
+  const padX = 20
+  const padTop = 28 // 점 위에 점수 라벨을 쓸 공간
+  const padBottom = 14
   const max = 100
   const n = scores.length
   const stepX = n > 1 ? (W - padX * 2) / (n - 1) : 0
   const points = scores.map((s, i) => {
     const x = padX + stepX * i
-    const y = padY + (H - padY * 2) * (1 - Math.max(0, Math.min(100, s)) / max)
-    return { x, y }
+    const y = padTop + (H - padTop - padBottom) * (1 - Math.max(0, Math.min(100, s)) / max)
+    return { x, y, score: s }
   })
   const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ')
 
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block' }}>
       {[0, 50, 100].map((v) => {
-        const y = padY + (H - padY * 2) * (1 - v / max)
+        const y = padTop + (H - padTop - padBottom) * (1 - v / max)
         return <line key={v} x1={padX} y1={y} x2={W - padX} y2={y} stroke="#e8e8e8" strokeWidth={1} />
       })}
       <path d={pathD} fill="none" stroke={C.dark} strokeWidth={2} />
       {points.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r={3} fill={C.dark} />
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r={3} fill={C.dark} />
+          <text
+            x={Math.min(Math.max(p.x, 20), W - 20)}
+            y={Math.max(p.y - 10, 12)}
+            textAnchor="middle"
+            fontSize={12}
+            fontWeight={700}
+            fill={C.dark}
+          >
+            {p.score}
+          </text>
+        </g>
       ))}
     </svg>
   )
@@ -131,12 +145,17 @@ export const ExamPrepReportCard = forwardRef<HTMLDivElement, Props>(
       color: C.sub,
       borderBottom: `1px solid ${C.border}`,
       textAlign: 'left' as const,
+      whiteSpace: 'nowrap' as const,
     }
     const trendTd: React.CSSProperties = {
       padding: '5px 6px',
       fontSize: 11,
       color: C.body,
       borderBottom: `1px solid ${C.border}`,
+    }
+    const trendTdNowrap: React.CSSProperties = {
+      ...trendTd,
+      whiteSpace: 'nowrap' as const,
     }
 
     return (
@@ -253,27 +272,30 @@ export const ExamPrepReportCard = forwardRef<HTMLDivElement, Props>(
           </>
         )}
 
-        {/* 모의고사 성적 추이 (누적, 응시 기록 2회 이상일 때만 그래프 의미가 있음) */}
+        {/* 모의고사 성적 추이 (누적) — 그래프는 응시 기록이 2회 이상일 때만 (1개뿐이면 점 하나만
+            찍혀 가독성이 떨어지므로, 그 경우엔 표만 보여준다) */}
         {attendedHistory.length > 0 && (
           <>
             <SectionHeader label="모의고사 성적 추이" />
             <div style={{ padding: '10px 14px' }}>
-              <ScoreTrendChart scores={attendedHistory.map((h) => h.mockExam.score ?? 0)} />
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8 }}>
+              {attendedHistory.length >= 2 && (
+                <ScoreTrendChart scores={attendedHistory.map((h) => h.mockExam.score ?? 0)} />
+              )}
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: attendedHistory.length >= 2 ? 8 : 0 }}>
                 <thead>
                   <tr>
                     <th style={trendTh}>회차</th>
                     <th style={{ ...trendTh, textAlign: 'center' }}>난이도</th>
                     <th style={{ ...trendTh, textAlign: 'center' }}>점수</th>
-                    <th style={trendTh}>특이사항</th>
+                    <th style={trendTh}>시험지 특이사항</th>
                   </tr>
                 </thead>
                 <tbody>
                   {attendedHistory.map((h, i) => (
                     <tr key={h.date}>
                       <td style={trendTd}>{h.mockExam.examLabel || `${i + 1}회`}</td>
-                      <td style={{ ...trendTd, textAlign: 'center' }}>{h.mockExam.difficulty != null ? `${h.mockExam.difficulty}/5` : '—'}</td>
-                      <td style={{ ...trendTd, textAlign: 'center', fontWeight: 700 }}>{h.mockExam.score != null ? `${h.mockExam.score}점` : '—'}</td>
+                      <td style={{ ...trendTdNowrap, textAlign: 'center' }}>{h.mockExam.difficulty != null ? `${h.mockExam.difficulty}/5` : '—'}</td>
+                      <td style={{ ...trendTdNowrap, textAlign: 'center', fontWeight: 700 }}>{h.mockExam.score != null ? `${h.mockExam.score}점` : '—'}</td>
                       <td style={trendTd}>{h.mockExam.note || '—'}</td>
                     </tr>
                   ))}

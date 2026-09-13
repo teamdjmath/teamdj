@@ -523,7 +523,7 @@ export function ExamPrepBuilderClient() {
                       type="text"
                       value={form.note}
                       onChange={(e) => setForm((f) => f && { ...f, note: e.target.value })}
-                      placeholder="특이사항 (예: 컨디션 난조, 시간 부족으로 뒷부분 미풀이)"
+                      placeholder="시험지 특이사항 (예: 7번 문항 유의, 3번 고난도)"
                       className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 outline-none transition-all"
                     />
                   </div>
