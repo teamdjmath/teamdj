@@ -17,8 +17,16 @@ interface Props {
   classOptions: ClassOption[]
   selectedClassId: string | null
   selectedDate: string | null
+  selectedReportType: string | null
   sessions: Session[]
 }
+
+const REPORT_TYPE_OPTIONS = [
+  { value: '', label: '전체 유형' },
+  { value: 'learning', label: '학습 리포트' },
+  { value: 'clinic', label: '클리닉 리포트' },
+  { value: 'exam_prep', label: '내신대비 리포트' },
+] as const
 
 function fmtDate(iso?: string) {
   if (!iso || !iso.includes('-')) return iso || ''
@@ -28,26 +36,43 @@ function fmtDate(iso?: string) {
   return `${mm}.${dd}`
 }
 
-export function ReportsClient({ classOptions, selectedClassId, selectedDate, sessions }: Props) {
+export function ReportsClient({ classOptions, selectedClassId, selectedDate, selectedReportType, sessions }: Props) {
   const router = useRouter()
 
-  function nav(classId: string, date: string) {
+  function nav(classId: string, date: string, reportType: string) {
     const p = new URLSearchParams()
-    if (classId) p.set('classId', classId)
-    if (date)    p.set('date', date)
+    if (classId)    p.set('classId', classId)
+    if (date)       p.set('date', date)
+    if (reportType) p.set('reportType', reportType)
     router.push(`/admin/reports?${p.toString()}`)
   }
+
+  // 클리닉/내신대비는 분반이 없는 리포트라 분반 필터가 의미 없음 — 그 유형을 고르면 분반 선택은 비활성화
+  const classFilterDisabled = selectedReportType === 'clinic' || selectedReportType === 'exam_prep'
 
   return (
     <>
       {/* 필터 */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">리포트 유형</label>
+          <select
+            value={selectedReportType ?? ''}
+            onChange={(e) => nav(e.target.value === 'clinic' || e.target.value === 'exam_prep' ? '' : (selectedClassId ?? ''), selectedDate ?? '', e.target.value)}
+            className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
+          >
+            {REPORT_TYPE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
         <div className="flex-1 max-w-xs space-y-1.5">
           <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">분반</label>
           <select
             value={selectedClassId ?? ''}
-            onChange={(e) => nav(e.target.value, selectedDate ?? '')}
-            className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
+            disabled={classFilterDisabled}
+            onChange={(e) => nav(e.target.value, selectedDate ?? '', selectedReportType ?? '')}
+            className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="">전체 분반</option>
             {classOptions.map((c) => (
@@ -60,13 +85,13 @@ export function ReportsClient({ classOptions, selectedClassId, selectedDate, ses
           <input
             type="date"
             value={selectedDate ?? ''}
-            onChange={(e) => nav(selectedClassId ?? '', e.target.value)}
+            onChange={(e) => nav(selectedClassId ?? '', e.target.value, selectedReportType ?? '')}
             className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
           />
         </div>
-        {(selectedClassId || selectedDate) && (
+        {(selectedClassId || selectedDate || selectedReportType) && (
           <button
-            onClick={() => nav('', '')}
+            onClick={() => nav('', '', '')}
             className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-500 dark:text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors whitespace-nowrap"
           >
             초기화

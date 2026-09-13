@@ -7,9 +7,9 @@ import { NewReportButton } from './_components/new-report-button'
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ classId?: string; date?: string }>
+  searchParams: Promise<{ classId?: string; date?: string; reportType?: string }>
 }) {
-  const { classId: selectedClassId, date: selectedDate } = await searchParams
+  const { classId: selectedClassId, date: selectedDate, reportType: selectedReportType } = await searchParams
   const admin = createAdminClient()
 
   // 보존 정책 lazy 정리 — 3개월 지난 리포트는 Storage 이미지와 함께 삭제
@@ -24,8 +24,9 @@ export default async function ReportsPage({
     .order('report_date', { ascending: false })
     .order('class_id')
 
-  if (selectedClassId) query = query.eq('class_id', selectedClassId)
-  if (selectedDate)    query = query.eq('report_date', selectedDate)
+  if (selectedClassId)  query = query.eq('class_id', selectedClassId)
+  if (selectedDate)     query = query.eq('report_date', selectedDate)
+  if (selectedReportType) query = query.eq('report_type', selectedReportType)
 
   const { data: rows } = await query
 
@@ -75,6 +76,7 @@ export default async function ReportsPage({
         classOptions={(classes ?? []).map((c) => ({ id: c.id as string, name: c.name as string }))}
         selectedClassId={selectedClassId ?? null}
         selectedDate={selectedDate ?? null}
+        selectedReportType={selectedReportType ?? null}
         sessions={sessions}
       />
     </div>

@@ -243,13 +243,13 @@ export function ExamPrepBuilderClient() {
       const blob = await res.blob()
       if (!blob.type.startsWith('image/')) throw new Error('올바른 이미지 응답이 아닙니다.')
       const { saveAs } = await import('file-saver')
-      saveAs(blob, `${row.content.school || '학교'}_${row.studentName}.png`)
+      saveAs(blob, `${reportDate}_${row.content.school || '학교'}_${row.studentName}.png`)
     } catch (e) {
       setErr(e instanceof Error ? e.message : '이미지 다운로드에 실패했습니다.')
     } finally {
       setDownloadingId(null)
     }
-  }, [])
+  }, [reportDate])
 
   const downloadAllZip = useCallback(async () => {
     const withImages = logged.filter((r) => r.imageUrl)
