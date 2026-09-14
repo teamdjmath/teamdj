@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getVisibleClassOptions } from '@/lib/data/class-options'
+import { isSuspendedOn } from '@/lib/suspension'
 import { AttendanceClient } from './_components/attendance-client'
 
 interface PageProps {
@@ -20,7 +21,7 @@ export default async function AttendancePage({ searchParams }: PageProps) {
     selectedClassId
       ? supabase
           .from('class_members')
-          .select('users!student_id(id, name, phone, school)')
+          .select('users!student_id(id, name, phone, school, suspended_from, suspended_until)')
           .eq('class_id', selectedClassId)
           .eq('is_active', true)
           .order('users(name)')
@@ -39,10 +40,17 @@ export default async function AttendancePage({ searchParams }: PageProps) {
     label: `${c.name} (${c.subject} · ${c.grade})`,
   }))
 
-  type MemberUser = { id: string; name: string; phone: string; school: string | null }
+  type MemberUser = {
+    id: string; name: string; phone: string; school: string | null
+    suspended_from: string | null; suspended_until: string | null
+  }
   const students = (members ?? [])
     .map((m) => m.users as MemberUser)
     .filter(Boolean)
+    .map((u) => ({
+      id: u.id, name: u.name, phone: u.phone, school: u.school,
+      suspended: isSuspendedOn(u.suspended_from, u.suspended_until, selectedDate),
+    }))
 
   const existingLogs: Record<string, { status: string; absenceReason: string | null }> =
     Object.fromEntries(

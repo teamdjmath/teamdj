@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { isSuspendedOn } from '@/lib/suspension'
 import { TestDetailClient } from './_components/test-detail-client'
 
 export default async function TestDetailPage({
@@ -25,15 +26,20 @@ export default async function TestDetailPage({
   // 해당 분반의 활성 학생 목록
   const { data: members } = await adminSupabase
     .from('class_members')
-    .select('student_id, users!student_id(name)')
+    .select('student_id, users!student_id(name, suspended_from, suspended_until)')
     .eq('class_id', classId)
     .eq('is_active', true)
 
+  const testDate = test.test_date as string
   const students = (members ?? [])
-    .map((m) => ({
-      id:   m.student_id as string,
-      name: (m.users as { name: string } | null)?.name ?? '',
-    }))
+    .map((m) => {
+      const u = m.users as { name: string; suspended_from: string | null; suspended_until: string | null } | null
+      return {
+        id:   m.student_id as string,
+        name: u?.name ?? '',
+        suspended: isSuspendedOn(u?.suspended_from, u?.suspended_until, testDate),
+      }
+    })
     .filter((s) => s.name)
     .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
 
@@ -49,7 +55,7 @@ export default async function TestDetailPage({
       .from('attendance_logs')
       .select('student_id, status')
       .eq('class_id', classId)
-      .eq('session_date', test.test_date as string),
+      .eq('session_date', testDate),
   ])
 
   // 시험일에 결석(차감/영상)으로 기록된 학생 — 미응시 토글 시 사유 '결석' 자동 입력 대상

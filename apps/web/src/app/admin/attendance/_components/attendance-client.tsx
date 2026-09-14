@@ -6,7 +6,7 @@ import { saveAttendance, getMonthlyAttendanceExport, type AttendanceStatus } fro
 import { formatPhone } from '@/lib/phone'
 import { EmptyState } from '@/components/ui/empty-state'
 
-type Student = { id: string; name: string; phone: string; school: string | null }
+type Student = { id: string; name: string; phone: string; school: string | null; suspended: boolean }
 type ClassOption = { id: string; label: string }
 type LogMap = Record<string, { status: string; absenceReason: string | null }>
 
@@ -129,9 +129,12 @@ export function AttendanceClient({
     setSaveResult(null)
   }, [])
 
-  // 전체 일괄 설정
+  // 전체 일괄 설정 — 휴원 중인 학생은 대상에서 제외
   function setAll(status: AttendanceStatus) {
-    setStatusMap(Object.fromEntries(students.map((s) => [s.id, status])))
+    setStatusMap((prev) => ({
+      ...prev,
+      ...Object.fromEntries(students.filter((s) => !s.suspended).map((s) => [s.id, status])),
+    }))
     setSaveResult(null)
   }
 
@@ -141,7 +144,7 @@ export function AttendanceClient({
     setSaveResult(null)
 
     const entries = students
-      .filter((s) => statusMap[s.id] !== null)
+      .filter((s) => statusMap[s.id] !== null && !s.suspended)
       .map((s) => ({
         studentId:      s.id,
         status:         statusMap[s.id]!,
@@ -164,13 +167,14 @@ export function AttendanceClient({
     })
   }
 
-  // 요약 집계
+  // 요약 집계 — 휴원 중인 학생은 출결 대상이 아니므로 제외
+  const checkable = students.filter((s) => !s.suspended)
   const summary = {
-    present:      students.filter((s) => statusMap[s.id] === 'present').length,
-    late:         students.filter((s) => statusMap[s.id] === 'late').length,
-    absent:       students.filter((s) => statusMap[s.id] === 'absent').length,
-    absent_video: students.filter((s) => statusMap[s.id] === 'absent_video').length,
-    unchecked:    students.filter((s) => statusMap[s.id] === null).length,
+    present:      checkable.filter((s) => statusMap[s.id] === 'present').length,
+    late:         checkable.filter((s) => statusMap[s.id] === 'late').length,
+    absent:       checkable.filter((s) => statusMap[s.id] === 'absent').length,
+    absent_video: checkable.filter((s) => statusMap[s.id] === 'absent_video').length,
+    unchecked:    checkable.filter((s) => statusMap[s.id] === null).length,
   }
 
   const isExisting = Object.keys(existingLogs).length > 0
@@ -325,6 +329,11 @@ export function AttendanceClient({
                                   {student.school}
                                 </span>
                               )}
+                              {student.suspended && (
+                                <span className="inline-flex whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                                  휴원 중
+                                </span>
+                              )}
                             </div>
                           </td>
 
@@ -333,29 +342,35 @@ export function AttendanceClient({
                             {formatPhone(student.phone)}
                           </td>
 
-                          {/* 출결 토글 버튼 */}
+                          {/* 출결 토글 버튼 — 휴원 중인 학생은 선택 자체가 막힘 */}
                           <td className="px-5 py-3.5">
-                            <div className="flex items-center justify-center gap-1.5">
-                              {ALL_STATUSES.map((status) => (
-                                <button
-                                  key={status}
-                                  type="button"
-                                  onClick={() => toggle(student.id, status)}
-                                  className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
-                                    current === status
-                                      ? STATUS_CONFIG[status].activeClass
-                                      : STATUS_CONFIG[status].inactiveClass
-                                  }`}
-                                >
-                                  {STATUS_CONFIG[status].label}
-                                </button>
-                              ))}
-                            </div>
+                            {student.suspended ? (
+                              <p className="text-center text-xs text-zinc-300 dark:text-zinc-700">기록 불필요</p>
+                            ) : (
+                              <div className="flex items-center justify-center gap-1.5">
+                                {ALL_STATUSES.map((status) => (
+                                  <button
+                                    key={status}
+                                    type="button"
+                                    onClick={() => toggle(student.id, status)}
+                                    className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
+                                      current === status
+                                        ? STATUS_CONFIG[status].activeClass
+                                        : STATUS_CONFIG[status].inactiveClass
+                                    }`}
+                                  >
+                                    {STATUS_CONFIG[status].label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </td>
 
                           {/* 결석 사유 (결석/지각 시 표시) */}
                           <td className="hidden md:table-cell px-5 py-3.5">
-                            {(current === 'absent' || current === 'late' || current === 'absent_video') ? (
+                            {student.suspended ? (
+                              <span className="text-xs text-zinc-300 dark:text-zinc-700">—</span>
+                            ) : (current === 'absent' || current === 'late' || current === 'absent_video') ? (
                               <input
                                 type="text"
                                 value={reasonMap[student.id] ?? ''}
@@ -387,25 +402,25 @@ export function AttendanceClient({
                     <SummaryItem
                       label="출석"
                       count={summary.present}
-                      total={students.length}
+                      total={checkable.length}
                       dotClass="bg-zinc-900 dark:bg-zinc-100"
                     />
                     <SummaryItem
                       label="지각"
                       count={summary.late}
-                      total={students.length}
+                      total={checkable.length}
                       dotClass="bg-zinc-400 dark:bg-zinc-600"
                     />
                     <SummaryItem
                       label="결석(차감)"
                       count={summary.absent}
-                      total={students.length}
+                      total={checkable.length}
                       dotClass="bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700"
                     />
                     <SummaryItem
                       label="결석(영상)"
                       count={summary.absent_video}
-                      total={students.length}
+                      total={checkable.length}
                       dotClass="bg-blue-300"
                     />
                     {summary.unchecked > 0 && (
@@ -425,7 +440,7 @@ export function AttendanceClient({
                     <button
                       type="button"
                       onClick={handleSave}
-                      disabled={isPending || summary.unchecked === students.length}
+                      disabled={isPending || checkable.length === 0 || summary.unchecked === checkable.length}
                       className="rounded-lg bg-zinc-950 dark:bg-zinc-50 px-5 py-2.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:pointer-events-none disabled:bg-zinc-400 dark:disabled:bg-zinc-700 disabled:text-zinc-100 dark:disabled:text-zinc-400 transition-colors"
                     >
                       {isPending ? '저장 중…' : '저장'}

@@ -6,7 +6,7 @@ import { Modal } from '@/components/ui/modal'
 import { saveTestScores, bulkSaveTestScores } from '@/lib/actions/scores'
 import type { BulkResult } from '@/lib/actions/scores'
 
-type Student = { id: string; name: string }
+type Student = { id: string; name: string; suspended: boolean }
 
 interface Props {
   testId: string
@@ -60,15 +60,18 @@ export function TestDetailClient({
 
   const showGrades = GRADE_EXAM_TYPES.includes(examType) && gradeCuts !== null
 
+  // 휴원 중인 학생은 점수 입력 대상이 아니므로 통계·저장 대상에서 제외
+  const scorable = students.filter((s) => !s.suspended)
+
   // 통계 — 미응시 학생은 평균/최고/최저에서 제외
-  const validScores = students
+  const validScores = scorable
     .filter((s) => !absent[s.id])
     .map((s) => scores[s.id])
     .filter((v) => v !== undefined && v !== '')
     .map(Number)
     .filter((v) => !isNaN(v))
 
-  const absentCount = students.filter((s) => absent[s.id]).length
+  const absentCount = scorable.filter((s) => absent[s.id]).length
 
   const avg = validScores.length > 0
     ? validScores.reduce((a, b) => a + b, 0) / validScores.length
@@ -81,7 +84,8 @@ export function TestDetailClient({
     setSaveOk(false)
     startTransition(async () => {
       // 미응시 학생: 점수 없이 미응시+사유로 저장 / 응시 학생: 입력된 점수만 저장
-      const absentEntries = students
+      // 휴원 중인 학생은 애초에 입력 UI가 막혀 있지만, 혹시 모를 잔존 상태를 대비해 여기서도 제외
+      const absentEntries = scorable
         .filter((s) => absent[s.id])
         .map((s) => ({
           studentId: s.id,
@@ -90,7 +94,7 @@ export function TestDetailClient({
           absenceReason: absentReasons[s.id] ?? '',
         }))
 
-      const scoreEntries = students
+      const scoreEntries = scorable
         .filter((s) => !absent[s.id] && scores[s.id] !== undefined && scores[s.id] !== '')
         .map((s) => ({ studentId: s.id, score: parseFloat(scores[s.id]) }))
         .filter((e) => !isNaN(e.score))
@@ -184,7 +188,7 @@ export function TestDetailClient({
           </span>
           <span className="text-zinc-300 dark:text-zinc-700">|</span>
           <span className="text-zinc-500 dark:text-zinc-500">
-            입력 <span className="font-bold text-zinc-900 dark:text-zinc-100">{validScores.length}</span>/{students.length}명
+            입력 <span className="font-bold text-zinc-900 dark:text-zinc-100">{validScores.length}</span>/{scorable.length}명
           </span>
           {absentCount > 0 && (
             <>
@@ -258,45 +262,58 @@ export function TestDetailClient({
 
                 return (
                   <tr key={s.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors">
-                    <td className="px-5 py-3 font-medium text-zinc-900 dark:text-zinc-100">{s.name}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center justify-center gap-2">
-                        {isAbsent ? (
-                          <input
-                            type="text"
-                            value={absentReasons[s.id] ?? ''}
-                            onChange={(e) =>
-                              setAbsentReasons((prev) => ({ ...prev, [s.id]: e.target.value }))
-                            }
-                            className="w-40 rounded-lg border border-amber-200 bg-amber-50 px-2 py-2 text-sm text-zinc-800 dark:text-zinc-200 placeholder:text-amber-400 focus:border-amber-400 focus:outline-none transition-all"
-                            placeholder="미응시 사유 (선택)"
-                          />
-                        ) : (
-                          <input
-                            type="number"
-                            value={scores[s.id] ?? ''}
-                            min={0}
-                            max={maxScore}
-                            step="0.5"
-                            onChange={(e) =>
-                              setScores((prev) => ({ ...prev, [s.id]: e.target.value }))
-                            }
-                            className="w-24 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2 py-2 text-center text-base font-bold text-zinc-950 dark:text-zinc-50 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 focus:border-zinc-950 dark:focus:border-zinc-50 focus:ring-1 focus:ring-zinc-950 dark:focus:ring-zinc-50 focus:outline-none transition-all shadow-sm"
-                            placeholder="—"
-                          />
+                    <td className="px-5 py-3 font-medium text-zinc-900 dark:text-zinc-100">
+                      <div className="flex items-center gap-2">
+                        {s.name}
+                        {s.suspended && (
+                          <span className="inline-flex whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                            휴원 중
+                          </span>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => toggleAbsent(s.id)}
-                          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-                            isAbsent
-                              ? 'bg-amber-500 text-white hover:bg-amber-600'
-                              : 'border border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600 hover:border-zinc-400 dark:hover:border-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300'
-                          }`}
-                        >
-                          미응시
-                        </button>
                       </div>
+                    </td>
+                    <td className="px-5 py-3">
+                      {s.suspended ? (
+                        <p className="text-center text-xs text-zinc-300 dark:text-zinc-700">기록 불필요</p>
+                      ) : (
+                        <div className="flex items-center justify-center gap-2">
+                          {isAbsent ? (
+                            <input
+                              type="text"
+                              value={absentReasons[s.id] ?? ''}
+                              onChange={(e) =>
+                                setAbsentReasons((prev) => ({ ...prev, [s.id]: e.target.value }))
+                              }
+                              className="w-40 rounded-lg border border-amber-200 bg-amber-50 px-2 py-2 text-sm text-zinc-800 dark:text-zinc-200 placeholder:text-amber-400 focus:border-amber-400 focus:outline-none transition-all"
+                              placeholder="미응시 사유 (선택)"
+                            />
+                          ) : (
+                            <input
+                              type="number"
+                              value={scores[s.id] ?? ''}
+                              min={0}
+                              max={maxScore}
+                              step="0.5"
+                              onChange={(e) =>
+                                setScores((prev) => ({ ...prev, [s.id]: e.target.value }))
+                              }
+                              className="w-24 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2 py-2 text-center text-base font-bold text-zinc-950 dark:text-zinc-50 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 focus:border-zinc-950 dark:focus:border-zinc-50 focus:ring-1 focus:ring-zinc-950 dark:focus:ring-zinc-50 focus:outline-none transition-all shadow-sm"
+                              placeholder="—"
+                            />
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => toggleAbsent(s.id)}
+                            className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                              isAbsent
+                                ? 'bg-amber-500 text-white hover:bg-amber-600'
+                                : 'border border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600 hover:border-zinc-400 dark:hover:border-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300'
+                            }`}
+                          >
+                            미응시
+                          </button>
+                        </div>
+                      )}
                     </td>
                     {showGrades && (
                       <td className="px-5 py-3 text-center">
