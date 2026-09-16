@@ -847,9 +847,7 @@ export type ExamPrepContent = {
   mockExam: {
     status: 'none' | 'attended' | 'absent'
     examLabel?: string
-    difficulty?: number | null // 1~5
     score?: number | null
-    note?: string // 특이사항
   }
 }
 
@@ -1030,9 +1028,7 @@ export type ExamPrepDraftData = {
   studyContent: string
   mockExamStatus: ExamPrepContent['mockExam']['status']
   examLabel: string
-  difficulty: number | null
   score: number | null
-  note: string
 }
 
 // 실시간 입력 임시저장 — 이미지는 만들지 않고 입력값만 학생+날짜 단위로 보존, 같은 조합을 다시
@@ -1059,9 +1055,7 @@ export async function saveExamPrepDraft(
       study_content:    data.studyContent,
       mock_status:      data.mockExamStatus,
       mock_exam_label:  data.examLabel,
-      mock_difficulty:  data.difficulty,
       mock_score:       data.score,
-      mock_note:        data.note,
       updated_by:       auth.user.id,
       updated_at:       now,
     }, { onConflict: 'student_id, report_date' })
@@ -1082,7 +1076,7 @@ export async function getExamPrepDraft(
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('exam_prep_drafts')
-    .select('exam_type, arrival_time, departure_time, study_content, mock_status, mock_exam_label, mock_difficulty, mock_score, mock_note')
+    .select('exam_type, arrival_time, departure_time, study_content, mock_status, mock_exam_label, mock_score')
     .eq('student_id', studentId)
     .eq('report_date', reportDate)
     .maybeSingle()
@@ -1098,9 +1092,7 @@ export async function getExamPrepDraft(
       studyContent:  data.study_content as string,
       mockExamStatus: data.mock_status as ExamPrepContent['mockExam']['status'],
       examLabel:     data.mock_exam_label as string,
-      difficulty:    data.mock_difficulty as number | null,
       score:         data.mock_score as number | null,
-      note:          data.mock_note as string,
     },
   }
 }

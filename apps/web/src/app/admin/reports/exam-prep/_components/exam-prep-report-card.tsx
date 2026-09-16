@@ -5,9 +5,7 @@ import { forwardRef } from 'react'
 export interface ExamPrepMockExam {
   status: 'none' | 'attended' | 'absent'
   examLabel?: string
-  difficulty?: number | null
   score?: number | null
-  note?: string
 }
 
 export interface ExamPrepPlanItem {

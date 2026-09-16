@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
+import { startTransition, useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import * as XLSX from 'xlsx'
 import { toPng } from 'html-to-image'
@@ -49,9 +49,7 @@ type FormState = {
   studyContent: string
   mockExamStatus: ExamPrepContent['mockExam']['status']
   examLabel: string
-  difficulty: string
   score: string
-  note: string
 }
 
 function blankForm(hit: StudentHit): FormState {
@@ -65,9 +63,7 @@ function blankForm(hit: StudentHit): FormState {
     studyContent: '',
     mockExamStatus: 'none',
     examLabel: '',
-    difficulty: '',
     score: '',
-    note: '',
   }
 }
 
@@ -82,15 +78,13 @@ function formFromLogged(row: LoggedRow): FormState {
     studyContent: row.content.studyContent,
     mockExamStatus: row.content.mockExam.status,
     examLabel: row.content.mockExam.examLabel ?? '',
-    difficulty: row.content.mockExam.difficulty != null ? String(row.content.mockExam.difficulty) : '',
     score: row.content.mockExam.score != null ? String(row.content.mockExam.score) : '',
-    note: row.content.mockExam.note ?? '',
   }
 }
 
 // ── 엑셀 일괄 업로드 ──────────────────────────────────────────────────────────
 // cols: 학교(0) | 학년(1) | 이름(2) | 등원시각(3) | 하원시각(4) | 학습내용(5) |
-//       모의고사(6: 응시/미응시, 공백=없음) | 시험명(7) | 난이도(8) | 점수(9) | 시험지특이사항(10)
+//       모의고사(6: 응시/미응시, 공백=없음) | 시험명(7) | 점수(8)
 
 type ExamPrepExcelRow = {
   school: string
@@ -101,9 +95,7 @@ type ExamPrepExcelRow = {
   studyContent: string
   mockExamStatus: ExamPrepContent['mockExam']['status']
   examLabel: string
-  difficulty: number | null
   score: number | null
-  note: string
 }
 
 function parseExamPrepExcel(buffer: ArrayBuffer): ExamPrepExcelRow[] {
@@ -122,8 +114,7 @@ function parseExamPrepExcel(buffer: ArrayBuffer): ExamPrepExcelRow[] {
     const mockRaw = String(row[6] ?? '').trim()
     const mockExamStatus: ExamPrepContent['mockExam']['status'] =
       mockRaw === '응시' ? 'attended' : mockRaw === '미응시' ? 'absent' : 'none'
-    const difficultyRaw = String(row[8] ?? '').trim()
-    const scoreRaw = String(row[9] ?? '').trim()
+    const scoreRaw = String(row[8] ?? '').trim()
 
     result.push({
       school: String(row[0] ?? '').trim(),
@@ -134,9 +125,7 @@ function parseExamPrepExcel(buffer: ArrayBuffer): ExamPrepExcelRow[] {
       studyContent: String(row[5] ?? '').trim(),
       mockExamStatus,
       examLabel: String(row[7] ?? '').trim(),
-      difficulty: difficultyRaw ? Number(difficultyRaw) : null,
       score: scoreRaw ? Number(scoreRaw) : null,
-      note: String(row[10] ?? '').trim(),
     })
   }
   if (result.length === 0) {
@@ -147,12 +136,12 @@ function parseExamPrepExcel(buffer: ArrayBuffer): ExamPrepExcelRow[] {
 
 function downloadExamPrepSampleExcel() {
   const aoa = [
-    ['학교', '학년', '이름', '등원시각', '하원시각', '학습내용', '모의고사', '시험명', '난이도', '점수', '시험지특이사항'],
-    ['대륜고', '3', '홍길동', '17:10', '20:40', 'DECISIVE 5~6회 오답 정리, 대륜고 기출 3세트 풀이', '응시', '미적분2 모의중간고사 1회', '4', '78', '15번 - N등급 킬러 문항'],
-    ['경신고', '2', '김철수', '17:00', '19:30', '기출 3세트 풀이 및 오답 정리', '', '', '', '', ''],
+    ['학교', '학년', '이름', '등원시각', '하원시각', '학습내용', '모의고사', '시험명', '점수'],
+    ['대륜고', '3', '홍길동', '17:10', '20:40', 'DECISIVE 5~6회 오답 정리, 대륜고 기출 3세트 풀이', '응시', '미적분2 모의중간고사 1회', '78'],
+    ['경신고', '2', '김철수', '17:00', '19:30', '기출 3세트 풀이 및 오답 정리', '', '', ''],
   ]
   const ws = XLSX.utils.aoa_to_sheet(aoa)
-  ws['!cols'] = [{ wch: 10 }, { wch: 6 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 45 }, { wch: 10 }, { wch: 22 }, { wch: 8 }, { wch: 8 }, { wch: 30 }]
+  ws['!cols'] = [{ wch: 10 }, { wch: 6 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 45 }, { wch: 10 }, { wch: 22 }, { wch: 8 }]
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, '내신대비리포트')
   XLSX.writeFile(wb, '내신대비리포트_샘플.xlsx')
@@ -228,6 +217,20 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
     loadLogged(reportDate)
   }, [reportDate, loadLogged])
 
+  // 날짜를 바꾸면 이전 날짜에서 선택해둔 학생 폼을 그대로 남겨두면 헷갈리므로 초기화한다
+  useEffect(() => {
+    startTransition(() => {
+      setForm(null)
+      setQuery('')
+      setHits([])
+      setPlanItems([])
+      setSavedAt(null)
+      setDraftSavedAt(null)
+      setErr('')
+      setPlanErr('')
+    })
+  }, [reportDate])
+
   // 학생 검색 (300ms 디바운스) — query가 비면 이전 결과를 그냥 안 보여주기만 하면 되므로
   // 별도 setState로 리셋하지 않고 렌더링 시점에 파생시킨다 (visibleHits 참고)
   useEffect(() => {
@@ -262,9 +265,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
         studyContent: d.studyContent,
         mockExamStatus: d.mockExamStatus,
         examLabel: d.examLabel,
-        difficulty: d.difficulty != null ? String(d.difficulty) : '',
         score: d.score != null ? String(d.score) : '',
-        note: d.note,
       } : f))
       setExamType(d.examType)
     })
@@ -398,9 +399,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
         mockExam: {
           status: form.mockExamStatus,
           examLabel: form.mockExamStatus === 'attended' ? form.examLabel.trim() || undefined : undefined,
-          difficulty: form.mockExamStatus === 'attended' && form.difficulty.trim() ? Number(form.difficulty) : null,
           score: form.mockExamStatus === 'attended' && form.score.trim() ? Number(form.score) : null,
-          note: form.mockExamStatus === 'attended' ? form.note.trim() || undefined : undefined,
         },
       }
 
@@ -435,9 +434,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
         studyContent: form.studyContent,
         mockExamStatus: form.mockExamStatus,
         examLabel: form.examLabel,
-        difficulty: form.difficulty.trim() ? Number(form.difficulty) : null,
         score: form.score.trim() ? Number(form.score) : null,
-        note: form.note,
       })
       if (res.error) { setErr(res.error); return }
       setDraftSavedAt(Date.now())
@@ -514,7 +511,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
       departureTime: row.departureTime,
       studyContent: row.studyContent,
       planItems: excelPlanMap[index] ?? [],
-      mockExam: { status: row.mockExamStatus, examLabel: row.examLabel, difficulty: row.difficulty, score: row.score, note: row.note },
+      mockExam: { status: row.mockExamStatus, examLabel: row.examLabel, score: row.score },
     }
   }
 
@@ -565,9 +562,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
             mockExam: {
               status: row.mockExamStatus,
               examLabel: row.mockExamStatus === 'attended' ? (row.examLabel || undefined) : undefined,
-              difficulty: row.mockExamStatus === 'attended' ? row.difficulty : null,
               score: row.mockExamStatus === 'attended' ? row.score : null,
-              note: row.mockExamStatus === 'attended' ? (row.note || undefined) : undefined,
             },
           },
           imageBase64,
@@ -641,9 +636,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
         mockExam: {
           status: form.mockExamStatus,
           examLabel: form.examLabel,
-          difficulty: form.difficulty.trim() ? Number(form.difficulty) : null,
           score: form.score.trim() ? Number(form.score) : null,
-          note: form.note,
         },
       }
     : null
@@ -943,46 +936,20 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
                   ))}
                 </div>
                 {form.mockExamStatus === 'attended' && (
-                  <div className="space-y-3 mt-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <input
-                        type="text"
-                        value={form.examLabel}
-                        onChange={(e) => setForm((f) => f && { ...f, examLabel: e.target.value })}
-                        placeholder="시험명 (예: 미적분2 1회)"
-                        className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 outline-none transition-all"
-                      />
-                      <input
-                        type="number"
-                        value={form.score}
-                        onChange={(e) => setForm((f) => f && { ...f, score: e.target.value })}
-                        placeholder="점수"
-                        className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 outline-none transition-all"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-zinc-500 dark:text-zinc-500 shrink-0">난이도</span>
-                      {[1, 2, 3, 4, 5].map((d) => (
-                        <button
-                          key={d}
-                          type="button"
-                          onClick={() => setForm((f) => f && { ...f, difficulty: String(d) })}
-                          className={`w-8 h-8 rounded-full text-xs font-bold transition-colors ${
-                            form.difficulty === String(d)
-                              ? 'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900'
-                              : 'bg-zinc-50 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900'
-                          }`}
-                        >
-                          {d}
-                        </button>
-                      ))}
-                    </div>
+                  <div className="grid grid-cols-2 gap-3 mt-3">
                     <input
                       type="text"
-                      value={form.note}
-                      onChange={(e) => setForm((f) => f && { ...f, note: e.target.value })}
-                      placeholder="시험지 특이사항 (예: 7번 문항 유의, 3번 고난도)"
-                      className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 outline-none transition-all"
+                      value={form.examLabel}
+                      onChange={(e) => setForm((f) => f && { ...f, examLabel: e.target.value })}
+                      placeholder="시험명 (예: 미적분2 1회)"
+                      className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 outline-none transition-all"
+                    />
+                    <input
+                      type="number"
+                      value={form.score}
+                      onChange={(e) => setForm((f) => f && { ...f, score: e.target.value })}
+                      placeholder="점수"
+                      className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 outline-none transition-all"
                     />
                   </div>
                 )}
@@ -1141,7 +1108,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
             <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-6 py-10 text-center">
               <p className="text-sm font-bold text-zinc-600 dark:text-zinc-400 mb-2">시트 컬럼 순서 (첫 번째 시트 기준)</p>
               <p className="text-xs text-zinc-400 dark:text-zinc-600">
-                학교 | 학년 | 이름 | 등원시각 | 하원시각 | 학습내용 | 모의고사(응시/미응시) | 시험명 | 난이도 | 점수 | 시험지특이사항
+                학교 | 학년 | 이름 | 등원시각 | 하원시각 | 학습내용 | 모의고사(응시/미응시) | 시험명 | 점수
               </p>
               <p className="mt-1 text-xs text-zinc-300 dark:text-zinc-700">첫 행은 헤더 · 이름이 비어있는 행은 건너뜀 · 시각은 16:30 형식 · 모의고사가 없으면 6번 칸부터 비워두면 됨 · 계획 항목은 &ldquo;개별 입력&rdquo;에서 관리</p>
             </div>
