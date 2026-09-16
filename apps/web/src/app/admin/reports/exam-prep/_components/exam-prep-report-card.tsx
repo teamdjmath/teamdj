@@ -10,6 +10,12 @@ export interface ExamPrepMockExam {
   note?: string
 }
 
+export interface ExamPrepPlanItem {
+  id: string
+  content: string
+  progressPct: number // 0/20/40/60/80/100
+}
+
 export interface ExamPrepStudentData {
   school: string
   grade: string
@@ -17,20 +23,13 @@ export interface ExamPrepStudentData {
   arrivalTime: string
   departureTime: string
   studyContent: string
-  mockExam: ExamPrepMockExam
-}
-
-export interface ExamPrepHistoryEntry {
-  date: string // "YYYY-MM-DD"
-  studyContent: string
+  planItems: ExamPrepPlanItem[]
   mockExam: ExamPrepMockExam
 }
 
 interface Props {
   student: ExamPrepStudentData
   dateString: string // "9/17"
-  history?: ExamPrepHistoryEntry[] // 전체 기간 누적 기록 (오늘 포함, 날짜순) — 모의고사 추이는 전체,
-                                    // 학습 내용 누적은 이 중 이번 주(수~화)만 컴포넌트 내부에서 추려 사용
 }
 
 const C = {
@@ -60,81 +59,35 @@ function SectionHeader({ label }: { label: string }) {
   )
 }
 
-function fmtShortDate(iso: string) {
-  const [, m, d] = iso.split('-')
-  if (!m || !d) return iso
-  return `${parseInt(m, 10)}/${parseInt(d, 10)}`
-}
-
-// 학습 내용 누적이 내신대비 기간 내내 계속 쌓이면 이미지가 지나치게 길어지므로,
-// 수요일을 기준으로 한 주(수~화)만 보여준다. dateStr이 속한 주의 "그 주 수요일" 날짜를 구한다.
-function startOfWeekWednesday(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  const date = new Date(y, m - 1, d)
-  const day = date.getDay() // 0=일 ~ 6=토, 3=수
-  const diff = (day - 3 + 7) % 7
-  date.setDate(date.getDate() - diff)
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
-
-// 2회 이상 응시 기록이 있을 때만 의미 있는 "추이" 그래프 — 1개뿐이면 점 하나만 찍혀
-// 가독성이 떨어지므로 호출 쪽(ExamPrepReportCard)에서 아예 렌더링하지 않는다.
-function ScoreTrendChart({ scores }: { scores: number[] }) {
-  const W = 380
-  const H = 116
-  const padX = 20
-  const padTop = 28 // 점 위에 점수 라벨을 쓸 공간
-  const padBottom = 14
-  const max = 100
-  const n = scores.length
-  const stepX = n > 1 ? (W - padX * 2) / (n - 1) : 0
-  const points = scores.map((s, i) => {
-    const x = padX + stepX * i
-    const y = padTop + (H - padTop - padBottom) * (1 - Math.max(0, Math.min(100, s)) / max)
-    return { x, y, score: s }
-  })
-  const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ')
-
+// 이행도(0/20/40/60/80/100%) — 20%당 원 하나, 일반 학습 리포트의 과제 이행도 표시와 동일한 스타일
+function ProgressCircles({ pct }: { pct: number }) {
+  const count = Math.min(5, Math.round(pct / 20))
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block' }}>
-      {[0, 50, 100].map((v) => {
-        const y = padTop + (H - padTop - padBottom) * (1 - v / max)
-        return <line key={v} x1={padX} y1={y} x2={W - padX} y2={y} stroke="#e8e8e8" strokeWidth={1} />
-      })}
-      <path d={pathD} fill="none" stroke={C.dark} strokeWidth={2} />
-      {points.map((p, i) => (
-        <g key={i}>
-          <circle cx={p.x} cy={p.y} r={3} fill={C.dark} />
-          <text
-            x={Math.min(Math.max(p.x, 20), W - 20)}
-            y={Math.max(p.y - 10, 12)}
-            textAnchor="middle"
-            fontSize={12}
-            fontWeight={700}
-            fill={C.dark}
-          >
-            {p.score}
-          </text>
-        </g>
+    <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div
+          key={i}
+          style={{
+            width: 10,
+            height: 10,
+            borderRadius: '50%',
+            backgroundColor: i < count ? C.dark : C.white,
+            border: `1.5px solid ${i < count ? C.dark : '#b5b5b5'}`,
+            flexShrink: 0,
+          }}
+        />
       ))}
-    </svg>
+    </div>
   )
 }
 
 export const ExamPrepReportCard = forwardRef<HTMLDivElement, Props>(
-  ({ student, dateString, history }, ref) => {
-    const { school, grade, name, arrivalTime, departureTime, studyContent, mockExam } = student
+  ({ student, dateString }, ref) => {
+    const { school, grade, name, arrivalTime, departureTime, studyContent, planItems, mockExam } = student
 
     const title = dateString
       ? `${dateString} 역전의 수학 내신대비 리포트`
       : '역전의 수학 내신대비 리포트'
-
-    const attendedHistory = (history ?? []).filter((h) => h.mockExam.status === 'attended')
-
-    // 학습 내용 누적은 (수~화) 한 주 분량만 — 가장 최근 날짜가 속한 주만 남긴다
-    const latestDate = (history ?? []).reduce((max, h) => (h.date > max ? h.date : max), '')
-    const weekStart = latestDate ? startOfWeekWednesday(latestDate) : ''
-    const weeklyHistory = (history ?? []).filter((h) => h.date >= weekStart)
 
     const infoTh: React.CSSProperties = {
       padding: '7px 8px',
@@ -155,26 +108,6 @@ export const ExamPrepReportCard = forwardRef<HTMLDivElement, Props>(
       borderRight: `1px solid ${C.border}`,
       borderBottom: `1px solid ${C.border}`,
     }
-    const trendTh: React.CSSProperties = {
-      padding: '5px 6px',
-      fontSize: 10,
-      fontWeight: 700,
-      color: C.sub,
-      borderBottom: `1px solid ${C.border}`,
-      textAlign: 'left' as const,
-      whiteSpace: 'nowrap' as const,
-    }
-    const trendTd: React.CSSProperties = {
-      padding: '5px 6px',
-      fontSize: 11,
-      color: C.body,
-      borderBottom: `1px solid ${C.border}`,
-    }
-    const trendTdNowrap: React.CSSProperties = {
-      ...trendTd,
-      whiteSpace: 'nowrap' as const,
-    }
-
     return (
       <div
         ref={ref}
@@ -289,53 +222,25 @@ export const ExamPrepReportCard = forwardRef<HTMLDivElement, Props>(
           </>
         )}
 
-        {/* 모의고사 성적 추이 (누적) — 그래프는 응시 기록이 2회 이상일 때만 (1개뿐이면 점 하나만
-            찍혀 가독성이 떨어지므로, 그 경우엔 표만 보여준다) */}
-        {attendedHistory.length > 0 && (
+        {/* 내신대비 계획 이행 현황 (날짜 무관, 학생별 현재 상태 스냅샷) */}
+        {planItems.length > 0 && (
           <>
-            <SectionHeader label="모의고사 성적 추이" />
-            <div style={{ padding: '10px 14px' }}>
-              {attendedHistory.length >= 2 && (
-                <ScoreTrendChart scores={attendedHistory.map((h) => h.mockExam.score ?? 0)} />
-              )}
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: attendedHistory.length >= 2 ? 8 : 0 }}>
-                <thead>
-                  <tr>
-                    <th style={trendTh}>회차</th>
-                    <th style={{ ...trendTh, textAlign: 'center' }}>난이도</th>
-                    <th style={{ ...trendTh, textAlign: 'center' }}>점수</th>
-                    <th style={trendTh}>시험지 특이사항</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {attendedHistory.map((h, i) => (
-                    <tr key={h.date}>
-                      <td style={trendTd}>{h.mockExam.examLabel || `${i + 1}회`}</td>
-                      <td style={{ ...trendTdNowrap, textAlign: 'center' }}>{h.mockExam.difficulty != null ? `${h.mockExam.difficulty}/5` : '—'}</td>
-                      <td style={{ ...trendTdNowrap, textAlign: 'center', fontWeight: 700 }}>{h.mockExam.score != null ? `${h.mockExam.score}점` : '—'}</td>
-                      <td style={trendTd}>{h.mockExam.note || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-
-        {/* 학습 내용 누적 (이번 주, 수~화) */}
-        {weeklyHistory.length > 0 && (
-          <>
-            <SectionHeader label="학습 내용 누적 (이번 주)" />
+            <SectionHeader label="내신대비 계획 이행 현황" />
             <div>
-              {weeklyHistory.map((h, i) => (
+              {planItems.map((item, i) => (
                 <div
-                  key={h.date}
-                  style={{ padding: '8px 14px', borderTop: i > 0 ? `1px solid ${C.border}` : 'none' }}
+                  key={item.id}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                    padding: '8px 14px', borderTop: i > 0 ? `1px solid ${C.border}` : 'none',
+                  }}
                 >
-                  <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.sub, marginBottom: 2 }}>{fmtShortDate(h.date)}</p>
-                  <p style={{ margin: 0, fontSize: 12, color: C.body, lineHeight: 1.6, whiteSpace: 'pre-line' as const }}>
-                    {h.studyContent || '—'}
+                  <p style={{ margin: 0, fontSize: 12, color: C.body, lineHeight: 1.5, whiteSpace: 'pre-line' as const }}>
+                    {item.content}
                   </p>
+                  <div style={{ flexShrink: 0 }}>
+                    <ProgressCircles pct={item.progressPct} />
+                  </div>
                 </div>
               ))}
             </div>

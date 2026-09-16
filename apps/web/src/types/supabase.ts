@@ -483,6 +483,120 @@ export type Database = {
         }
         Relationships: []
       }
+      exam_prep_drafts: {
+        Row: {
+          arrival_time: string
+          departure_time: string
+          exam_type: string
+          id: string
+          mock_difficulty: number | null
+          mock_exam_label: string
+          mock_note: string
+          mock_score: number | null
+          mock_status: string
+          report_date: string
+          student_id: string
+          study_content: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          arrival_time?: string
+          departure_time?: string
+          exam_type?: string
+          id?: string
+          mock_difficulty?: number | null
+          mock_exam_label?: string
+          mock_note?: string
+          mock_score?: number | null
+          mock_status?: string
+          report_date: string
+          student_id: string
+          study_content?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          arrival_time?: string
+          departure_time?: string
+          exam_type?: string
+          id?: string
+          mock_difficulty?: number | null
+          mock_exam_label?: string
+          mock_note?: string
+          mock_score?: number | null
+          mock_status?: string
+          report_date?: string
+          student_id?: string
+          study_content?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_prep_drafts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_prep_drafts_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exam_prep_plan_items: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          position: number
+          progress_pct: number
+          student_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          position?: number
+          progress_pct?: number
+          student_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          position?: number
+          progress_pct?: number
+          student_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_prep_plan_items_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_prep_plan_items_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_reports: {
         Row: {
           content_json: Json

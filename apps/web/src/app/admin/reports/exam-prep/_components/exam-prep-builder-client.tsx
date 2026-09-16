@@ -4,19 +4,29 @@ import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import * as XLSX from 'xlsx'
 import { toPng } from 'html-to-image'
-import { ExamPrepReportCard, type ExamPrepStudentData, type ExamPrepHistoryEntry } from './exam-prep-report-card'
+import { ExamPrepReportCard, type ExamPrepStudentData, type ExamPrepPlanItem } from './exam-prep-report-card'
 import { DatePicker } from '@/components/ui/date-picker'
 import { TimeInput } from '@/components/ui/time-input'
 import { excelTimeToString } from '@/lib/excel-time'
 import {
   searchStudentsByName,
   getExamPrepReportsForDate,
-  getExamPrepHistoryForStudent,
   saveExamPrepReports,
   sendBatchExamPrepKakao,
   matchStudentsByNameSchool,
+  getExamPrepPlanItems,
+  addExamPrepPlanItem,
+  updateExamPrepPlanItemProgress,
+  deleteExamPrepPlanItem,
+  resetExamPrepPlan,
+  resetAllExamPrepPlans,
+  saveExamPrepDraft,
+  getExamPrepDraft,
+  deleteExamPrepDraft,
   type ExamPrepContent,
 } from '@/lib/actions/reports'
+
+const PROGRESS_OPTIONS = [0, 20, 40, 60, 80, 100] as const
 
 function todayString(): string {
   const d = new Date()
@@ -58,6 +68,23 @@ function blankForm(hit: StudentHit): FormState {
     difficulty: '',
     score: '',
     note: '',
+  }
+}
+
+function formFromLogged(row: LoggedRow): FormState {
+  return {
+    studentId: row.studentId,
+    studentName: row.studentName,
+    school: row.content.school,
+    grade: row.content.grade,
+    arrivalTime: row.content.arrivalTime,
+    departureTime: row.content.departureTime,
+    studyContent: row.content.studyContent,
+    mockExamStatus: row.content.mockExam.status,
+    examLabel: row.content.mockExam.examLabel ?? '',
+    difficulty: row.content.mockExam.difficulty != null ? String(row.content.mockExam.difficulty) : '',
+    score: row.content.mockExam.score != null ? String(row.content.mockExam.score) : '',
+    note: row.content.mockExam.note ?? '',
   }
 }
 
@@ -131,27 +158,13 @@ function downloadExamPrepSampleExcel() {
   XLSX.writeFile(wb, '내신대비리포트_샘플.xlsx')
 }
 
-function formFromLogged(row: LoggedRow): FormState {
-  return {
-    studentId: row.studentId,
-    studentName: row.studentName,
-    school: row.content.school,
-    grade: row.content.grade,
-    arrivalTime: row.content.arrivalTime,
-    departureTime: row.content.departureTime,
-    studyContent: row.content.studyContent,
-    mockExamStatus: row.content.mockExam.status,
-    examLabel: row.content.mockExam.examLabel ?? '',
-    difficulty: row.content.mockExam.difficulty != null ? String(row.content.mockExam.difficulty) : '',
-    score: row.content.mockExam.score != null ? String(row.content.mockExam.score) : '',
-    note: row.content.mockExam.note ?? '',
-  }
+interface Props {
+  isTeacher: boolean
 }
 
-export function ExamPrepBuilderClient() {
+export function ExamPrepBuilderClient({ isTeacher }: Props) {
   const [reportDate, setReportDate] = useState(todayString())
-  // 중간/기말 내신대비 기간 구분 — 세션 전체에 적용되는 설정. 학습 내용 누적·모의고사 성적
-  // 추이가 이 값으로 스코핑되어, 기말고사 기간에 중간고사 때 기록이 섞이지 않는다.
+  // 중간/기말 내신대비 기간 구분 — 그날 응시한 모의고사가 어느 시험 기간 것인지 표기
   const [examType, setExamType] = useState<ExamPrepContent['examType']>('midterm')
   const [logged, setLogged] = useState<LoggedRow[]>([])
   const [mode, setMode] = useState<'manual' | 'excel'>('manual')
@@ -164,18 +177,33 @@ export function ExamPrepBuilderClient() {
   const [savedAt, setSavedAt] = useState<number | null>(null)
   const [err, setErr] = useState('')
 
+  // 임시 저장 — 이미지는 만들지 않고 입력값만 보존, 같은 학생+날짜를 다시 열면 자동으로 불러온다
+  const [draftSaving, setDraftSaving] = useState(false)
+  const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null)
+
+  // 선택된 학생의 계획 항목 목록 — 날짜와 무관하게 즉시 저장되는 실시간 상태
+  const [planItems, setPlanItems] = useState<ExamPrepPlanItem[]>([])
+  const [newItemContent, setNewItemContent] = useState('')
+  const [addingItem, setAddingItem] = useState(false)
+  const [updatingItemId, setUpdatingItemId] = useState<string | null>(null)
+  const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
+  const [resettingPlan, setResettingPlan] = useState(false)
+  const [planErr, setPlanErr] = useState('')
+
+  // 전체 학생 계획 항목 일괄 초기화 (선생님 전용, 학생별 초기화와 별개)
+  const [resettingAllPlans, setResettingAllPlans] = useState(false)
+  const [resetAllResult, setResetAllResult] = useState('')
+
   const [sending, setSending] = useState(false)
   const [sendResult, setSendResult] = useState('')
   const [downloadingZip, setDownloadingZip] = useState(false)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [listExpanded, setListExpanded] = useState(false)
 
-  const [history, setHistory] = useState<ExamPrepHistoryEntry[]>([])
-
   // 엑셀 일괄 업로드
   const [excelRows, setExcelRows] = useState<ExamPrepExcelRow[]>([])
   const [excelMatchMap, setExcelMatchMap] = useState<Record<number, string | null>>({})
-  const [excelHistoryMap, setExcelHistoryMap] = useState<Record<number, ExamPrepHistoryEntry[]>>({})
+  const [excelPlanMap, setExcelPlanMap] = useState<Record<number, ExamPrepPlanItem[]>>({})
   const [excelError, setExcelError] = useState('')
   const [excelSaving, setExcelSaving] = useState(false)
   const [excelSaveProgress, setExcelSaveProgress] = useState<{ cur: number; total: number } | null>(null)
@@ -185,7 +213,7 @@ export function ExamPrepBuilderClient() {
   const cardRef = useRef<HTMLDivElement>(null)
   const [loadPending, startLoadTransition] = useTransition()
   const [searchPending, startSearchTransition] = useTransition()
-  const [historyPending, startHistoryTransition] = useTransition()
+  const [planItemsPending, startPlanItemsTransition] = useTransition()
 
   const loadLogged = useCallback((date: string) => {
     startLoadTransition(async () => {
@@ -199,19 +227,6 @@ export function ExamPrepBuilderClient() {
   useEffect(() => {
     loadLogged(reportDate)
   }, [reportDate, loadLogged])
-
-  const loadHistory = useCallback((studentId: string, throughDate: string, type: ExamPrepContent['examType']) => {
-    startHistoryTransition(async () => {
-      const res = await getExamPrepHistoryForStudent(studentId, throughDate, type)
-      if (!res.error) setHistory(res.history)
-    })
-  }, [])
-
-  const selectedStudentId = form?.studentId ?? null
-  useEffect(() => {
-    if (!selectedStudentId) return
-    loadHistory(selectedStudentId, reportDate, examType)
-  }, [selectedStudentId, reportDate, examType, loadHistory])
 
   // 학생 검색 (300ms 디바운스) — query가 비면 이전 결과를 그냥 안 보여주기만 하면 되므로
   // 별도 setState로 리셋하지 않고 렌더링 시점에 파생시킨다 (visibleHits 참고)
@@ -228,23 +243,125 @@ export function ExamPrepBuilderClient() {
 
   const visibleHits = query.trim() ? hits : []
 
+  const loadPlanItems = useCallback((studentId: string) => {
+    startPlanItemsTransition(async () => {
+      const res = await getExamPrepPlanItems(studentId)
+      if (!res.error) setPlanItems(res.items)
+    })
+  }, [])
+
+  // 정식 리포트가 아직 없을 때만 임시저장을 불러온다 — 정식 기록이 있으면 그쪽이 우선
+  const loadDraftIntoForm = useCallback((studentId: string, date: string) => {
+    getExamPrepDraft(studentId, date).then((res) => {
+      if (res.error || !res.draft) return
+      const d = res.draft
+      setForm((f) => (f && f.studentId === studentId ? {
+        ...f,
+        arrivalTime: d.arrivalTime,
+        departureTime: d.departureTime,
+        studyContent: d.studyContent,
+        mockExamStatus: d.mockExamStatus,
+        examLabel: d.examLabel,
+        difficulty: d.difficulty != null ? String(d.difficulty) : '',
+        score: d.score != null ? String(d.score) : '',
+        note: d.note,
+      } : f))
+      setExamType(d.examType)
+    })
+  }, [])
+
   function selectHit(hit: StudentHit) {
     const existing = logged.find((l) => l.studentId === hit.id)
     setForm(existing ? formFromLogged(existing) : blankForm(hit))
     if (existing) setExamType(existing.content.examType)
-    setHistory([])
     setQuery('')
     setHits([])
     setSavedAt(null)
+    setDraftSavedAt(null)
     setErr('')
+    setPlanErr('')
+    setPlanItems([])
+    loadPlanItems(hit.id)
+    if (!existing) loadDraftIntoForm(hit.id, reportDate)
   }
 
   function selectLogged(row: LoggedRow) {
     setForm(formFromLogged(row))
     setExamType(row.content.examType)
-    setHistory([])
     setSavedAt(null)
+    setDraftSavedAt(null)
     setErr('')
+    setPlanErr('')
+    setPlanItems([])
+    loadPlanItems(row.studentId)
+  }
+
+  // 계획 항목 추가/이행도 수정/삭제 — 날짜별 "저장"과 무관하게 클릭 즉시 반영된다
+  async function handleAddPlanItem() {
+    if (!form || !newItemContent.trim()) return
+    setAddingItem(true)
+    setPlanErr('')
+    try {
+      const res = await addExamPrepPlanItem(form.studentId, newItemContent)
+      if (res.error || !res.item) { setPlanErr(res.error ?? '추가에 실패했습니다.'); return }
+      setPlanItems((prev) => [...prev, res.item!])
+      setNewItemContent('')
+    } finally {
+      setAddingItem(false)
+    }
+  }
+
+  async function handleUpdateItemProgress(itemId: string, pct: number) {
+    setUpdatingItemId(itemId)
+    setPlanErr('')
+    setPlanItems((prev) => prev.map((it) => (it.id === itemId ? { ...it, progressPct: pct } : it)))
+    try {
+      const res = await updateExamPrepPlanItemProgress(itemId, pct)
+      if (res.error) setPlanErr(res.error)
+    } finally {
+      setUpdatingItemId(null)
+    }
+  }
+
+  async function handleDeletePlanItem(itemId: string) {
+    setDeletingItemId(itemId)
+    setPlanErr('')
+    try {
+      const res = await deleteExamPrepPlanItem(itemId)
+      if (res.error) { setPlanErr(res.error); return }
+      setPlanItems((prev) => prev.filter((it) => it.id !== itemId))
+    } finally {
+      setDeletingItemId(null)
+    }
+  }
+
+  async function handleResetPlan() {
+    if (!form) return
+    if (!confirm(`${form.studentName}의 계획 항목을 모두 삭제하시겠습니까? 되돌릴 수 없습니다.`)) return
+    setResettingPlan(true)
+    setPlanErr('')
+    try {
+      const res = await resetExamPrepPlan(form.studentId)
+      if (res.error) { setPlanErr(res.error); return }
+      setPlanItems([])
+    } finally {
+      setResettingPlan(false)
+    }
+  }
+
+  // 학생 개별 초기화와는 별개 — 전체 학생의 계획 항목을 한 번에 삭제 (중간→기말 시즌 전환 등)
+  async function handleResetAllPlans() {
+    if (!confirm('정말로 "전체" 학생의 계획 항목을 삭제하시겠습니까?\n특정 학생이 아니라 등록된 모든 학생의 계획이 전부 사라집니다. 되돌릴 수 없습니다.')) return
+    setResettingAllPlans(true)
+    setResetAllResult('')
+    try {
+      const res = await resetAllExamPrepPlans()
+      if (res.error) { setResetAllResult(`오류: ${res.error}`); return }
+      setResetAllResult(`✓ 전체 학생의 계획 항목 ${res.deletedCount ?? 0}개를 삭제했습니다.`)
+      setPlanItems([]) // 현재 화면에 열려있는 학생의 목록도 같이 비움
+    } finally {
+      setResettingAllPlans(false)
+    }
   }
 
   const handleSave = useCallback(async () => {
@@ -277,6 +394,7 @@ export function ExamPrepBuilderClient() {
         arrivalTime: form.arrivalTime,
         departureTime: form.departureTime,
         studyContent: form.studyContent,
+        planItems,
         mockExam: {
           status: form.mockExamStatus,
           examLabel: form.mockExamStatus === 'attended' ? form.examLabel.trim() || undefined : undefined,
@@ -294,14 +412,39 @@ export function ExamPrepBuilderClient() {
       }])
       if (res.error) { setErr(res.error); return }
       setSavedAt(Date.now())
+      setDraftSavedAt(null)
       await loadLogged(reportDate)
-      loadHistory(form.studentId, reportDate, examType)
+      await deleteExamPrepDraft(form.studentId, reportDate)
     } catch (e) {
       setErr(e instanceof Error ? e.message : '저장 중 오류가 발생했습니다.')
     } finally {
       setSaving(false)
     }
-  }, [form, reportDate, examType, loadLogged, loadHistory])
+  }, [form, reportDate, examType, planItems, loadLogged])
+
+  // 임시 저장 — 이미지는 만들지 않고 입력값만 학생+날짜 단위로 보존
+  const handleSaveDraft = useCallback(async () => {
+    if (!form) return
+    setErr('')
+    setDraftSaving(true)
+    try {
+      const res = await saveExamPrepDraft(form.studentId, reportDate, {
+        examType,
+        arrivalTime: form.arrivalTime,
+        departureTime: form.departureTime,
+        studyContent: form.studyContent,
+        mockExamStatus: form.mockExamStatus,
+        examLabel: form.examLabel,
+        difficulty: form.difficulty.trim() ? Number(form.difficulty) : null,
+        score: form.score.trim() ? Number(form.score) : null,
+        note: form.note,
+      })
+      if (res.error) { setErr(res.error); return }
+      setDraftSavedAt(Date.now())
+    } finally {
+      setDraftSaving(false)
+    }
+  }, [form, reportDate, examType])
 
   const handleSend = useCallback(async () => {
     if (!confirm(`${reportDate} 내신대비 리포트를 전체 학부모에게 카카오톡으로 발송하시겠습니까?`)) return
@@ -316,12 +459,13 @@ export function ExamPrepBuilderClient() {
     }
   }, [reportDate])
 
-  // 엑셀 파일 처리 — 파싱 → 학생 매칭 → (매칭된 학생만) 누적 이력 미리 조회
+  // 엑셀 파일 처리 — 파싱 → 학생 매칭 → (매칭된 학생만) 계획 항목 목록 미리 조회
+  // 계획 항목은 날짜와 무관하므로 reportDate/examType에 의존하지 않는다
   const processExcelFile = useCallback((file: File) => {
     setExcelError('')
     setExcelRows([])
     setExcelMatchMap({})
-    setExcelHistoryMap({})
+    setExcelPlanMap({})
     setExcelSavedCount(null)
 
     const reader = new FileReader()
@@ -338,22 +482,22 @@ export function ExamPrepBuilderClient() {
         matches.forEach((m, i) => { map[i] = m.studentId })
         setExcelMatchMap(map)
 
-        const historyMap: Record<number, ExamPrepHistoryEntry[]> = {}
+        const planMap: Record<number, ExamPrepPlanItem[]> = {}
         await Promise.all(
           parsed.map(async (_, i) => {
             const sid = map[i]
             if (!sid) return
-            const res = await getExamPrepHistoryForStudent(sid, reportDate, examType)
-            if (!res.error) historyMap[i] = res.history
+            const res = await getExamPrepPlanItems(sid)
+            if (!res.error) planMap[i] = res.items
           }),
         )
-        setExcelHistoryMap(historyMap)
+        setExcelPlanMap(planMap)
       } catch (err) {
         setExcelError(err instanceof Error ? err.message : '엑셀 파싱 중 오류가 발생했습니다.')
       }
     }
     reader.readAsArrayBuffer(file)
-  }, [reportDate, examType])
+  }, [])
 
   const handleExcelFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -361,7 +505,7 @@ export function ExamPrepBuilderClient() {
     e.target.value = ''
   }, [processExcelFile])
 
-  function buildExcelCardData(row: ExamPrepExcelRow): ExamPrepStudentData {
+  function buildExcelCardData(row: ExamPrepExcelRow, index: number): ExamPrepStudentData {
     return {
       school: row.school,
       grade: row.grade,
@@ -369,20 +513,9 @@ export function ExamPrepBuilderClient() {
       arrivalTime: row.arrivalTime,
       departureTime: row.departureTime,
       studyContent: row.studyContent,
+      planItems: excelPlanMap[index] ?? [],
       mockExam: { status: row.mockExamStatus, examLabel: row.examLabel, difficulty: row.difficulty, score: row.score, note: row.note },
     }
-  }
-
-  function buildExcelMergedHistory(row: ExamPrepExcelRow, index: number): ExamPrepHistoryEntry[] {
-    const prior = (excelHistoryMap[index] ?? []).filter((h) => h.date !== reportDate)
-    return [
-      ...prior,
-      {
-        date: reportDate,
-        studyContent: row.studyContent,
-        mockExam: { status: row.mockExamStatus, examLabel: row.examLabel, difficulty: row.difficulty, score: row.score, note: row.note },
-      },
-    ].sort((a, b) => a.date.localeCompare(b.date))
   }
 
   const excelMatchedCount = excelRows.filter((_, i) => excelMatchMap[i]).length
@@ -428,6 +561,7 @@ export function ExamPrepBuilderClient() {
             arrivalTime: row.arrivalTime,
             departureTime: row.departureTime,
             studyContent: row.studyContent,
+            planItems: excelPlanMap[index] ?? [],
             mockExam: {
               status: row.mockExamStatus,
               examLabel: row.mockExamStatus === 'attended' ? (row.examLabel || undefined) : undefined,
@@ -450,7 +584,7 @@ export function ExamPrepBuilderClient() {
       setExcelSaving(false)
       setExcelSaveProgress(null)
     }
-  }, [excelRows, excelMatchMap, reportDate, examType, loadLogged])
+  }, [excelRows, excelMatchMap, excelPlanMap, reportDate, examType, loadLogged])
 
   // 카카오 자동 발송(Solapi)이 아직 설정 안 됐을 수 있으므로, 그동안 수동으로 전달할 수 있게
   // 이미지 다운로드(단일/전체 ZIP)를 지원한다.
@@ -503,6 +637,7 @@ export function ExamPrepBuilderClient() {
         arrivalTime: form.arrivalTime,
         departureTime: form.departureTime,
         studyContent: form.studyContent,
+        planItems,
         mockExam: {
           status: form.mockExamStatus,
           examLabel: form.examLabel,
@@ -513,39 +648,43 @@ export function ExamPrepBuilderClient() {
       }
     : null
 
-  // 과거 기록(history, DB) + 오늘 실시간 입력값을 합쳐 "학습 내용 누적"/"성적 추이"에 반영 —
-  // 오늘 것만 아직 저장 전이라도 미리보기에 바로 보이게 한다.
-  const mergedHistory: ExamPrepHistoryEntry[] = form
-    ? [
-        ...history.filter((h) => h.date !== reportDate),
-        {
-          date: reportDate,
-          studyContent: form.studyContent,
-          mockExam: {
-            status: form.mockExamStatus,
-            examLabel: form.examLabel,
-            difficulty: form.difficulty.trim() ? Number(form.difficulty) : null,
-            score: form.score.trim() ? Number(form.score) : null,
-            note: form.note,
-          },
-        },
-      ].sort((a, b) => a.date.localeCompare(b.date))
-    : []
-
   return (
     <div>
-      <div className="mb-6">
-        <Link
-          href="/admin/reports"
-          className="mb-3 inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
-          </svg>
-          리포트 목록
-        </Link>
-        <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">내신대비 리포트 생성</h1>
-        <p className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-600">학생을 검색해 등하원 시각과 그날 학습 내용을 바로 입력합니다.</p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <Link
+            href="/admin/reports"
+            className="mb-3 inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
+            </svg>
+            리포트 목록
+          </Link>
+          <h1 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">내신대비 리포트 생성</h1>
+          <p className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-600">
+            학생을 검색해 오늘 학습 내용·등하원 시각을 입력하고, 계획 항목 이행도도 같이 갱신합니다.
+          </p>
+        </div>
+
+        {/* 학생 개별 초기화(폼 안)와는 별개 — 전체 학생 대상이라 실수로 누르지 않도록 헤더 쪽에 분리 배치 */}
+        {isTeacher && (
+          <div className="shrink-0 text-right">
+            <button
+              type="button"
+              onClick={handleResetAllPlans}
+              disabled={resettingAllPlans}
+              className="text-xs text-red-500 hover:text-red-600 disabled:opacity-60"
+            >
+              {resettingAllPlans ? '전체 초기화 중…' : '전체 학생 계획 일괄 초기화'}
+            </button>
+            {resetAllResult && (
+              <p className={`mt-1 text-[11px] ${resetAllResult.startsWith('오류') ? 'text-red-500' : 'text-zinc-500 dark:text-zinc-500'}`}>
+                {resetAllResult}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 날짜 + 발송 */}
@@ -618,7 +757,7 @@ export function ExamPrepBuilderClient() {
       {/* 입력 방식 탭 */}
       <div className="flex gap-1 mb-4 rounded-xl bg-zinc-100 dark:bg-zinc-900 p-1 w-fit">
         {([
-          { value: 'manual', label: '실시간 개별 입력' },
+          { value: 'manual', label: '개별 입력' },
           { value: 'excel', label: '엑셀 일괄 업로드' },
         ] as const).map((opt) => (
           <button
@@ -678,7 +817,6 @@ export function ExamPrepBuilderClient() {
                 {logged.some((l) => l.studentId === form.studentId) && (
                   <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">수정 중</span>
                 )}
-                {historyPending && <span className="text-[10px] text-zinc-400 dark:text-zinc-600">이전 기록 불러오는 중…</span>}
                 <button type="button" onClick={() => setForm(null)} className="ml-auto text-xs text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300">변경</button>
               </div>
 
@@ -702,6 +840,84 @@ export function ExamPrepBuilderClient() {
                   placeholder="예: DECISIVE 8회 오답 정리, 대륜고 기출 3세트 풀이"
                   className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 outline-none transition-all resize-none"
                 />
+              </div>
+
+              {/* 계획 항목 — 날짜별 "저장"과 무관하게 버튼 클릭 즉시 저장된다 */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-zinc-500 dark:text-zinc-500">
+                    계획 항목 {planItemsPending && <span className="font-normal text-zinc-400 dark:text-zinc-600">불러오는 중…</span>}
+                  </label>
+                  {isTeacher && planItems.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleResetPlan}
+                      disabled={resettingPlan}
+                      className="text-[11px] text-red-500 hover:text-red-600 disabled:opacity-60"
+                    >
+                      {resettingPlan ? '초기화 중…' : '전체 초기화'}
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  {planItems.map((item) => (
+                    <div key={item.id} className="rounded-lg border border-zinc-100 dark:border-zinc-900 bg-zinc-50/60 dark:bg-zinc-950/60 px-3 py-2.5">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <p className="text-sm text-zinc-800 dark:text-zinc-200 flex-1">{item.content}</p>
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePlanItem(item.id)}
+                          disabled={deletingItemId === item.id}
+                          title="항목 삭제"
+                          className="shrink-0 text-zinc-300 dark:text-zinc-700 hover:text-red-500 disabled:opacity-40 transition-colors"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {PROGRESS_OPTIONS.map((pct) => (
+                          <button
+                            key={pct}
+                            type="button"
+                            onClick={() => handleUpdateItemProgress(item.id, pct)}
+                            disabled={updatingItemId === item.id}
+                            className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors disabled:opacity-60 ${
+                              item.progressPct === pct
+                                ? 'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900'
+                                : 'border border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600 hover:border-zinc-400 dark:hover:border-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300'
+                            }`}
+                          >
+                            {pct}%
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {planItems.length === 0 && !planItemsPending && (
+                    <p className="text-xs text-zinc-400 dark:text-zinc-600 py-2">등록된 계획 항목이 없습니다.</p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 mt-2">
+                  <input
+                    type="text"
+                    value={newItemContent}
+                    onChange={(e) => setNewItemContent(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddPlanItem() } }}
+                    placeholder="새 계획 항목 (예: DECISIVE 1~10회)"
+                    className="flex-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 outline-none transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddPlanItem}
+                    disabled={addingItem || !newItemContent.trim()}
+                    className="shrink-0 rounded-xl border-2 border-zinc-200 dark:border-zinc-800 px-4 py-2.5 text-sm font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors disabled:opacity-60"
+                  >
+                    {addingItem ? '추가 중…' : '추가'}
+                  </button>
+                </div>
+                {planErr && <p className="mt-1.5 text-sm text-red-500">{planErr}</p>}
               </div>
 
               <div>
@@ -783,7 +999,20 @@ export function ExamPrepBuilderClient() {
                 >
                   {saving ? '저장 중…' : '저장'}
                 </button>
+                <button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  disabled={draftSaving || saving}
+                  className="rounded-xl border-2 border-zinc-200 dark:border-zinc-800 px-5 py-3 text-sm font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors disabled:opacity-60"
+                >
+                  {draftSaving ? '임시 저장 중…' : '임시 저장'}
+                </button>
                 {savedAt && <span className="text-sm text-zinc-500 dark:text-zinc-500">✓ 저장되었습니다</span>}
+                {!savedAt && draftSavedAt && (
+                  <span className="text-sm text-zinc-500 dark:text-zinc-500">
+                    {new Date(draftSavedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}에 임시저장됨 — 이미지는 아직 생성되지 않았습니다
+                  </span>
+                )}
               </div>
             </>
           )}
@@ -848,6 +1077,18 @@ export function ExamPrepBuilderClient() {
       </div>
       ) : (
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 shadow-sm space-y-4">
+          <div className="flex items-start gap-2.5 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-4 py-3">
+            <span className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-500" aria-hidden>⚠</span>
+            <div className="space-y-1">
+              <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                엑셀 일괄 업로드에서는 계획 항목 이행도를 바꿀 수 없습니다
+              </p>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                저장 시 현재 등록된 계획 항목이 수정 없이 그대로 담깁니다. 이행도를 바꾸려면 &ldquo;개별 입력&rdquo; 탭을 이용하세요.
+              </p>
+            </div>
+          </div>
+
           <div className="flex flex-wrap items-center gap-3">
             <label className="cursor-pointer rounded-xl border-2 border-zinc-200 dark:border-zinc-800 px-4 py-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -902,7 +1143,7 @@ export function ExamPrepBuilderClient() {
               <p className="text-xs text-zinc-400 dark:text-zinc-600">
                 학교 | 학년 | 이름 | 등원시각 | 하원시각 | 학습내용 | 모의고사(응시/미응시) | 시험명 | 난이도 | 점수 | 시험지특이사항
               </p>
-              <p className="mt-1 text-xs text-zinc-300 dark:text-zinc-700">첫 행은 헤더 · 이름이 비어있는 행은 건너뜀 · 시각은 16:30 형식 · 모의고사가 없으면 6번 칸부터 비워두면 됨</p>
+              <p className="mt-1 text-xs text-zinc-300 dark:text-zinc-700">첫 행은 헤더 · 이름이 비어있는 행은 건너뜀 · 시각은 16:30 형식 · 모의고사가 없으면 6번 칸부터 비워두면 됨 · 계획 항목은 &ldquo;개별 입력&rdquo;에서 관리</p>
             </div>
           ) : (
             <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, 420px)' }}>
@@ -912,9 +1153,8 @@ export function ExamPrepBuilderClient() {
                     <div className="absolute top-2 right-2 z-10 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">미매칭</div>
                   )}
                   <ExamPrepReportCard
-                    student={buildExcelCardData(row)}
+                    student={buildExcelCardData(row, i)}
                     dateString={reportDate.slice(5).replace('-', '/')}
-                    history={buildExcelMergedHistory(row, i)}
                   />
                 </div>
               ))}
@@ -929,7 +1169,7 @@ export function ExamPrepBuilderClient() {
           aria-hidden="true"
           style={{ position: 'fixed', left: -10000, top: 0, width: 420, pointerEvents: 'none', zIndex: -1 }}
         >
-          <ExamPrepReportCard ref={cardRef} student={previewCard} dateString={reportDate.slice(5).replace('-', '/')} history={mergedHistory} />
+          <ExamPrepReportCard ref={cardRef} student={previewCard} dateString={reportDate.slice(5).replace('-', '/')} />
         </div>
       )}
 
@@ -945,9 +1185,8 @@ export function ExamPrepBuilderClient() {
                 if (el) excelCaptureRefs.current.set(i, el)
                 else excelCaptureRefs.current.delete(i)
               }}
-              student={buildExcelCardData(row)}
+              student={buildExcelCardData(row, i)}
               dateString={reportDate.slice(5).replace('-', '/')}
-              history={buildExcelMergedHistory(row, i)}
             />
           ))}
         </div>

@@ -826,16 +826,24 @@ export async function sendBatchClinicKakao(
 // 내신대비 리포트 (등하원 시각 + 학습내용 + 모의고사 응시여부, report_type = 'exam_prep')
 // ════════════════════════════════════════════════════════════════
 
+export type ExamPrepPlanItem = {
+  id: string
+  content: string
+  progressPct: number // 0/20/40/60/80/100
+}
+
 export type ExamPrepContent = {
   type: 'exam_prep'
-  // 중간/기말 내신대비 기간 구분 — 학습 내용 누적과 모의고사 성적 추이를 이 값으로 스코핑해서,
-  // 기말고사 기간에 중간고사 때 기록이 섞여 들어오지 않게 한다.
+  // 중간/기말 내신대비 기간 구분 — 그날 응시한 모의고사가 어느 시험 기간 것인지 표기
   examType: 'midterm' | 'final'
   school: string
   grade: string
   arrivalTime: string   // "HH:MM"
   departureTime: string // "HH:MM"
   studyContent: string
+  // 학생별 계획 항목 목록(exam_prep_plan_items, 날짜 무관)의 저장 시점 스냅샷 — 리포트 이미지는
+  // 저장 당시 상태를 그대로 보존해야 하므로, 매번 저장할 때 현재 목록을 복사해 넣는다.
+  planItems: ExamPrepPlanItem[]
   mockExam: {
     status: 'none' | 'attended' | 'absent'
     examLabel?: string
@@ -843,6 +851,124 @@ export type ExamPrepContent = {
     score?: number | null
     note?: string // 특이사항
   }
+}
+
+// 학생별 계획 항목 목록 조회 — 등록 순서대로
+export async function getExamPrepPlanItems(
+  studentId: string,
+): Promise<{ error?: string; items: ExamPrepPlanItem[] }> {
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error, items: [] }
+
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('exam_prep_plan_items')
+    .select('id, content, progress_pct')
+    .eq('student_id', studentId)
+    .order('position', { ascending: true })
+
+  if (error) return { error: '계획 조회에 실패했습니다.', items: [] }
+
+  return {
+    items: (data ?? []).map((r) => ({ id: r.id as string, content: r.content as string, progressPct: r.progress_pct as number })),
+  }
+}
+
+// 계획 항목 추가 — 맨 뒤에 이어붙임
+export async function addExamPrepPlanItem(
+  studentId: string,
+  content: string,
+): Promise<{ error?: string; item?: ExamPrepPlanItem }> {
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error }
+  if (!content.trim()) return { error: '내용을 입력하세요.' }
+
+  const admin = createAdminClient()
+  const { data: last } = await admin
+    .from('exam_prep_plan_items')
+    .select('position')
+    .eq('student_id', studentId)
+    .order('position', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const nextPosition = ((last?.position as number | undefined) ?? -1) + 1
+
+  const { data, error } = await admin
+    .from('exam_prep_plan_items')
+    .insert({ student_id: studentId, content: content.trim(), progress_pct: 0, position: nextPosition, updated_by: auth.user.id })
+    .select('id, content, progress_pct')
+    .single()
+  if (error || !data) return { error: '계획 항목 추가에 실패했습니다.' }
+
+  revalidatePath('/admin/reports/exam-prep')
+  return { item: { id: data.id as string, content: data.content as string, progressPct: data.progress_pct as number } }
+}
+
+// 계획 항목 이행도 수정
+export async function updateExamPrepPlanItemProgress(
+  itemId: string,
+  progressPct: number,
+): Promise<{ error?: string }> {
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error }
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('exam_prep_plan_items')
+    .update({ progress_pct: progressPct, updated_by: auth.user.id, updated_at: new Date().toISOString() })
+    .eq('id', itemId)
+  if (error) return { error: '이행도 수정에 실패했습니다.' }
+
+  revalidatePath('/admin/reports/exam-prep')
+  return {}
+}
+
+// 계획 항목 삭제 (오등록 정정용 — 일반 스태프도 가능)
+export async function deleteExamPrepPlanItem(itemId: string): Promise<{ error?: string }> {
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error }
+
+  const admin = createAdminClient()
+  const { error } = await admin.from('exam_prep_plan_items').delete().eq('id', itemId)
+  if (error) return { error: '삭제에 실패했습니다.' }
+
+  revalidatePath('/admin/reports/exam-prep')
+  return {}
+}
+
+// 학생의 계획 항목 전체 초기화 — 선생님(teacher)만 가능.
+export async function resetExamPrepPlan(studentId: string): Promise<{ error?: string }> {
+  const user = await getVerifiedUser()
+  if (!user) return { error: '인증이 필요합니다.' }
+  const role = user.user_metadata?.role as string | undefined
+  if (role !== 'teacher') return { error: '선생님만 초기화할 수 있습니다.' }
+
+  const admin = createAdminClient()
+  const { error } = await admin.from('exam_prep_plan_items').delete().eq('student_id', studentId)
+  if (error) return { error: '초기화에 실패했습니다.' }
+
+  revalidatePath('/admin/reports/exam-prep')
+  return {}
+}
+
+// 전체 학생의 계획 항목을 한 번에 초기화 — 중간/기말 시즌이 바뀔 때처럼 모두 새로 시작할 때 사용.
+// 선생님(teacher)만 가능 — 학생별 초기화보다 파급 범위가 훨씬 크다.
+export async function resetAllExamPrepPlans(): Promise<{ error?: string; deletedCount?: number }> {
+  const user = await getVerifiedUser()
+  if (!user) return { error: '인증이 필요합니다.' }
+  const role = user.user_metadata?.role as string | undefined
+  if (role !== 'teacher') return { error: '선생님만 초기화할 수 있습니다.' }
+
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('exam_prep_plan_items')
+    .delete()
+    .not('id', 'is', null)
+    .select('id')
+  if (error) return { error: '전체 초기화에 실패했습니다.' }
+
+  revalidatePath('/admin/reports/exam-prep')
+  return { deletedCount: data?.length ?? 0 }
 }
 
 // 실시간 개별 입력 화면의 학생 검색 — 분반 무관, 이름으로 전체 학생 검색
@@ -897,38 +1023,96 @@ export async function getExamPrepReportsForDate(
   return { reports }
 }
 
-// 학생의 내신대비 기간 전체 누적 기록 (해당 날짜까지) — 리포트 카드에 "학습 내용 누적표"와
-// "모의고사 성적 추이"를 함께 보여주기 위해 이 학생의 exam_prep 리포트를 날짜순으로 전부 가져온다.
-export async function getExamPrepHistoryForStudent(
+export type ExamPrepDraftData = {
+  examType: ExamPrepContent['examType']
+  arrivalTime: string
+  departureTime: string
+  studyContent: string
+  mockExamStatus: ExamPrepContent['mockExam']['status']
+  examLabel: string
+  difficulty: number | null
+  score: number | null
+  note: string
+}
+
+// 실시간 입력 임시저장 — 이미지는 만들지 않고 입력값만 학생+날짜 단위로 보존, 같은 조합을 다시
+// 열면 자동으로 불러와진다 (정식 "저장" 전까지).
+export async function saveExamPrepDraft(
   studentId: string,
-  throughDate: string,
-  examType: ExamPrepContent['examType'],
-): Promise<{ error?: string; history: Array<{ date: string; studyContent: string; mockExam: ExamPrepContent['mockExam'] }> }> {
+  reportDate: string,
+  data: ExamPrepDraftData,
+): Promise<{ error?: string; savedAt?: string }> {
   const auth = await assertStaff()
-  if (!auth.ok) return { error: auth.error, history: [] }
+  if (!auth.ok) return { error: auth.error }
+
+  const admin = createAdminClient()
+  const now = new Date().toISOString()
+
+  const { error } = await admin
+    .from('exam_prep_drafts')
+    .upsert({
+      student_id:       studentId,
+      report_date:      reportDate,
+      exam_type:        data.examType,
+      arrival_time:     data.arrivalTime,
+      departure_time:   data.departureTime,
+      study_content:    data.studyContent,
+      mock_status:      data.mockExamStatus,
+      mock_exam_label:  data.examLabel,
+      mock_difficulty:  data.difficulty,
+      mock_score:       data.score,
+      mock_note:        data.note,
+      updated_by:       auth.user.id,
+      updated_at:       now,
+    }, { onConflict: 'student_id, report_date' })
+
+  if (error) return { error: '임시저장에 실패했습니다.' }
+  return { savedAt: now }
+}
+
+// 학생+날짜 조합으로 임시저장 조회 — 정식 리포트가 이미 있으면 그쪽이 우선이므로 호출 쪽에서
+// "정식 기록 없을 때만" 사용한다.
+export async function getExamPrepDraft(
+  studentId: string,
+  reportDate: string,
+): Promise<{ error?: string; draft: ExamPrepDraftData | null }> {
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error, draft: null }
 
   const admin = createAdminClient()
   const { data, error } = await admin
-    .from('reports')
-    .select('report_date, content_json')
-    .eq('report_type', 'exam_prep')
+    .from('exam_prep_drafts')
+    .select('exam_type, arrival_time, departure_time, study_content, mock_status, mock_exam_label, mock_difficulty, mock_score, mock_note')
     .eq('student_id', studentId)
-    .lte('report_date', throughDate)
-    .filter('content_json->>examType', 'eq', examType)
-    .order('report_date', { ascending: true })
+    .eq('report_date', reportDate)
+    .maybeSingle()
 
-  if (error) return { error: '이력 조회에 실패했습니다.', history: [] }
+  if (error) return { error: '임시저장 조회에 실패했습니다.', draft: null }
+  if (!data) return { draft: null }
 
-  const history = (data ?? []).map((r) => {
-    const content = fromJson<ExamPrepContent>(r.content_json)
-    return {
-      date: r.report_date as string,
-      studyContent: content.studyContent,
-      mockExam: content.mockExam,
-    }
-  })
+  return {
+    draft: {
+      examType:      data.exam_type as ExamPrepContent['examType'],
+      arrivalTime:   data.arrival_time as string,
+      departureTime: data.departure_time as string,
+      studyContent:  data.study_content as string,
+      mockExamStatus: data.mock_status as ExamPrepContent['mockExam']['status'],
+      examLabel:     data.mock_exam_label as string,
+      difficulty:    data.mock_difficulty as number | null,
+      score:         data.mock_score as number | null,
+      note:          data.mock_note as string,
+    },
+  }
+}
 
-  return { history }
+// 정식 저장(이미지 생성) 완료 후 임시저장 정리
+export async function deleteExamPrepDraft(studentId: string, reportDate: string): Promise<{ error?: string }> {
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error }
+
+  const admin = createAdminClient()
+  await admin.from('exam_prep_drafts').delete().eq('student_id', studentId).eq('report_date', reportDate)
+  return {}
 }
 
 // 저장 (같은 학생+날짜의 exam_prep 리포트가 있으면 덮어씀 = 수정) — 실시간 개별 입력/엑셀 일괄 공용

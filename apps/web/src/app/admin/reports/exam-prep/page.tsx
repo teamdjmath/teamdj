@@ -7,5 +7,5 @@ export default async function ExamPrepReportPage() {
   const role = user?.user_metadata?.role as string | undefined
   if (!user || !['teacher', 'ta_desk'].includes(role ?? '')) redirect('/admin/dashboard')
 
-  return <ExamPrepBuilderClient />
+  return <ExamPrepBuilderClient isTeacher={role === 'teacher'} />
 }
