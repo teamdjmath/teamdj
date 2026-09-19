@@ -489,9 +489,7 @@ export type Database = {
           departure_time: string
           exam_type: string
           id: string
-          mock_exam_label: string
-          mock_score: number | null
-          mock_status: string
+          mock_exams: Json
           report_date: string
           student_id: string
           study_content: string
@@ -503,9 +501,7 @@ export type Database = {
           departure_time?: string
           exam_type?: string
           id?: string
-          mock_exam_label?: string
-          mock_score?: number | null
-          mock_status?: string
+          mock_exams?: Json
           report_date: string
           student_id: string
           study_content?: string
@@ -517,9 +513,7 @@ export type Database = {
           departure_time?: string
           exam_type?: string
           id?: string
-          mock_exam_label?: string
-          mock_score?: number | null
-          mock_status?: string
+          mock_exams?: Json
           report_date?: string
           student_id?: string
           study_content?: string

@@ -3,9 +3,9 @@
 import { forwardRef } from 'react'
 
 export interface ExamPrepMockExam {
-  status: 'none' | 'attended' | 'absent'
-  examLabel?: string
-  score?: number | null
+  examLabel: string
+  status: 'attended' | 'absent'
+  score: number | null
 }
 
 export interface ExamPrepPlanItem {
@@ -22,7 +22,7 @@ export interface ExamPrepStudentData {
   departureTime: string
   studyContent: string
   planItems: ExamPrepPlanItem[]
-  mockExam: ExamPrepMockExam
+  mockExams: ExamPrepMockExam[]
 }
 
 interface Props {
@@ -81,7 +81,7 @@ function ProgressCircles({ pct }: { pct: number }) {
 
 export const ExamPrepReportCard = forwardRef<HTMLDivElement, Props>(
   ({ student, dateString }, ref) => {
-    const { school, grade, name, arrivalTime, departureTime, studyContent, planItems, mockExam } = student
+    const { school, grade, name, arrivalTime, departureTime, studyContent, planItems, mockExams } = student
 
     const title = dateString
       ? `${dateString} 역전의 수학 내신대비 리포트`
@@ -201,21 +201,29 @@ export const ExamPrepReportCard = forwardRef<HTMLDivElement, Props>(
           </p>
         </div>
 
-        {/* 모의고사 (해당 날짜에 시험이 있었을 때만) */}
-        {mockExam.status !== 'none' && (
+        {/* 모의고사 (해당 날짜에 시험이 있었을 때만, 여러 회차 가능) */}
+        {mockExams.length > 0 && (
           <>
             <SectionHeader label="모의중간·기말고사" />
-            <div style={{ padding: '10px 14px' }}>
-              {mockExam.status === 'absent' ? (
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.sub }}>미응시</p>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 12, color: C.sub }}>{mockExam.examLabel || '모의고사'}</span>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: C.dark }}>
-                    {mockExam.score != null ? `${mockExam.score}점` : '—'}
-                  </span>
+            <div>
+              {mockExams.map((exam, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10,
+                    padding: '9px 14px', borderTop: i > 0 ? `1px solid ${C.border}` : 'none',
+                  }}
+                >
+                  <span style={{ fontSize: 12, color: C.sub }}>{exam.examLabel || '모의고사'}</span>
+                  {exam.status === 'absent' ? (
+                    <span style={{ fontSize: 13, fontWeight: 700, color: C.sub }}>미응시</span>
+                  ) : (
+                    <span style={{ fontSize: 16, fontWeight: 700, color: C.dark }}>
+                      {exam.score != null ? `${exam.score}점` : '—'}
+                    </span>
+                  )}
                 </div>
-              )}
+              ))}
             </div>
           </>
         )}

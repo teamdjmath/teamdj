@@ -24,6 +24,7 @@ import {
   getExamPrepDraft,
   deleteExamPrepDraft,
   type ExamPrepContent,
+  type ExamPrepMockExamEntry,
 } from '@/lib/actions/reports'
 
 const PROGRESS_OPTIONS = [0, 20, 40, 60, 80, 100] as const
@@ -39,6 +40,32 @@ type LoggedRow = { id: string; studentId: string; studentName: string; imageUrl:
 
 const LOGGED_PREVIEW_COUNT = 6
 
+// 폼에서는 점수를 입력 중인 문자열로 다루고, 저장할 때 숫자로 변환한다
+type MockExamForm = { examLabel: string; status: ExamPrepMockExamEntry['status']; score: string }
+
+function toMockExamForms(entries: ExamPrepMockExamEntry[]): MockExamForm[] {
+  return entries.map((e) => ({ examLabel: e.examLabel, status: e.status, score: e.score != null ? String(e.score) : '' }))
+}
+
+// 응시 기록만 점수를 가진다. 시험명·점수가 모두 비어있는 응시 행은 빈 줄이라 제외한다.
+function toMockExamEntries(forms: MockExamForm[]): ExamPrepMockExamEntry[] {
+  return forms
+    .filter((m) => m.status === 'absent' || m.examLabel.trim() || m.score.trim())
+    .map((m) => ({
+      examLabel: m.examLabel.trim(),
+      status: m.status,
+      score: m.status === 'attended' && m.score.trim() ? Number(m.score) : null,
+    }))
+}
+
+// mockExams 도입 전(단일 모의고사)에 저장된 기록은 1건짜리 목록으로 변환해서 읽는다
+function mockExamsOf(content: ExamPrepContent): ExamPrepMockExamEntry[] {
+  if (content.mockExams) return content.mockExams
+  const legacy = content.mockExam
+  if (!legacy || legacy.status === 'none') return []
+  return [{ examLabel: legacy.examLabel ?? '', status: legacy.status, score: legacy.score ?? null }]
+}
+
 type FormState = {
   studentId: string
   studentName: string
@@ -47,9 +74,7 @@ type FormState = {
   arrivalTime: string
   departureTime: string
   studyContent: string
-  mockExamStatus: ExamPrepContent['mockExam']['status']
-  examLabel: string
-  score: string
+  mockExams: MockExamForm[]
 }
 
 function blankForm(hit: StudentHit): FormState {
@@ -61,9 +86,7 @@ function blankForm(hit: StudentHit): FormState {
     arrivalTime: '',
     departureTime: '',
     studyContent: '',
-    mockExamStatus: 'none',
-    examLabel: '',
-    score: '',
+    mockExams: [],
   }
 }
 
@@ -76,9 +99,7 @@ function formFromLogged(row: LoggedRow): FormState {
     arrivalTime: row.content.arrivalTime,
     departureTime: row.content.departureTime,
     studyContent: row.content.studyContent,
-    mockExamStatus: row.content.mockExam.status,
-    examLabel: row.content.mockExam.examLabel ?? '',
-    score: row.content.mockExam.score != null ? String(row.content.mockExam.score) : '',
+    mockExams: toMockExamForms(mockExamsOf(row.content)),
   }
 }
 
@@ -93,9 +114,7 @@ type ExamPrepExcelRow = {
   arrivalTime: string
   departureTime: string
   studyContent: string
-  mockExamStatus: ExamPrepContent['mockExam']['status']
-  examLabel: string
-  score: number | null
+  mockExams: ExamPrepMockExamEntry[]
 }
 
 function parseExamPrepExcel(buffer: ArrayBuffer): ExamPrepExcelRow[] {
@@ -112,9 +131,16 @@ function parseExamPrepExcel(buffer: ArrayBuffer): ExamPrepExcelRow[] {
     if (!name) continue
 
     const mockRaw = String(row[6] ?? '').trim()
-    const mockExamStatus: ExamPrepContent['mockExam']['status'] =
-      mockRaw === '응시' ? 'attended' : mockRaw === '미응시' ? 'absent' : 'none'
     const scoreRaw = String(row[8] ?? '').trim()
+    // 엑셀은 한 행에 모의고사 1개만 — 여러 개는 개별 입력에서 추가한다
+    const mockExams: ExamPrepMockExamEntry[] =
+      mockRaw === '응시' || mockRaw === '미응시'
+        ? [{
+            examLabel: String(row[7] ?? '').trim(),
+            status: mockRaw === '응시' ? 'attended' : 'absent',
+            score: mockRaw === '응시' && scoreRaw ? Number(scoreRaw) : null,
+          }]
+        : []
 
     result.push({
       school: String(row[0] ?? '').trim(),
@@ -123,9 +149,7 @@ function parseExamPrepExcel(buffer: ArrayBuffer): ExamPrepExcelRow[] {
       arrivalTime: excelTimeToString(row[3]),
       departureTime: excelTimeToString(row[4]),
       studyContent: String(row[5] ?? '').trim(),
-      mockExamStatus,
-      examLabel: String(row[7] ?? '').trim(),
-      score: scoreRaw ? Number(scoreRaw) : null,
+      mockExams,
     })
   }
   if (result.length === 0) {
@@ -263,9 +287,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
         arrivalTime: d.arrivalTime,
         departureTime: d.departureTime,
         studyContent: d.studyContent,
-        mockExamStatus: d.mockExamStatus,
-        examLabel: d.examLabel,
-        score: d.score != null ? String(d.score) : '',
+        mockExams: toMockExamForms(d.mockExams),
       } : f))
       setExamType(d.examType)
     })
@@ -295,6 +317,18 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
     setPlanErr('')
     setPlanItems([])
     loadPlanItems(row.studentId)
+  }
+
+  function addMockExam() {
+    setForm((f) => f && { ...f, mockExams: [...f.mockExams, { examLabel: '', status: 'attended', score: '' }] })
+  }
+
+  function updateMockExam(index: number, patch: Partial<MockExamForm>) {
+    setForm((f) => f && { ...f, mockExams: f.mockExams.map((m, i) => (i === index ? { ...m, ...patch } : m)) })
+  }
+
+  function removeMockExam(index: number) {
+    setForm((f) => f && { ...f, mockExams: f.mockExams.filter((_, i) => i !== index) })
   }
 
   // 계획 항목 추가/이행도 수정/삭제 — 날짜별 "저장"과 무관하게 클릭 즉시 반영된다
@@ -396,11 +430,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
         departureTime: form.departureTime,
         studyContent: form.studyContent,
         planItems,
-        mockExam: {
-          status: form.mockExamStatus,
-          examLabel: form.mockExamStatus === 'attended' ? form.examLabel.trim() || undefined : undefined,
-          score: form.mockExamStatus === 'attended' && form.score.trim() ? Number(form.score) : null,
-        },
+        mockExams: toMockExamEntries(form.mockExams),
       }
 
       const res = await saveExamPrepReports([{
@@ -432,9 +462,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
         arrivalTime: form.arrivalTime,
         departureTime: form.departureTime,
         studyContent: form.studyContent,
-        mockExamStatus: form.mockExamStatus,
-        examLabel: form.examLabel,
-        score: form.score.trim() ? Number(form.score) : null,
+        mockExams: toMockExamEntries(form.mockExams),
       })
       if (res.error) { setErr(res.error); return }
       setDraftSavedAt(Date.now())
@@ -511,7 +539,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
       departureTime: row.departureTime,
       studyContent: row.studyContent,
       planItems: excelPlanMap[index] ?? [],
-      mockExam: { status: row.mockExamStatus, examLabel: row.examLabel, score: row.score },
+      mockExams: row.mockExams,
     }
   }
 
@@ -559,11 +587,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
             departureTime: row.departureTime,
             studyContent: row.studyContent,
             planItems: excelPlanMap[index] ?? [],
-            mockExam: {
-              status: row.mockExamStatus,
-              examLabel: row.mockExamStatus === 'attended' ? (row.examLabel || undefined) : undefined,
-              score: row.mockExamStatus === 'attended' ? row.score : null,
-            },
+            mockExams: row.mockExams,
           },
           imageBase64,
         })
@@ -633,11 +657,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
         departureTime: form.departureTime,
         studyContent: form.studyContent,
         planItems,
-        mockExam: {
-          status: form.mockExamStatus,
-          examLabel: form.examLabel,
-          score: form.score.trim() ? Number(form.score) : null,
-        },
+        mockExams: toMockExamEntries(form.mockExams),
       }
     : null
 
@@ -913,46 +933,60 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
                 {planErr && <p className="mt-1.5 text-sm text-red-500">{planErr}</p>}
               </div>
 
+              {/* 모의중간·기말고사 — 하루에 여러 회차를 입력할 수 있다 (없으면 비워둠) */}
               <div>
                 <label className="text-xs font-bold text-zinc-500 dark:text-zinc-500 mb-1.5 block">모의중간·기말고사</label>
-                <div className="flex flex-wrap gap-2">
-                  {([
-                    { value: 'none', label: '해당 없음' },
-                    { value: 'attended', label: '응시' },
-                    { value: 'absent', label: '미응시' },
-                  ] as const).map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setForm((f) => f && { ...f, mockExamStatus: opt.value })}
-                      className={`rounded-full px-4 py-2 text-xs font-bold transition-colors ${
-                        form.mockExamStatus === opt.value
-                          ? 'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900'
-                          : 'bg-zinc-50 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
+                <div className="space-y-2">
+                  {form.mockExams.map((exam, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => updateMockExam(i, { status: exam.status === 'attended' ? 'absent' : 'attended' })}
+                        title="응시/미응시 전환"
+                        className={`shrink-0 rounded-full px-3 py-2 text-xs font-bold transition-colors ${
+                          exam.status === 'attended'
+                            ? 'bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900'
+                            : 'bg-amber-500 text-white'
+                        }`}
+                      >
+                        {exam.status === 'attended' ? '응시' : '미응시'}
+                      </button>
+                      <input
+                        type="text"
+                        value={exam.examLabel}
+                        onChange={(e) => updateMockExam(i, { examLabel: e.target.value })}
+                        placeholder="시험명 (예: 미적분2 1회)"
+                        className="min-w-0 flex-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 outline-none transition-all"
+                      />
+                      <input
+                        type="number"
+                        value={exam.status === 'attended' ? exam.score : ''}
+                        onChange={(e) => updateMockExam(i, { score: e.target.value })}
+                        disabled={exam.status === 'absent'}
+                        placeholder={exam.status === 'absent' ? '—' : '점수'}
+                        className="w-24 shrink-0 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 outline-none transition-all disabled:opacity-50"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeMockExam(i)}
+                        title="모의고사 삭제"
+                        className="shrink-0 text-zinc-300 dark:text-zinc-700 hover:text-red-500 transition-colors"
+                      >
+                        ✕
+                      </button>
+                    </div>
                   ))}
+                  {form.mockExams.length === 0 && (
+                    <p className="text-xs text-zinc-400 dark:text-zinc-600 py-1">그날 본 모의고사가 없으면 비워두세요.</p>
+                  )}
                 </div>
-                {form.mockExamStatus === 'attended' && (
-                  <div className="grid grid-cols-2 gap-3 mt-3">
-                    <input
-                      type="text"
-                      value={form.examLabel}
-                      onChange={(e) => setForm((f) => f && { ...f, examLabel: e.target.value })}
-                      placeholder="시험명 (예: 미적분2 1회)"
-                      className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 outline-none transition-all"
-                    />
-                    <input
-                      type="number"
-                      value={form.score}
-                      onChange={(e) => setForm((f) => f && { ...f, score: e.target.value })}
-                      placeholder="점수"
-                      className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 outline-none transition-all"
-                    />
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={addMockExam}
+                  className="mt-2 rounded-xl border-2 border-zinc-200 dark:border-zinc-800 px-4 py-2 text-sm font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950 transition-colors"
+                >
+                  + 모의고사 추가
+                </button>
               </div>
 
               {err && <p className="text-sm text-red-500">{err}</p>}
@@ -1110,7 +1144,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
               <p className="text-xs text-zinc-400 dark:text-zinc-600">
                 학교 | 학년 | 이름 | 등원시각 | 하원시각 | 학습내용 | 모의고사(응시/미응시) | 시험명 | 점수
               </p>
-              <p className="mt-1 text-xs text-zinc-300 dark:text-zinc-700">첫 행은 헤더 · 이름이 비어있는 행은 건너뜀 · 시각은 16:30 형식 · 모의고사가 없으면 6번 칸부터 비워두면 됨 · 계획 항목은 &ldquo;개별 입력&rdquo;에서 관리</p>
+              <p className="mt-1 text-xs text-zinc-300 dark:text-zinc-700">첫 행은 헤더 · 이름이 비어있는 행은 건너뜀 · 시각은 16:30 형식 · 모의고사가 없으면 6번 칸부터 비워두면 됨 · 엑셀은 모의고사 1개만 입력 가능(여러 개는 &ldquo;개별 입력&rdquo;) · 계획 항목은 &ldquo;개별 입력&rdquo;에서 관리</p>
             </div>
           ) : (
             <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, 420px)' }}>

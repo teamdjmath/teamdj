@@ -832,6 +832,13 @@ export type ExamPrepPlanItem = {
   progressPct: number // 0/20/40/60/80/100
 }
 
+// 하루에 여러 회차의 모의고사를 볼 수 있어 목록으로 보관 (빈 목록 = 그날 모의고사 없음)
+export type ExamPrepMockExamEntry = {
+  examLabel: string
+  status: 'attended' | 'absent'
+  score: number | null
+}
+
 export type ExamPrepContent = {
   type: 'exam_prep'
   // 중간/기말 내신대비 기간 구분 — 그날 응시한 모의고사가 어느 시험 기간 것인지 표기
@@ -844,11 +851,9 @@ export type ExamPrepContent = {
   // 학생별 계획 항목 목록(exam_prep_plan_items, 날짜 무관)의 저장 시점 스냅샷 — 리포트 이미지는
   // 저장 당시 상태를 그대로 보존해야 하므로, 매번 저장할 때 현재 목록을 복사해 넣는다.
   planItems: ExamPrepPlanItem[]
-  mockExam: {
-    status: 'none' | 'attended' | 'absent'
-    examLabel?: string
-    score?: number | null
-  }
+  mockExams: ExamPrepMockExamEntry[]
+  // 단일 모의고사 시절(mockExams 도입 전)에 저장된 기록 — 읽을 때만 mockExams로 변환해 사용
+  mockExam?: { status: 'none' | 'attended' | 'absent'; examLabel?: string; score?: number | null }
 }
 
 // 학생별 계획 항목 목록 조회 — 등록 순서대로
@@ -1026,9 +1031,7 @@ export type ExamPrepDraftData = {
   arrivalTime: string
   departureTime: string
   studyContent: string
-  mockExamStatus: ExamPrepContent['mockExam']['status']
-  examLabel: string
-  score: number | null
+  mockExams: ExamPrepMockExamEntry[]
 }
 
 // 실시간 입력 임시저장 — 이미지는 만들지 않고 입력값만 학생+날짜 단위로 보존, 같은 조합을 다시
@@ -1053,9 +1056,7 @@ export async function saveExamPrepDraft(
       arrival_time:     data.arrivalTime,
       departure_time:   data.departureTime,
       study_content:    data.studyContent,
-      mock_status:      data.mockExamStatus,
-      mock_exam_label:  data.examLabel,
-      mock_score:       data.score,
+      mock_exams:       asJson(data.mockExams),
       updated_by:       auth.user.id,
       updated_at:       now,
     }, { onConflict: 'student_id, report_date' })
@@ -1076,7 +1077,7 @@ export async function getExamPrepDraft(
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('exam_prep_drafts')
-    .select('exam_type, arrival_time, departure_time, study_content, mock_status, mock_exam_label, mock_score')
+    .select('exam_type, arrival_time, departure_time, study_content, mock_exams')
     .eq('student_id', studentId)
     .eq('report_date', reportDate)
     .maybeSingle()
@@ -1090,9 +1091,7 @@ export async function getExamPrepDraft(
       arrivalTime:   data.arrival_time as string,
       departureTime: data.departure_time as string,
       studyContent:  data.study_content as string,
-      mockExamStatus: data.mock_status as ExamPrepContent['mockExam']['status'],
-      examLabel:     data.mock_exam_label as string,
-      score:         data.mock_score as number | null,
+      mockExams:     fromJson<ExamPrepMockExamEntry[]>(data.mock_exams),
     },
   }
 }
