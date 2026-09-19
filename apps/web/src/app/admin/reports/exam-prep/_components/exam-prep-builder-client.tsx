@@ -105,7 +105,8 @@ function formFromLogged(row: LoggedRow): FormState {
 
 // ── 엑셀 일괄 업로드 ──────────────────────────────────────────────────────────
 // cols: 학교(0) | 학년(1) | 이름(2) | 등원시각(3) | 하원시각(4) | 학습내용(5) |
-//       모의고사(6: 응시/미응시, 공백=없음) | 시험명(7) | 점수(8)
+//       이후 (시험명, 점수) 쌍을 원하는 만큼 반복 — 6·7번째 칸이 1회차, 8·9번째 칸이 2회차 …
+//       점수 칸에 "미응시"라고 적으면 미응시, 숫자면 응시, 시험명·점수가 모두 비어있으면 건너뜀
 
 type ExamPrepExcelRow = {
   school: string
@@ -130,17 +131,15 @@ function parseExamPrepExcel(buffer: ArrayBuffer): ExamPrepExcelRow[] {
     const name = String(row[2] ?? '').trim()
     if (!name) continue
 
-    const mockRaw = String(row[6] ?? '').trim()
-    const scoreRaw = String(row[8] ?? '').trim()
-    // 엑셀은 한 행에 모의고사 1개만 — 여러 개는 개별 입력에서 추가한다
-    const mockExams: ExamPrepMockExamEntry[] =
-      mockRaw === '응시' || mockRaw === '미응시'
-        ? [{
-            examLabel: String(row[7] ?? '').trim(),
-            status: mockRaw === '응시' ? 'attended' : 'absent',
-            score: mockRaw === '응시' && scoreRaw ? Number(scoreRaw) : null,
-          }]
-        : []
+    const mockExams: ExamPrepMockExamEntry[] = []
+    for (let c = 6; c < row.length; c += 2) {
+      const examLabel = String(row[c] ?? '').trim()
+      const scoreRaw = String(row[c + 1] ?? '').trim()
+      if (!examLabel && !scoreRaw) continue
+      const absent = scoreRaw === '미응시'
+      const score = !absent && scoreRaw !== '' ? Number(scoreRaw) : null
+      mockExams.push({ examLabel, status: absent ? 'absent' : 'attended', score: score != null && Number.isFinite(score) ? score : null })
+    }
 
     result.push({
       school: String(row[0] ?? '').trim(),
@@ -160,12 +159,12 @@ function parseExamPrepExcel(buffer: ArrayBuffer): ExamPrepExcelRow[] {
 
 function downloadExamPrepSampleExcel() {
   const aoa = [
-    ['학교', '학년', '이름', '등원시각', '하원시각', '학습내용', '모의고사', '시험명', '점수'],
-    ['대륜고', '3', '홍길동', '17:10', '20:40', 'DECISIVE 5~6회 오답 정리, 대륜고 기출 3세트 풀이', '응시', '미적분2 모의중간고사 1회', '78'],
-    ['경신고', '2', '김철수', '17:00', '19:30', '기출 3세트 풀이 및 오답 정리', '', '', ''],
+    ['학교', '학년', '이름', '등원시각', '하원시각', '학습내용', '시험명1', '점수1', '시험명2', '점수2', '시험명3', '점수3'],
+    ['대륜고', '3', '홍길동', '17:10', '20:40', 'DECISIVE 5~6회 오답 정리, 대륜고 기출 3세트 풀이', '미적분2 모의중간고사 1회', '78', '미적분2 모의중간고사 2회', '85', '미적분2 모의중간고사 3회', '미응시'],
+    ['경신고', '2', '김철수', '17:00', '19:30', '기출 3세트 풀이 및 오답 정리', '', '', '', '', '', ''],
   ]
   const ws = XLSX.utils.aoa_to_sheet(aoa)
-  ws['!cols'] = [{ wch: 10 }, { wch: 6 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 45 }, { wch: 10 }, { wch: 22 }, { wch: 8 }]
+  ws['!cols'] = [{ wch: 10 }, { wch: 6 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 45 }, { wch: 24 }, { wch: 8 }, { wch: 24 }, { wch: 8 }, { wch: 24 }, { wch: 8 }]
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, '내신대비리포트')
   XLSX.writeFile(wb, '내신대비리포트_샘플.xlsx')
@@ -1142,9 +1141,9 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
             <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-6 py-10 text-center">
               <p className="text-sm font-bold text-zinc-600 dark:text-zinc-400 mb-2">시트 컬럼 순서 (첫 번째 시트 기준)</p>
               <p className="text-xs text-zinc-400 dark:text-zinc-600">
-                학교 | 학년 | 이름 | 등원시각 | 하원시각 | 학습내용 | 모의고사(응시/미응시) | 시험명 | 점수
+                학교 | 학년 | 이름 | 등원시각 | 하원시각 | 학습내용 | 시험명1 | 점수1 | 시험명2 | 점수2 | … (필요한 만큼 계속)
               </p>
-              <p className="mt-1 text-xs text-zinc-300 dark:text-zinc-700">첫 행은 헤더 · 이름이 비어있는 행은 건너뜀 · 시각은 16:30 형식 · 모의고사가 없으면 6번 칸부터 비워두면 됨 · 엑셀은 모의고사 1개만 입력 가능(여러 개는 &ldquo;개별 입력&rdquo;) · 계획 항목은 &ldquo;개별 입력&rdquo;에서 관리</p>
+              <p className="mt-1 text-xs text-zinc-300 dark:text-zinc-700">첫 행은 헤더 · 이름이 비어있는 행은 건너뜀 · 시각은 16:30 형식 · 모의고사가 없으면 시험명·점수 칸을 비워두면 됨 · 미응시는 점수 칸에 &ldquo;미응시&rdquo;라고 입력 · 계획 항목은 &ldquo;개별 입력&rdquo;에서 관리</p>
             </div>
           ) : (
             <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, 420px)' }}>
