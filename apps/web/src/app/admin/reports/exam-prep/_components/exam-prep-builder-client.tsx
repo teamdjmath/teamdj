@@ -1,5 +1,6 @@
 'use client'
 
+import { flushSync } from 'react-dom'
 import { startTransition, useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import * as XLSX from 'xlsx'
@@ -220,6 +221,8 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
   const [excelSaving, setExcelSaving] = useState(false)
   const [excelSaveProgress, setExcelSaveProgress] = useState<{ cur: number; total: number } | null>(null)
   const [excelSavedCount, setExcelSavedCount] = useState<number | null>(null)
+  // 계획 항목 불러오기가 끝나기 전에는 저장할 수 없다 (비어있는 목록으로 이미지가 만들어지는 것을 막는다)
+  const [excelPlanStatus, setExcelPlanStatus] = useState<'loading' | 'ready' | 'failed'>('loading')
   const excelCaptureRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 
   const cardRef = useRef<HTMLDivElement>(null)
@@ -407,6 +410,12 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
     setErr('')
     setSaving(true)
     try {
+      // 다른 곳(조교 화면 등)에서 계획 항목이 바뀌었을 수 있으므로, 이미지를 만들기 직전에 최신 목록을
+      // 다시 받아 화면에 반영한 뒤 캡처한다. 조회에 실패하면 오래된 목록으로 저장하지 않고 중단한다.
+      const freshPlan = await getExamPrepPlanItems(form.studentId)
+      if (freshPlan.error) throw new Error('계획 항목을 불러오지 못해 저장하지 않았습니다. 다시 시도해주세요.')
+      flushSync(() => setPlanItems(freshPlan.items))
+
       await document.fonts.ready
       const node = cardRef.current
       if (!node) throw new Error('카드를 렌더링하지 못했습니다.')
@@ -428,7 +437,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
         arrivalTime: form.arrivalTime,
         departureTime: form.departureTime,
         studyContent: form.studyContent,
-        planItems,
+        planItems: freshPlan.items,
         mockExams: toMockExamEntries(form.mockExams),
       }
 
@@ -439,6 +448,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
         imageBase64,
       }])
       if (res.error) { setErr(res.error); return }
+      if (res.saved === 0) { setErr('리포트 저장에 실패했습니다. 다시 시도해주세요.'); return }
       setSavedAt(Date.now())
       setDraftSavedAt(null)
       await loadLogged(reportDate)
@@ -448,7 +458,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
     } finally {
       setSaving(false)
     }
-  }, [form, reportDate, examType, planItems, loadLogged])
+  }, [form, reportDate, examType, loadLogged])
 
   // 임시 저장 — 이미지는 만들지 않고 입력값만 학생+날짜 단위로 보존
   const handleSaveDraft = useCallback(async () => {
@@ -491,6 +501,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
     setExcelMatchMap({})
     setExcelPlanMap({})
     setExcelSavedCount(null)
+    setExcelPlanStatus('loading')
 
     const reader = new FileReader()
     reader.onload = async (ev) => {
@@ -507,16 +518,25 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
         setExcelMatchMap(map)
 
         const planMap: Record<number, ExamPrepPlanItem[]> = {}
+        let planFailed = false
         await Promise.all(
           parsed.map(async (_, i) => {
             const sid = map[i]
             if (!sid) return
             const res = await getExamPrepPlanItems(sid)
-            if (!res.error) planMap[i] = res.items
+            if (res.error) planFailed = true
+            else planMap[i] = res.items
           }),
         )
         setExcelPlanMap(planMap)
+        if (planFailed) {
+          setExcelPlanStatus('failed')
+          setExcelError('일부 학생의 계획 항목을 불러오지 못했습니다. 파일을 다시 올려주세요.')
+        } else {
+          setExcelPlanStatus('ready')
+        }
       } catch (err) {
+        setExcelPlanStatus('failed')
         setExcelError(err instanceof Error ? err.message : '엑셀 파싱 중 오류가 발생했습니다.')
       }
     }
@@ -556,14 +576,27 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
     setExcelSaveProgress({ cur: 0, total: targets.length })
 
     try {
+      // 파일을 올린 뒤 계획 항목이 추가/수정됐을 수 있으므로, 저장 직전에 최신 목록을 다시 받아 카드에 반영한 뒤
+      // 캡처한다. 한 명이라도 조회에 실패하면 오래된 목록으로 저장하지 않고 전체 저장을 중단한다.
+      const freshPlans = await Promise.all(
+        targets.map(async (t) => ({ t, res: await getExamPrepPlanItems(t.studentId) })),
+      )
+      const freshMap: Record<number, ExamPrepPlanItem[]> = {}
+      for (const { t, res } of freshPlans) {
+        if (res.error) throw new Error(`${t.row.name} 학생의 계획 항목을 불러오지 못해 저장하지 않았습니다. 다시 시도해주세요.`)
+        freshMap[t.index] = res.items
+      }
+      flushSync(() => setExcelPlanMap(freshMap))
+
       await document.fonts.ready
       const items: Array<{ studentId: string; reportDate: string; contentJson: ExamPrepContent; imageBase64: string }> = []
+      const skippedNames: string[] = []
 
       for (let i = 0; i < targets.length; i++) {
         const { row, index, studentId } = targets[i]
         setExcelSaveProgress({ cur: i + 1, total: targets.length })
         const node = excelCaptureRefs.current.get(index)
-        if (!node) continue
+        if (!node) { skippedNames.push(row.name); continue }
 
         const imageBase64 = await toPng(node, {
           cacheBust: true,
@@ -585,7 +618,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
             arrivalTime: row.arrivalTime,
             departureTime: row.departureTime,
             studyContent: row.studyContent,
-            planItems: excelPlanMap[index] ?? [],
+            planItems: freshMap[index] ?? [],
             mockExams: row.mockExams,
           },
           imageBase64,
@@ -595,6 +628,13 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
       const res = await saveExamPrepReports(items)
       if (res.error) { setExcelError(res.error); return }
       setExcelSavedCount(res.saved)
+      const failedNames = [
+        ...skippedNames,
+        ...res.failedStudentIds.map((id) => targets.find((t) => t.studentId === id)?.row.name ?? id),
+      ]
+      if (failedNames.length > 0) {
+        setExcelError(`${failedNames.length}명은 저장되지 않았습니다: ${failedNames.join(', ')}\n다시 저장하거나 "개별 입력"에서 저장해주세요.`)
+      }
       await loadLogged(reportDate)
     } catch (e) {
       setExcelError(e instanceof Error ? e.message : '저장 중 오류가 발생했습니다.')
@@ -602,7 +642,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
       setExcelSaving(false)
       setExcelSaveProgress(null)
     }
-  }, [excelRows, excelMatchMap, excelPlanMap, reportDate, examType, loadLogged])
+  }, [excelRows, excelMatchMap, reportDate, examType, loadLogged])
 
   // 카카오 자동 발송(Solapi)이 아직 설정 안 됐을 수 있으므로, 그동안 수동으로 전달할 수 있게
   // 이미지 다운로드(단일/전체 ZIP)를 지원한다.
@@ -1114,12 +1154,16 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
                 <button
                   type="button"
                   onClick={handleExcelSave}
-                  disabled={excelSaving || excelMatchedCount === 0}
+                  disabled={excelSaving || excelMatchedCount === 0 || excelPlanStatus !== 'ready'}
                   className="rounded-xl bg-zinc-950 dark:bg-zinc-50 px-5 py-3 text-sm font-semibold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-60 flex items-center gap-2"
                 >
                   {excelSaving
                     ? (excelSaveProgress ? `저장 중… (${excelSaveProgress.cur}/${excelSaveProgress.total})` : '저장 중…')
-                    : `리포트 저장 (${excelMatchedCount}명)`}
+                    : excelPlanStatus === 'loading'
+                      ? '계획 항목 불러오는 중…'
+                      : excelPlanStatus === 'failed'
+                        ? '파일을 다시 올려주세요'
+                        : `리포트 저장 (${excelMatchedCount}명)`}
                 </button>
               </div>
             )}

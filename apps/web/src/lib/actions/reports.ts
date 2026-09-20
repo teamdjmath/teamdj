@@ -1106,7 +1106,17 @@ export async function deleteExamPrepDraft(studentId: string, reportDate: string)
   return {}
 }
 
-// 저장 (같은 학생+날짜의 exam_prep 리포트가 있으면 덮어씀 = 수정) — 실시간 개별 입력/엑셀 일괄 공용
+// Storage 공개 URL에서 파일 경로를 뽑아 삭제 (실패해도 저장 흐름을 막지 않는다)
+async function removeReportImage(admin: ReturnType<typeof createAdminClient>, url: string | null | undefined) {
+  if (!url) return
+  const marker = '/object/public/reports/'
+  const idx = url.indexOf(marker)
+  if (idx === -1) return
+  await admin.storage.from('reports').remove([decodeURIComponent(url.slice(idx + marker.length))])
+}
+
+// 저장 (같은 학생+날짜의 exam_prep 리포트가 있으면 그 행을 갱신 = 수정) — 실시간 개별 입력/엑셀 일괄 공용
+// 학생 한 명이라도 실패하면 failedStudentIds에 담아 돌려줘서, 호출 쪽이 "N명 저장 완료"로 뭉뚱그리지 않게 한다.
 export async function saveExamPrepReports(
   items: Array<{
     studentId: string
@@ -1114,46 +1124,62 @@ export async function saveExamPrepReports(
     contentJson: ExamPrepContent
     imageBase64: string
   }>,
-): Promise<{ error?: string; saved: number }> {
+): Promise<{ error?: string; saved: number; failedStudentIds: string[] }> {
   const auth = await assertStaff()
-  if (!auth.ok) return { error: auth.error, saved: 0 }
+  if (!auth.ok) return { error: auth.error, saved: 0, failedStudentIds: [] }
 
   const admin = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = admin as any
   let saved = 0
+  const failedStudentIds: string[] = []
 
   for (const item of items) {
     const { error: uploadErr, publicUrl } = await uploadReportImage(
       admin, item.studentId, item.reportDate, item.imageBase64,
     )
-    if (uploadErr || !publicUrl) continue
+    if (uploadErr || !publicUrl) { failedStudentIds.push(item.studentId); continue }
 
-    // 기존 exam_prep 리포트 교체 (partial unique index는 upsert 타겟이 안 되므로 delete → insert)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db = admin as any
-    await db.from('reports').delete()
+    // 삭제 후 삽입하면 삽입이 실패했을 때 기존 리포트까지 사라지므로, 있으면 갱신하고 없으면 삽입한다.
+    // 다시 저장한 리포트는 새 내용이므로 카카오 발송 이력(kakao_sent_at)도 초기화한다.
+    const { data: existing } = await db.from('reports')
+      .select('id, image_url')
       .eq('student_id', item.studentId)
       .eq('report_date', item.reportDate)
       .eq('report_type', 'exam_prep')
+      .maybeSingle()
 
-    const { error: insertErr } = await db.from('reports').insert({
-      class_id:     null,
-      student_id:   item.studentId,
-      report_date:  item.reportDate,
-      report_type:  'exam_prep',
-      content_json: asJson(item.contentJson),
-      image_url:    publicUrl,
-    })
-    if (!insertErr) saved++
+    let ok = false
+    if (existing) {
+      const { error } = await db.from('reports')
+        .update({ content_json: asJson(item.contentJson), image_url: publicUrl, kakao_sent_at: null })
+        .eq('id', existing.id)
+      ok = !error
+      if (ok) await removeReportImage(admin, existing.image_url as string | null)
+    } else {
+      const { error } = await db.from('reports').insert({
+        class_id:     null,
+        student_id:   item.studentId,
+        report_date:  item.reportDate,
+        report_type:  'exam_prep',
+        content_json: asJson(item.contentJson),
+        image_url:    publicUrl,
+      })
+      ok = !error
+    }
+
+    if (ok) saved++
+    else { failedStudentIds.push(item.studentId); await removeReportImage(admin, publicUrl) }
   }
 
   await logAudit(auth.user, {
     action: 'report.exam_prep_save', targetType: 'report',
     targetId: items[0]?.reportDate ?? '', targetLabel: `내신대비 리포트 저장`,
-    detail: { count: saved, date: items[0]?.reportDate },
+    detail: { count: saved, failed: failedStudentIds.length, date: items[0]?.reportDate },
   })
 
   revalidatePath('/admin/reports')
-  return { saved }
+  return { saved, failedStudentIds }
 }
 
 // 날짜별 내신대비 리포트 전체 삭제 (이미지 포함)
