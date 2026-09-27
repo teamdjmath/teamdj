@@ -15,6 +15,7 @@ import { randomUUID } from 'crypto'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { getSolapiConfig } from '@/lib/kakao'
+import { reportError as reportAppError } from '@/lib/error-report'
 
 async function assertStaff() {
   const user = await getVerifiedUser()
@@ -588,37 +589,47 @@ export async function matchStudentsByNameSchool(
   const auth = await assertStaff()
   if (!auth.ok) return { error: auth.error, matches: [] }
 
-  const admin = createAdminClient()
-  const names = [...new Set(entries.map((e) => e.name.trim()).filter(Boolean))]
-  if (names.length === 0) return { matches: [] }
+  try {
+    const admin = createAdminClient()
+    const names = [...new Set(entries.map((e) => e.name.trim()).filter(Boolean))]
+    if (names.length === 0) return { matches: [] }
 
-  const { data: students } = await admin
-    .from('users')
-    .select('id, name, school')
-    .eq('role', 'student')
-    .in('name', names)
+    const { data: students, error } = await admin
+      .from('users')
+      .select('id, name, school')
+      .eq('role', 'student')
+      .in('name', names)
+    if (error) throw error
 
-  const rows = (students ?? []) as Array<{ id: string; name: string; school: string | null }>
+    const rows = (students ?? []) as Array<{ id: string; name: string; school: string | null }>
 
-  const matches = entries.map((e) => {
-    const candidates = rows.filter((s) => s.name === e.name.trim())
-    if (candidates.length === 0) return { ...e, studentId: null }
-    // 이름이 유일하면 학교 표기가 달라도 매칭 (사람이 입력하는 데이터라 느슨하게)
-    if (candidates.length === 1) return { ...e, studentId: candidates[0].id }
-    // 동명이인만 학교로 구분: 완전 일치 → 부분 일치("대륜고" ⊂ "대륜고등학교") 순
-    const school = e.school.trim()
-    const exact = candidates.find((s) => (s.school ?? '').trim() === school)
-    if (exact) return { ...e, studentId: exact.id }
-    const partial = school
-      ? candidates.find((s) => {
-          const st = (s.school ?? '').trim()
-          return st.includes(school) || school.includes(st)
-        })
-      : undefined
-    return { ...e, studentId: partial?.id ?? null }
-  })
+    const matches = entries.map((e) => {
+      const candidates = rows.filter((s) => s.name === e.name.trim())
+      if (candidates.length === 0) return { ...e, studentId: null }
+      // 이름이 유일하면 학교 표기가 달라도 매칭 (사람이 입력하는 데이터라 느슨하게)
+      if (candidates.length === 1) return { ...e, studentId: candidates[0].id }
+      // 동명이인만 학교로 구분: 완전 일치 → 부분 일치("대륜고" ⊂ "대륜고등학교") 순
+      const school = e.school.trim()
+      const exact = candidates.find((s) => (s.school ?? '').trim() === school)
+      if (exact) return { ...e, studentId: exact.id }
+      const partial = school
+        ? candidates.find((s) => {
+            const st = (s.school ?? '').trim()
+            return st.includes(school) || school.includes(st)
+          })
+        : undefined
+      return { ...e, studentId: partial?.id ?? null }
+    })
 
-  return { matches }
+    return { matches }
+  } catch (e) {
+    logger.error('matchStudentsByNameSchool:error', { action: 'matchStudentsByNameSchool', userId: auth.user.id, error: e })
+    void reportAppError({
+      source: 'server', message: `matchStudentsByNameSchool: ${e instanceof Error ? e.message : String(e)}`,
+      userId: auth.user.id, context: { entryCount: entries.length },
+    })
+    return { error: '학생 매칭에 실패했습니다.', matches: [] }
+  }
 }
 
 // 저장 (같은 학생+날짜의 clinic 리포트가 있으면 덮어씀 = 수정)
@@ -863,17 +874,62 @@ export async function getExamPrepPlanItems(
   const auth = await assertStaff()
   if (!auth.ok) return { error: auth.error, items: [] }
 
-  const admin = createAdminClient()
-  const { data, error } = await admin
-    .from('exam_prep_plan_items')
-    .select('id, content, progress_pct')
-    .eq('student_id', studentId)
-    .order('position', { ascending: true })
+  try {
+    const admin = createAdminClient()
+    const { data, error } = await admin
+      .from('exam_prep_plan_items')
+      .select('id, content, progress_pct')
+      .eq('student_id', studentId)
+      .order('position', { ascending: true })
+    if (error) throw error
 
-  if (error) return { error: '계획 조회에 실패했습니다.', items: [] }
+    return {
+      items: (data ?? []).map((r) => ({ id: r.id as string, content: r.content as string, progressPct: r.progress_pct as number })),
+    }
+  } catch (e) {
+    logger.error('getExamPrepPlanItems:error', { action: 'getExamPrepPlanItems', userId: auth.user.id, error: e })
+    void reportAppError({
+      source: 'server', message: `getExamPrepPlanItems: ${e instanceof Error ? e.message : String(e)}`,
+      userId: auth.user.id, context: { studentId },
+    })
+    return { error: '계획 조회에 실패했습니다.', items: [] }
+  }
+}
 
-  return {
-    items: (data ?? []).map((r) => ({ id: r.id as string, content: r.content as string, progressPct: r.progress_pct as number })),
+// 엑셀 일괄 업로드처럼 여러 학생을 한 번에 다룰 때 쓰는 벌크 버전 — 학생 수만큼 개별 요청을 보내면
+// (수십 명 규모에서) 동시 요청이 몰려 일부가 타임아웃/누락될 수 있어 쿼리 한 번으로 묶는다.
+export async function getExamPrepPlanItemsBulk(
+  studentIds: string[],
+): Promise<{ error?: string; itemsByStudent: Record<string, ExamPrepPlanItem[]> }> {
+  const auth = await assertStaff()
+  if (!auth.ok) return { error: auth.error, itemsByStudent: {} }
+
+  const uniqueIds = [...new Set(studentIds)]
+  if (uniqueIds.length === 0) return { itemsByStudent: {} }
+
+  try {
+    const admin = createAdminClient()
+    const { data, error } = await admin
+      .from('exam_prep_plan_items')
+      .select('student_id, id, content, progress_pct')
+      .in('student_id', uniqueIds)
+      .order('position', { ascending: true })
+    if (error) throw error
+
+    const itemsByStudent: Record<string, ExamPrepPlanItem[]> = {}
+    for (const id of uniqueIds) itemsByStudent[id] = []
+    for (const r of data ?? []) {
+      const sid = r.student_id as string
+      itemsByStudent[sid]?.push({ id: r.id as string, content: r.content as string, progressPct: r.progress_pct as number })
+    }
+    return { itemsByStudent }
+  } catch (e) {
+    logger.error('getExamPrepPlanItemsBulk:error', { action: 'getExamPrepPlanItemsBulk', userId: auth.user.id, error: e })
+    void reportAppError({
+      source: 'server', message: `getExamPrepPlanItemsBulk: ${e instanceof Error ? e.message : String(e)}`,
+      userId: auth.user.id, context: { studentCount: uniqueIds.length },
+    })
+    return { error: '계획 조회에 실패했습니다.', itemsByStudent: {} }
   }
 }
 

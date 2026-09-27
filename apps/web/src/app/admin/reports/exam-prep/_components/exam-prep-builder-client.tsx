@@ -9,6 +9,7 @@ import { ExamPrepReportCard, type ExamPrepStudentData, type ExamPrepPlanItem } f
 import { DatePicker } from '@/components/ui/date-picker'
 import { TimeInput } from '@/components/ui/time-input'
 import { excelTimeToString } from '@/lib/excel-time'
+import { clientLogger } from '@/lib/client-logger'
 import {
   searchStudentsByName,
   getExamPrepReportsForDate,
@@ -16,6 +17,7 @@ import {
   sendBatchExamPrepKakao,
   matchStudentsByNameSchool,
   getExamPrepPlanItems,
+  getExamPrepPlanItemsBulk,
   addExamPrepPlanItem,
   updateExamPrepPlanItemProgress,
   deleteExamPrepPlanItem,
@@ -505,39 +507,38 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
 
     const reader = new FileReader()
     reader.onload = async (ev) => {
+      let stage = 'parse'
       try {
         const buffer = ev.target?.result as ArrayBuffer
         const parsed = parseExamPrepExcel(buffer)
         setExcelRows(parsed)
 
-        const { matches } = await matchStudentsByNameSchool(
+        stage = 'match'
+        const matchRes = await matchStudentsByNameSchool(
           parsed.map((r) => ({ name: r.name, school: r.school })),
         )
+        if (matchRes.error) throw new Error(matchRes.error)
         const map: Record<number, string | null> = {}
-        matches.forEach((m, i) => { map[i] = m.studentId })
+        matchRes.matches.forEach((m, i) => { map[i] = m.studentId })
         setExcelMatchMap(map)
 
+        stage = 'planItems'
+        const matchedIds = Object.values(map).filter((id): id is string => !!id)
+        const planRes = await getExamPrepPlanItemsBulk(matchedIds)
+        if (planRes.error) throw new Error(planRes.error)
+
         const planMap: Record<number, ExamPrepPlanItem[]> = {}
-        let planFailed = false
-        await Promise.all(
-          parsed.map(async (_, i) => {
-            const sid = map[i]
-            if (!sid) return
-            const res = await getExamPrepPlanItems(sid)
-            if (res.error) planFailed = true
-            else planMap[i] = res.items
-          }),
-        )
+        parsed.forEach((_, i) => {
+          const sid = map[i]
+          if (sid) planMap[i] = planRes.itemsByStudent[sid] ?? []
+        })
         setExcelPlanMap(planMap)
-        if (planFailed) {
-          setExcelPlanStatus('failed')
-          setExcelError('일부 학생의 계획 항목을 불러오지 못했습니다. 파일을 다시 올려주세요.')
-        } else {
-          setExcelPlanStatus('ready')
-        }
+        setExcelPlanStatus('ready')
       } catch (err) {
         setExcelPlanStatus('failed')
-        setExcelError(err instanceof Error ? err.message : '엑셀 파싱 중 오류가 발생했습니다.')
+        const message = err instanceof Error ? err.message : '엑셀 처리 중 오류가 발생했습니다.'
+        setExcelError(message)
+        clientLogger.error('exam-prep excel upload failed', err, { stage, fileName: file.name })
       }
     }
     reader.readAsArrayBuffer(file)
@@ -575,20 +576,18 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
     setExcelSavedCount(null)
     setExcelSaveProgress({ cur: 0, total: targets.length })
 
+    let stage = 'refetchPlanItems'
     try {
       // 파일을 올린 뒤 계획 항목이 추가/수정됐을 수 있으므로, 저장 직전에 최신 목록을 다시 받아 카드에 반영한 뒤
-      // 캡처한다. 한 명이라도 조회에 실패하면 오래된 목록으로 저장하지 않고 전체 저장을 중단한다.
-      const freshPlans = await Promise.all(
-        targets.map(async (t) => ({ t, res: await getExamPrepPlanItems(t.studentId) })),
-      )
+      // 캡처한다. 조회에 실패하면 오래된 목록으로 저장하지 않고 전체 저장을 중단한다.
+      const freshPlanRes = await getExamPrepPlanItemsBulk(targets.map((t) => t.studentId))
+      if (freshPlanRes.error) throw new Error('계획 항목을 불러오지 못해 저장하지 않았습니다. 다시 시도해주세요.')
       const freshMap: Record<number, ExamPrepPlanItem[]> = {}
-      for (const { t, res } of freshPlans) {
-        if (res.error) throw new Error(`${t.row.name} 학생의 계획 항목을 불러오지 못해 저장하지 않았습니다. 다시 시도해주세요.`)
-        freshMap[t.index] = res.items
-      }
+      for (const t of targets) freshMap[t.index] = freshPlanRes.itemsByStudent[t.studentId] ?? []
       flushSync(() => setExcelPlanMap(freshMap))
 
       await document.fonts.ready
+      stage = 'capture'
       const items: Array<{ studentId: string; reportDate: string; contentJson: ExamPrepContent; imageBase64: string }> = []
       const skippedNames: string[] = []
 
@@ -625,8 +624,9 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
         })
       }
 
+      stage = 'save'
       const res = await saveExamPrepReports(items)
-      if (res.error) { setExcelError(res.error); return }
+      if (res.error) { setExcelError(res.error); clientLogger.error('exam-prep excel save failed', res.error, { stage, studentCount: items.length }); return }
       setExcelSavedCount(res.saved)
       const failedNames = [
         ...skippedNames,
@@ -638,6 +638,7 @@ export function ExamPrepBuilderClient({ isTeacher }: Props) {
       await loadLogged(reportDate)
     } catch (e) {
       setExcelError(e instanceof Error ? e.message : '저장 중 오류가 발생했습니다.')
+      clientLogger.error('exam-prep excel save failed', e, { stage, studentCount: targets.length })
     } finally {
       setExcelSaving(false)
       setExcelSaveProgress(null)

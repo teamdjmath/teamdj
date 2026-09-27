@@ -14,8 +14,11 @@ export function excelTimeToString(value: unknown): string {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
   }
   if (value instanceof Date) {
-    const h = value.getHours()
-    const m = value.getMinutes()
+    // xlsx가 cellDates 옵션으로 만드는 Date는 엑셀 시간 값을 그대로 UTC 필드에 담은 것이라
+    // (타임존 개념이 없는 값), 로컬 getHours()를 쓰면 서버 실행 타임존에 따라 시각이 밀린다
+    // (예: UTC로 도는 배포 환경에서 9시간 어긋남). 반드시 UTC getter로 읽어야 한다.
+    const h = value.getUTCHours()
+    const m = value.getUTCMinutes()
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
   }
   return String(value)
