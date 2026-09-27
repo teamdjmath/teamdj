@@ -122,7 +122,10 @@ type ExamPrepExcelRow = {
 }
 
 function parseExamPrepExcel(buffer: ArrayBuffer): ExamPrepExcelRow[] {
-  const wb = XLSX.read(buffer, { type: 'array', cellDates: true })
+  // cellDates: true는 절대 켜지 말 것 — 시간 셀을 Date로 바꾸는 과정에서 엑셀의 가짜 기준일(1899-12-30)이
+  // 서울 표준시 도입 전 날짜라 서버가 1899년 서울 LMT(+8:27:52, 정각이 아님)로 변환해버려 시각이 틀어진다.
+  // 대신 옵션 없이 읽어 시간 셀이 숫자(하루 대비 비율)로 그대로 오게 하고, excelTimeToString이 계산한다.
+  const wb = XLSX.read(buffer, { type: 'array' })
   const ws = wb.Sheets[wb.SheetNames[0]]
   const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })
   if (rows.length < 2) throw new Error('데이터가 없습니다. 헤더 포함 2행 이상이 필요합니다.')
