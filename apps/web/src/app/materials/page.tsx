@@ -7,7 +7,7 @@ import { MATERIAL_LEVELS, type MaterialBook } from "@/lib/materials-data";
 
 export const metadata: Metadata = {
   title: "교재 안내 | TeamDJ",
-  description: "TeamDJ 전용 교재 체계 — DEEP, DETAIL, DEVELOP, DERIVE, DEVOTE, DECISIVE, DETERMINE",
+  description: "TeamDJ 전용 교재 체계 — 알파, 베타, 감마, 오메가, ATO",
 };
 
 function BookHero({ book, reverse }: { book: MaterialBook; reverse: boolean }) {
@@ -83,7 +83,7 @@ export default function MaterialsPage() {
           TeamDJ 교재 체계
         </h1>
         <p className="text-lg text-zinc-600 leading-loose break-keep mb-14">
-          학생의 회독 수와 시기에 맞춘 7종 교재를 소개합니다.
+          학생의 실력과 시기에 맞춘 5종 교재를 소개합니다.
         </p>
 
         <div className="space-y-20 md:space-y-24">

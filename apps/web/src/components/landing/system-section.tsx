@@ -5,7 +5,6 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { MATERIAL_LEVELS } from "@/lib/materials-data";
 import { AttendanceKioskGraphic } from "./attendance-kiosk-graphic";
-import { MidtermScheduleGraphic } from "./midterm-schedule-graphic";
 
 const SYSTEMS = [
   {
@@ -31,27 +30,14 @@ const SYSTEMS = [
     ],
   },
   {
-    title: "클리닉",
+    title: "수업",
     icon: "clinic" as const,
     img: "/clinic.jpg",
     imgWidth: 4032,
     imgHeight: 3024,
     points: [
-      <>월·화·목·금 18:00~22:00, 토·일 12:00~19:00 상시 운영</>,
-      <>정규반 학생은 주 1회 필참. 과제에서 막힌 문항을 바로 첨삭받는 시간입니다</>,
-      <>횟수 제한 없이, 필요한 만큼 등원하면 됩니다</>,
-      <>내신대비 기간에는 본 강의실에서 자료 배부와 질문 첨삭이 함께 진행되며, 등하원 시간과 학습내용은 동일하게 발송됩니다</>,
-    ],
-  },
-  {
-    title: "내신대비 기간",
-    icon: "exam" as const,
-    points: [
-      <>시험 치는 주를 포함해 약 3주 전부터 시작되며, 참여를 신청한 학생은 본래 수업시간 외에도 운영되는 모든 내신대비 시간에 자유롭게 등원할 수 있습니다 (프리패스)</>,
-      <>참여 여부는 학생이 직접 선택하며, 내신대비 교재는 참여 학생만 구매할 수 있습니다</>,
-      <>참여 학생에게는 DECISIVE(공용 내신대비 교재)와 DEVOTE(학교별 내신대비 숙제장)가 배부되고, 평소보다 많은 조교진과 이동재T가 직접 첨삭합니다</>,
-      <>학교별 작년 시험지의 난이도·문항 수를 그대로 재현하고 올해 부교재·프린트물까지 반영한 학교별 모의중간·기말고사로 실전 감각까지 훈련합니다</>,
-      <>등하원 체크와 학습결과 발송은 내신대비 기간에도 동일하게 이어져, 그날 공부한 내용과 모의고사 성적까지 학부모님께 빠짐없이 전달됩니다</>,
+      <>이동재T (ATO EDU)의 모든 수업은, 4시간 팀 수업으로 진행됩니다</>,
+      <>팀 수업 내에서 진도와 클리닉, 테스트가 모두 이뤄지며, 수업시간 이외에도 온라인 클리닉을 진행합니다</>,
     ],
   },
 ];
@@ -86,21 +72,11 @@ function SystemIcon({ type, className }: { type: SystemIconType; className?: str
       </svg>
     );
   }
-  if (type === "clinic") {
-    return (
-      <svg {...common}>
-        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z" />
-        <path d="M12 9.3a1.5 1.5 0 0 1 3 0c0 1.5-2 1.5-2 3" />
-        <path d="M13.5 15.8h.01" />
-      </svg>
-    );
-  }
   return (
     <svg {...common}>
-      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z" />
-      <path d="M14 3v6h6" />
-      <circle cx="12" cy="15" r="3" />
-      <path d="M12 14v1.3l1 .5" />
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z" />
+      <path d="M12 9.3a1.5 1.5 0 0 1 3 0c0 1.5-2 1.5-2 3" />
+      <path d="M13.5 15.8h.01" />
     </svg>
   );
 }
@@ -122,7 +98,7 @@ export function SystemSection() {
             교재 체계 &amp; 관리 시스템
           </h2>
           <p className="text-zinc-500 text-lg md:text-xl font-medium leading-loose break-keep">
-            학생의 회독 수와 시기에 맞춘 7종 교재, 그리고 학생을 놓치지 않는 밀착 관리.
+            학생의 실력과 시기에 맞춘 5종 교재, 그리고 학생을 놓치지 않는 밀착 관리.
           </p>
         </motion.div>
 
@@ -225,8 +201,6 @@ export function SystemSection() {
                   <div className="aspect-4/3 p-3">
                     <AttendanceKioskGraphic />
                   </div>
-                ) : sys.icon === "exam" ? (
-                  <MidtermScheduleGraphic />
                 ) : (
                   <div className="aspect-4/3 rounded-3xl bg-zinc-50 border border-zinc-200 flex items-center justify-center">
                     <SystemIcon type={sys.icon} className="w-14 h-14 md:w-16 md:h-16 text-zinc-300" />
