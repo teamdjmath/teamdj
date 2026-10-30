@@ -186,7 +186,9 @@ function TimetableGrid({ events }: { events: TimetableEvent[] }) {
                   style={{ top, height }}
                 >
                   <p className="text-[11px] font-bold text-zinc-900 break-keep leading-tight">{ev.title}</p>
-                  {ev.sub && <p className="text-[10px] text-emerald-700 break-keep leading-tight">{ev.sub}</p>}
+                  {ev.sub && ev.sub.split(" · ").map((line, li) => (
+                    <p key={li} className="text-[10px] text-emerald-700 break-keep leading-tight">{line}</p>
+                  ))}
                 </div>
               );
             })}
