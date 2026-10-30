@@ -95,6 +95,9 @@ export default async function QnaDetailPage({ params }: { params: Promise<{ id: 
         excludeQuestionId: id,
         textbookId: (qAny.textbook_id ?? null) as string | null,
         problemNumber: (qAny.problem_number ?? null) as string | null,
+        unitType: (qAny.unit_type ?? null) as string | null,
+        unitNumber: (qAny.unit_number ?? null) as number | null,
+        subjectId: (qAny.subject_id ?? null) as string | null,
         title: qData.title,
         content: qData.content,
       }))[0] ?? null

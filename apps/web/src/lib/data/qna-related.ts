@@ -95,22 +95,31 @@ export async function findRelatedAnswers(params: {
   excludeQuestionId: string
   textbookId: string | null
   problemNumber: string | null
+  unitType?: string | null
+  unitNumber?: number | null
+  subjectId?: string | null
   title?: string | null
   content?: string | null
 }): Promise<RelatedAnswer[]> {
-  const { excludeQuestionId, textbookId, problemNumber, title, content } = params
+  const { excludeQuestionId, textbookId, problemNumber, unitType, unitNumber, subjectId, title, content } = params
   const admin = createAdminClient()
 
   const picked: { id: string; title: string; matchType: RelatedAnswer['matchType'] }[] = []
 
-  // 1순위: 같은 교재+문항의 답변 완료된 다른 질문들 (최신순)
-  if (textbookId && problemNumber?.trim()) {
+  // 1순위: 같은 과목+교재+권(강)+문항의 답변 완료된 다른 질문들 (최신순) — 이 중 하나라도 비어있는
+  // 질문은(구버전 질문, 혹은 입력 누락) 안전하게 건너뛴다. 교재 이름이 과목 여러 개에서 공용으로
+  // 쓰이고(예: "DEVELOP"), 같은 교재+번호라도 권/강이 다르면 완전히 다른 문제이므로 네 가지가
+  // 전부 일치해야만 "같은 문제"로 본다.
+  if (textbookId && problemNumber?.trim() && unitType && unitNumber != null && subjectId) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: exact } = await (admin as any)
       .from('qna_questions')
       .select('id, title')
       .eq('textbook_id', textbookId)
       .eq('problem_number', problemNumber.trim())
+      .eq('unit_type', unitType)
+      .eq('unit_number', unitNumber)
+      .eq('subject_id', subjectId)
       .eq('status', 'answered')
       .neq('id', excludeQuestionId)
       .order('created_at', { ascending: false })
@@ -144,7 +153,7 @@ export async function findRelatedAnswers(params: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: legacy } = await (admin as any)
         .from('qna_questions')
-        .select('id, title, content, created_at, textbook_id, problem_number')
+        .select('id, title, content, created_at, textbook_id, problem_number, unit_type, unit_number, subject_id')
         .eq('status', 'answered')
         .neq('id', excludeQuestionId)
         .order('created_at', { ascending: false })
@@ -169,6 +178,23 @@ export async function findRelatedAnswers(params: {
         textbookId && c.textbook_id === textbookId &&
         queryProblemNumber && candidateProblemNumber &&
         queryProblemNumber !== candidateProblemNumber
+      ) continue
+      // 같은 교재+같은 문항번호여도 권/강이 다르면 다른 문제다 (예: 1권 30번과 2권 30번).
+      const candidateUnitType = (c.unit_type ?? null) as string | null
+      const candidateUnitNumber = (c.unit_number ?? null) as number | null
+      if (
+        textbookId && c.textbook_id === textbookId &&
+        queryProblemNumber && candidateProblemNumber && queryProblemNumber === candidateProblemNumber &&
+        unitType && unitNumber != null && candidateUnitType && candidateUnitNumber != null &&
+        (candidateUnitType !== unitType || candidateUnitNumber !== unitNumber)
+      ) continue
+      // 같은 교재 이름이 여러 과목에서 공용으로 쓰이므로, 같은 교재+번호+권/강이어도 과목이
+      // 다르면 다른 문제다.
+      const candidateSubjectId = (c.subject_id ?? null) as string | null
+      if (
+        textbookId && c.textbook_id === textbookId &&
+        queryProblemNumber && candidateProblemNumber && queryProblemNumber === candidateProblemNumber &&
+        subjectId && candidateSubjectId && subjectId !== candidateSubjectId
       ) continue
       const { overlap, ratio, isSimilar } = similarityScore(queryText, `${c.title ?? ''} ${c.content ?? ''}`)
       if (!isSimilar) continue

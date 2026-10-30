@@ -52,11 +52,12 @@ export function NewQuestionForm({
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
 
-  const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [classId, setClassId] = useState(classes.length === 1 ? classes[0].id : '')
   const [textbookId, setTextbookId] = useState('')
   const [subjectId, setSubjectId] = useState('')
+  const [unitType, setUnitType] = useState<'volume' | 'lesson' | ''>('')
+  const [unitNumber, setUnitNumber] = useState('')
   const [problemNumber, setProblemNumber] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -70,9 +71,19 @@ export function NewQuestionForm({
   const isGrade3 = classes.find((c) => c.id === classId)?.grade?.replace(/\s/g, '') === '고3'
   const visibleTextbooks = isGrade3 ? textbooks : textbooks.filter((t) => t.name !== EXTERNAL_TEXTBOOK_NAME)
 
-  // 같은 분반 내 유사 질문 조회
+  // 제목은 따로 입력받지 않고 교재·과목·권(강)·문항번호로 자동 구성한다 —
+  // 자유 입력 제목이 매칭에 쓰이지 않는 식별 정보 네 가지와 일관되게 유지되도록.
+  const title = useMemo(() => {
+    const textbookName = textbooks.find((t) => t.id === textbookId)?.name
+    const subjectName = subjects.find((s) => s.id === subjectId)?.name
+    const unitLabel = unitType && unitNumber.trim() ? `${unitNumber.trim()}${unitType === 'volume' ? '권' : '강'}` : null
+    return [textbookName, subjectName, unitLabel, problemNumber.trim() || null].filter(Boolean).join(' ')
+  }, [textbooks, textbookId, subjects, subjectId, unitType, unitNumber, problemNumber])
+
+  // 같은 분반 내 유사 질문 조회 — 교재+과목+권(강)+번호가 전부 일치해야 "같은 문제"로 본다
+  // (교재 이름이 여러 과목에서 공용으로 쓰이고, 같은 번호라도 권/강이 다르면 다른 문제이기 때문)
   useEffect(() => {
-    if (!textbookId || !problemNumber.trim()) {
+    if (!textbookId || !subjectId || !unitType || !unitNumber.trim() || !problemNumber.trim()) {
       setSimilarQuestions([])
       return
     }
@@ -84,6 +95,9 @@ export function NewQuestionForm({
         .from('qna_questions')
         .select('id, title, status, student:users!student_id(name)')
         .eq('textbook_id', textbookId)
+        .eq('subject_id', subjectId)
+        .eq('unit_type', unitType)
+        .eq('unit_number', Number(unitNumber))
         .eq('problem_number', problemNumber.trim())
         .order('created_at', { ascending: false })
         .limit(10)
@@ -110,7 +124,7 @@ export function NewQuestionForm({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [textbookId, problemNumber, classId, supabase])
+  }, [textbookId, subjectId, unitType, unitNumber, problemNumber, classId, supabase])
 
   const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB — 일반 폰 사진 화질은 넉넉히 넘고, AI 입력 비용 폭탄용 대용량 업로드만 막는다
 
@@ -136,8 +150,8 @@ export function NewQuestionForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim() || !content.trim()) {
-      setError('제목과 내용을 모두 입력해주세요.')
+    if (!content.trim()) {
+      setError('내용을 입력해주세요.')
       return
     }
     if (!classId) {
@@ -146,6 +160,18 @@ export function NewQuestionForm({
     }
     if (!textbookId) {
       setError('교재를 선택해주세요.')
+      return
+    }
+    if (!subjectId) {
+      setError('과목을 선택해주세요.')
+      return
+    }
+    if (!unitType || !unitNumber.trim()) {
+      setError('몇 권(강)인지 선택해주세요.')
+      return
+    }
+    if (!problemNumber.trim()) {
+      setError('문항 번호를 입력해주세요.')
       return
     }
 
@@ -180,6 +206,8 @@ export function NewQuestionForm({
         textbookId: textbookId || null,
         subjectId: subjectId || null,
         problemNumber: problemNumber.trim() || null,
+        unitType: unitType || null,
+        unitNumber: unitNumber.trim() ? Number(unitNumber) : null,
       })
 
       if (actionError) throw new Error(actionError)
@@ -237,8 +265,9 @@ export function NewQuestionForm({
         label="과목"
         value={subjectId}
         onChange={(e) => setSubjectId(e.target.value)}
+        required
       >
-        <option value="">과목 선택 (선택사항)</option>
+        <option value="">과목을 선택해주세요</option>
         {subjects.map((s) => (
           <option key={s.id} value={s.id}>
             {s.name}
@@ -246,12 +275,47 @@ export function NewQuestionForm({
         ))}
       </SelectField>
 
+      {/* 몇 권(강) */}
+      <div>
+        <label className="block text-sm font-medium text-zinc-700 mb-1">
+          몇 권(강) <span className="text-red-500">*</span>
+        </label>
+        <div className="flex gap-2">
+          <div className="flex rounded-md border border-zinc-300 overflow-hidden">
+            {(['volume', 'lesson'] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setUnitType(type)}
+                className={`px-3 py-2 text-sm font-medium transition ${
+                  unitType === type
+                    ? 'bg-zinc-800 text-white'
+                    : 'bg-white text-zinc-600 hover:bg-zinc-50'
+                }`}
+              >
+                {type === 'volume' ? '권' : '강'}
+              </button>
+            ))}
+          </div>
+          <input
+            type="number"
+            min={1}
+            value={unitNumber}
+            onChange={(e) => setUnitNumber(e.target.value)}
+            placeholder="숫자만 입력"
+            required
+            className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400"
+          />
+        </div>
+      </div>
+
       {/* 문항 번호 */}
       <InputField
         label="문항 번호"
         value={problemNumber}
         onChange={(e) => setProblemNumber(e.target.value)}
         placeholder="예: 30번, 3-2번"
+        required
       />
 
       {/* 같은 문제 질문 목록 */}
@@ -285,13 +349,12 @@ export function NewQuestionForm({
         </div>
       )}
 
-      <InputField
-        label="제목"
-        required
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="질문 제목을 입력하세요"
-      />
+      <div className="space-y-1.5">
+        <label className="block text-xs font-medium text-zinc-600">제목 (자동 생성)</label>
+        <div className="w-full rounded-2xl border border-zinc-200 bg-zinc-50/50 px-5 py-3.5 text-sm font-medium text-zinc-700">
+          {title || '교재·과목·권(강)·문항번호를 선택하면 제목이 자동으로 채워집니다'}
+        </div>
+      </div>
 
       <TextareaField
         label="내용"

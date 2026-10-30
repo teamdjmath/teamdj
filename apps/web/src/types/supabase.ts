@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       ai_usage_logs: {
@@ -1302,6 +1277,8 @@ export type Database = {
           subject_id: string | null
           textbook_id: string | null
           title: string
+          unit_number: number | null
+          unit_type: string | null
         }
         Insert: {
           additional_requested_at?: string | null
@@ -1318,6 +1295,8 @@ export type Database = {
           subject_id?: string | null
           textbook_id?: string | null
           title?: string
+          unit_number?: number | null
+          unit_type?: string | null
         }
         Update: {
           additional_requested_at?: string | null
@@ -1334,6 +1313,8 @@ export type Database = {
           subject_id?: string | null
           textbook_id?: string | null
           title?: string
+          unit_number?: number | null
+          unit_type?: string | null
         }
         Relationships: [
           {
@@ -2025,8 +2006,11 @@ export type Database = {
           id: string
           problem_number: string
           sim: number
+          subject_id: string
           textbook_id: string
           title: string
+          unit_number: number
+          unit_type: string
         }[]
       }
       get_my_role: { Args: never; Returns: string }
@@ -2181,9 +2165,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

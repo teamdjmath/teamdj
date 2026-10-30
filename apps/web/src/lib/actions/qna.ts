@@ -728,7 +728,7 @@ async function attemptAiDraftForQuestion(questionId: string): Promise<{ attempte
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: question } = await (admin as any)
     .from('qna_questions')
-    .select('id, title, content, image_urls, status, textbook_id, problem_number, subject_id, student_id')
+    .select('id, title, content, image_urls, status, textbook_id, problem_number, unit_type, unit_number, subject_id, student_id')
     .eq('id', questionId)
     .maybeSingle()
 
@@ -751,6 +751,9 @@ async function attemptAiDraftForQuestion(questionId: string): Promise<{ attempte
     excludeQuestionId: questionId,
     textbookId: (question.textbook_id ?? null) as string | null,
     problemNumber: (question.problem_number ?? null) as string | null,
+    unitType: (question.unit_type ?? null) as string | null,
+    unitNumber: (question.unit_number ?? null) as number | null,
+    subjectId: (question.subject_id ?? null) as string | null,
     title: question.title as string,
     content: question.content as string,
   })
@@ -845,6 +848,8 @@ export async function createQuestion(data: {
   textbookId?: string | null
   subjectId?: string | null
   problemNumber?: string | null
+  unitType?: 'volume' | 'lesson' | null
+  unitNumber?: number | null
 }): Promise<{ error?: string }> {
   const supabase = await createClient()
   const user = await getVerifiedUser()
@@ -852,6 +857,9 @@ export async function createQuestion(data: {
   if (!user) return { error: '인증이 필요합니다.' }
   if (!data.classId) return { error: '분반을 선택해주세요.' }
   if (!data.textbookId) return { error: '교재를 선택해주세요.' }
+  if (!data.subjectId) return { error: '과목을 선택해주세요.' }
+  if (!data.problemNumber?.trim()) return { error: '문항 번호를 입력해주세요.' }
+  if (!data.unitType || data.unitNumber == null) return { error: '몇 권(강)인지 선택해주세요.' }
 
   const { suspended } = await checkSuspension(user.id)
   if (suspended) return { error: '휴원 중에는 질문 등록이 제한됩니다.' }
@@ -862,7 +870,8 @@ export async function createQuestion(data: {
   const { data: liveStudent } = await (supabase as any).from('users').select('name').eq('id', user.id).maybeSingle()
   const studentName = (liveStudent?.name as string | undefined) ?? (user.user_metadata?.name as string | undefined) ?? '학생'
 
-  // textbook_id and problem_number columns added via migration 026
+  // textbook_id/problem_number(026), unit_type/unit_number(096) — 같은 교재·같은 번호라도
+  // 권/강이 다르면 다른 문제이므로, 과거 답변 자동 연결(findRelatedAnswers)이 이 값까지 봐야 한다.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error, data: inserted } = await (supabase as any)
     .from('qna_questions')
@@ -876,6 +885,8 @@ export async function createQuestion(data: {
       textbook_id: data.textbookId || null,
       subject_id: data.subjectId || null,
       problem_number: data.problemNumber?.trim() || null,
+      unit_type: data.unitType,
+      unit_number: data.unitNumber,
     })
     .select('id')
     .single()
