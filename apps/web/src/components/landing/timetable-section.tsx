@@ -15,44 +15,51 @@ type TimetableEvent = { day: number; start: string; end: string; title: string; 
 type TimetableRow = { grade: string; name: string; day: string; time: string };
 type Schedule = { events: TimetableEvent[]; rows: TimetableRow[]; notes: string[] };
 
-// 현재(2학기 정규반, 8/13~) 시간표 — 아래 SCHEDULED_PERIODS가 시작되기 전까지, 그리고 향후 기간이
-// 새로 안 잡혀있는 공백기에는 이게 기본값으로 보인다.
+// 현재 시간표 — 아래 SCHEDULED_PERIODS가 시작되기 전까지, 그리고 향후 기간이 새로 안 잡혀있는
+// 공백기에는 이게 기본값으로 보인다.
 const CURRENT_EVENTS: TimetableEvent[] = [
-  { day: 0, start: "19:00", end: "22:00", title: "고1 공통수학2", sub: "월목 심화반" },
-  { day: 1, start: "19:00", end: "22:00", title: "고1 공통수학2", sub: "화금 고난도반" },
-  { day: 3, start: "19:00", end: "22:00", title: "고1 공통수학2", sub: "월목 심화반" },
-  { day: 4, start: "19:00", end: "22:00", title: "고1 공통수학2", sub: "화금 고난도반" },
-  { day: 5, start: "9:00", end: "11:50", title: "고2 미적분2", sub: "토 심화+고난도A" },
-  { day: 5, start: "13:00", end: "15:50", title: "고2 확률과통계", sub: "토 심화+고난도A" },
-  { day: 5, start: "16:00", end: "18:50", title: "고2 미적분2", sub: "토 심화+고난도B" },
-  { day: 5, start: "19:00", end: "21:50", title: "고2 미적분1", sub: "토 심화+고난도A" },
-  { day: 6, start: "13:00", end: "15:50", title: "고2 확률과통계", sub: "일 심화+고난도B" },
-  { day: 6, start: "16:00", end: "18:50", title: "고2 확률과통계", sub: "일 실력+심화C" },
-  { day: 6, start: "19:00", end: "21:50", title: "고3 팀수업", sub: "일 파이널" },
+  { day: 0, start: "9:00", end: "12:30", title: "2028 수능대비 고3 팀 스파르타 3기", sub: "월수금 주3회 · 24강 완성" },
+  { day: 1, start: "9:00", end: "13:00", title: "고2,3 미적분2", sub: "특강 팀수업 기본+ · 화목 주2회 14강 완성" },
+  { day: 2, start: "9:00", end: "12:30", title: "2028 수능대비 고3 팀 스파르타 3기", sub: "월수금 주3회 · 24강 완성" },
+  { day: 3, start: "9:00", end: "13:00", title: "고2,3 미적분2", sub: "특강 팀수업 기본+ · 화목 주2회 14강 완성" },
+  { day: 4, start: "9:00", end: "12:30", title: "2028 수능대비 고3 팀 스파르타 3기", sub: "월수금 주3회 · 24강 완성" },
+  { day: 5, start: "9:00", end: "13:00", title: "고2 대수", sub: "내신 집중 팀수업 실력심화" },
+  { day: 6, start: "9:00", end: "13:00", title: "고2 미적1", sub: "내신 집중 팀수업 실력심화" },
+  { day: 0, start: "13:00", end: "17:00", title: "고1,2 대수", sub: "특강 팀수업 실력+ · 월목 주2회 14강 완성" },
+  { day: 1, start: "13:00", end: "17:00", title: "고1,2 미적분1", sub: "특강 팀수업 실력+ · 화금 주2회 14강 완성" },
+  { day: 2, start: "13:00", end: "17:00", title: "고1,2 확통", sub: "특강 팀수업 실력+ · 수 주1회 7강 완성" },
+  { day: 3, start: "13:00", end: "17:00", title: "고1,2 대수", sub: "특강 팀수업 실력+ · 월목 주2회 14강 완성" },
+  { day: 4, start: "13:00", end: "17:00", title: "고1,2 미적분1", sub: "특강 팀수업 실력+ · 화금 주2회 14강 완성" },
+  { day: 5, start: "13:00", end: "17:00", title: "고2 대수", sub: "내신 집중 팀수업 실력심화" },
+  { day: 6, start: "13:00", end: "17:00", title: "고2 미적1", sub: "내신 집중 팀수업 실력심화" },
+  { day: 0, start: "18:00", end: "22:00", title: "고1 공통수학", sub: "내신 집중 팀수업 심화" },
+  { day: 1, start: "18:00", end: "22:00", title: "고1 공통수학", sub: "내신 집중 팀수업 심화+" },
+  { day: 3, start: "18:00", end: "22:00", title: "고1 공통수학", sub: "내신 집중 팀수업 심화" },
+  { day: 4, start: "18:00", end: "22:00", title: "고1 공통수학", sub: "내신 집중 팀수업 심화+" },
+  { day: 5, start: "18:00", end: "22:00", title: "고2,3 확통", sub: "내신 집중 팀수업 실력심화" },
+  { day: 6, start: "18:00", end: "22:00", title: "2028 수능대비 고3 팀 스파르타", sub: "전용 클리닉" },
 ];
 
 const CURRENT_ROWS: TimetableRow[] = [
-  { grade: "고1", name: "공통수학2 월목 심화반", day: "월·목", time: "19:00 ~ 22:00" },
-  { grade: "고1", name: "공통수학2 화금 고난도반", day: "화·금", time: "19:00 ~ 22:00" },
-  { grade: "고2", name: "미적분2 토 심화+고난도A", day: "토", time: "9:00 ~ 11:50" },
-  { grade: "고2", name: "확률과통계 토 심화+고난도A", day: "토", time: "13:00 ~ 15:50" },
-  { grade: "고2", name: "미적분2 토 심화+고난도B", day: "토", time: "16:00 ~ 18:50" },
-  { grade: "고2", name: "미적분1 토 심화+고난도A", day: "토", time: "19:00 ~ 21:50" },
-  { grade: "고2", name: "확률과통계 일 심화+고난도B", day: "일", time: "13:00 ~ 15:50" },
-  { grade: "고2", name: "확률과통계 일 실력+심화C", day: "일", time: "16:00 ~ 18:50" },
-  { grade: "고3", name: "팀수업 일 파이널", day: "일", time: "19:00 ~ 21:50" },
+  { grade: "고3", name: "팀 스파르타 3기 (2028 수능대비)", day: "월·수·금", time: "9:00 ~ 12:30" },
+  { grade: "고3", name: "팀 스파르타 전용 클리닉 (2028 수능대비)", day: "일", time: "18:00 ~ 22:00" },
+  { grade: "고2,3", name: "미적분2 특강 기본+ (14강 완성)", day: "화·목", time: "9:00 ~ 13:00" },
+  { grade: "고2,3", name: "확통 내신 집중 실력심화", day: "토", time: "18:00 ~ 22:00" },
+  { grade: "고2", name: "대수 내신 집중 실력심화", day: "토", time: "9:00 ~ 17:00" },
+  { grade: "고2", name: "미적분1 내신 집중 실력심화", day: "일", time: "9:00 ~ 17:00" },
+  { grade: "고1,2", name: "대수 특강 실력+ (14강 완성)", day: "월·목", time: "13:00 ~ 17:00" },
+  { grade: "고1,2", name: "미적분1 특강 실력+ (14강 완성)", day: "화·금", time: "13:00 ~ 17:00" },
+  { grade: "고1,2", name: "확통 특강 실력+ (7강 완성)", day: "수", time: "13:00 ~ 17:00" },
+  { grade: "고1", name: "공통수학 내신 집중 심화", day: "월·목", time: "18:00 ~ 22:00" },
+  { grade: "고1", name: "공통수학 내신 집중 심화+", day: "화·금", time: "18:00 ~ 22:00" },
 ];
 
-const CURRENT_NOTES = [
-  "토요일 미적분2 A반과 B반은 완전히 동일한 수업입니다.",
-  "확률과통계 A반과 B반은 동일한 수업이며, C반도 교재가 같으나 개념설명이 더 자세히 들어가고, 대신 고난도 문제풀이의 비중이 축소됩니다.",
-  "고1 월목반과 화금반의 주 교재 및 숙제장은 통합본이 제공됩니다. 교재 내에서 월목반과 화금반의 수업내용 및 과제가 나뉘어집니다.",
-];
+const CURRENT_NOTES: string[] = [];
 
 const CURRENT_SCHEDULE: Schedule = { events: CURRENT_EVENTS, rows: CURRENT_ROWS, notes: CURRENT_NOTES };
 
 // 예정된 시간표 — from~to(포함) 기간에 자동으로 노출된다. 날짜가 되면 별도 배포 없이도
-// (클라이언트에서 오늘 날짜를 계산해) 바로 바뀐다. ⚠️ 아직 가안 — 확정되면 날짜·문구 재검토 필요.
+// (클라이언트에서 오늘 날짜를 계산해) 바로 바뀐다.
 type SchedulePeriod = Schedule & { from: string; to: string };
 
 const SCHEDULED_PERIODS: SchedulePeriod[] = [
@@ -86,44 +93,6 @@ const SCHEDULED_PERIODS: SchedulePeriod[] = [
       { grade: "고2", name: "미적분1", day: "토", time: "19:00 ~ 22:00" },
       { grade: "고2", name: "확률과통계", day: "일", time: "13:00 ~ 16:00" },
       { grade: "고2", name: "확률과통계", day: "일", time: "16:00 ~ 19:00" },
-    ],
-    notes: [],
-  },
-  {
-    from: "2027-01-01",
-    to: "2027-02-28",
-    events: [
-      { day: 0, start: "9:00", end: "12:00", title: "예비고3 스파르타", sub: "" },
-      { day: 0, start: "13:00", end: "16:00", title: "예비고1,2 대수", sub: "" },
-      { day: 0, start: "20:00", end: "22:00", title: "예비고1 월목", sub: "" },
-      { day: 1, start: "9:00", end: "12:00", title: "예비고3 스파르타", sub: "" },
-      { day: 1, start: "13:00", end: "16:00", title: "예비고1,2 미적분1", sub: "" },
-      { day: 1, start: "20:00", end: "22:00", title: "예비고1 화금", sub: "" },
-      { day: 2, start: "9:00", end: "12:00", title: "미적분2 단과특강", sub: "" },
-      { day: 2, start: "13:00", end: "16:00", title: "예비고1,2 확률과통계", sub: "" },
-      { day: 3, start: "9:00", end: "12:00", title: "예비고3 스파르타", sub: "" },
-      { day: 3, start: "13:00", end: "16:00", title: "예비고1,2 대수", sub: "" },
-      { day: 3, start: "20:00", end: "22:00", title: "예비고1 월목", sub: "" },
-      { day: 4, start: "9:00", end: "12:00", title: "예비고3 스파르타", sub: "" },
-      { day: 4, start: "13:00", end: "16:00", title: "예비고1,2 미적분1", sub: "" },
-      { day: 4, start: "20:00", end: "22:00", title: "예비고1 화금", sub: "" },
-      { day: 5, start: "13:00", end: "16:00", title: "예비고2 미적분1", sub: "정규" },
-      { day: 5, start: "16:00", end: "19:00", title: "예비고2 미적분1", sub: "정규" },
-      { day: 6, start: "13:00", end: "16:00", title: "예비고2 대수", sub: "정규" },
-      { day: 6, start: "16:00", end: "19:00", title: "예비고2 대수", sub: "정규" },
-      { day: 6, start: "19:00", end: "22:00", title: "예비고3 팀수업", sub: "정규" },
-    ],
-    rows: [
-      { grade: "예비고1", name: "예비고1 월목", day: "월·목", time: "20:00 ~ 22:00" },
-      { grade: "예비고1", name: "예비고1 화금", day: "화·금", time: "20:00 ~ 22:00" },
-      { grade: "예비고2", name: "대수", day: "월·목", time: "13:00 ~ 16:00" },
-      { grade: "예비고2", name: "미적분1", day: "화·금", time: "13:00 ~ 16:00" },
-      { grade: "예비고2", name: "확률과통계", day: "수", time: "13:00 ~ 16:00" },
-      { grade: "예비고2", name: "미적분1 [정규]", day: "토", time: "13:00 ~ 19:00" },
-      { grade: "예비고2", name: "대수 [정규]", day: "일", time: "13:00 ~ 19:00" },
-      { grade: "예비고3", name: "스파르타", day: "월·화·목·금", time: "9:00 ~ 12:00" },
-      { grade: "예비고3", name: "팀수업 [정규]", day: "일", time: "19:00 ~ 22:00" },
-      { grade: "단과특강", name: "미적분2 단과특강", day: "수", time: "9:00 ~ 12:00" },
     ],
     notes: [],
   },

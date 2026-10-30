@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import { AcmeHero } from "@/components/landing/acme-hero";
-import { TeacherIntro } from "@/components/landing/teacher-intro";
 import { TimetableSection } from "@/components/landing/timetable-section";
-import { ClinicTimetableSection } from "@/components/landing/clinic-timetable-section";
-import { CurriculumSection } from "@/components/landing/curriculum-section";
 import { OpenClassesSection } from "@/components/landing/open-classes-section";
 import { SystemSection } from "@/components/landing/system-section";
 // import { TestimonialSection } from "@/components/landing/testimonial-section"; // 임시 비공개 (아래 렌더링도 주석 처리)
@@ -62,30 +59,23 @@ export default function LandingPage() {
       <div id="intro">
         <AcmeHero />
       </div>
-      <TeacherIntro />
 
       {/* 2. 시간표 (주간 타임테이블형) */}
       <TimetableSection />
 
-      {/* 3. 클리닉 시간표 */}
-      <ClinicTimetableSection />
-
-      {/* 4. 커리큘럼 라인업 */}
-      <CurriculumSection />
-
-      {/* 5. 이번학기 개설반 안내 */}
+      {/* 3. 이번학기 개설반 안내 */}
       <OpenClassesSection />
 
-      {/* 6. 교재 & 관리체계 시스템 안내 */}
+      {/* 4. 교재 & 관리체계 시스템 안내 */}
       <SystemSection />
 
-      {/* 7. 후기 (카카오톡 이미지 캡처본) — 요청으로 임시 비공개, 컴포넌트는 유지 */}
+      {/* 5. 후기 (카카오톡 이미지 캡처본) — 요청으로 임시 비공개, 컴포넌트는 유지 */}
       {/* <TestimonialSection /> */}
 
-      {/* 8. 비공개설명회 (연4회) — 추후 오픈 */}
+      {/* 6. 비공개설명회 (연4회) — 추후 오픈 */}
       <SeminarSection />
 
-      {/* 9. 상담신청 (클릭 시 번호 노출, 클로징 섹션에 통합) */}
+      {/* 7. 상담신청 (클릭 시 번호 노출, 클로징 섹션에 통합) */}
       <ClosingSection />
 
       <SiteFooter />
