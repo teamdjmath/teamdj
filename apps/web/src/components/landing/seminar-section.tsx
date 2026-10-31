@@ -18,8 +18,9 @@ export function SeminarSection() {
             비공개 학부모 설명회
           </h2>
           <p className="text-zinc-400 text-sm md:text-base leading-relaxed break-keep max-w-xl">
-            에이티오 에듀에서는 이동재T 수업 재원생 학부모님을 대상으로, 연 2~3회 비공개 간담회를
-            정기적으로 진행합니다.
+            에이티오 에듀에서는 이동재T 수업 재원생 학부모님을 대상으로,
+            <br />
+            연 2~3회 비공개 간담회를 정기적으로 진행합니다.
             <br />
             비공개 간담회에서는 입시에 필요한 정보들을 얻을 수 있습니다.
           </p>

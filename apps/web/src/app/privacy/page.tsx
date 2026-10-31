@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { SITE_CONFIG } from '@/lib/site-config'
 
 export const metadata: Metadata = {
   title: '개인정보처리방침 | TeamDJ',
@@ -154,7 +155,8 @@ export default function PrivacyPage() {
           <Section title="제9조 (개인정보 보호책임자)">
             <p>서비스는 개인정보 처리에 관한 업무를 총괄해서 책임지고, 정보주체의 개인정보 관련 불만처리 및 피해구제 등을 위하여 아래와 같이 개인정보 보호책임자를 지정하고 있습니다.</p>
             <div className="mt-3 p-4 rounded-xl bg-zinc-100 space-y-1">
-              <p><span className="font-medium">개인정보 보호책임자:</span> TeamDJ 운영팀</p>
+              <p><span className="font-medium">개인정보 보호책임자:</span> {SITE_CONFIG.ceoName} (대표)</p>
+              <p><span className="font-medium">연락처:</span> {SITE_CONFIG.phone}</p>
               <p><span className="font-medium">이메일:</span> {CONTACT_EMAIL}</p>
             </div>
             <p className="mt-3">
