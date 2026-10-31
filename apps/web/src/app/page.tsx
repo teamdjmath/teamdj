@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { AcmeHero } from "@/components/landing/acme-hero";
 import { TimetableSection } from "@/components/landing/timetable-section";
 import { OpenClassesSection } from "@/components/landing/open-classes-section";
 import { SystemSection } from "@/components/landing/system-section";
@@ -55,27 +54,22 @@ export default function LandingPage() {
       />
       <LandingNav />
 
-      {/* 1. 인삿말 */}
-      <div id="intro">
-        <AcmeHero />
-      </div>
-
-      {/* 2. 시간표 (주간 타임테이블형) */}
+      {/* 1. 시간표 (주간 타임테이블형) */}
       <TimetableSection />
 
-      {/* 3. 이번학기 개설반 안내 */}
+      {/* 2. 이번학기 개설반 안내 */}
       <OpenClassesSection />
 
-      {/* 4. 교재 & 관리체계 시스템 안내 */}
+      {/* 3. 교재 & 관리체계 시스템 안내 */}
       <SystemSection />
 
-      {/* 5. 후기 (카카오톡 이미지 캡처본) — 요청으로 임시 비공개, 컴포넌트는 유지 */}
+      {/* 4. 후기 (카카오톡 이미지 캡처본) — 요청으로 임시 비공개, 컴포넌트는 유지 */}
       {/* <TestimonialSection /> */}
 
-      {/* 6. 비공개설명회 (연4회) — 추후 오픈 */}
+      {/* 5. 비공개설명회 (연4회) — 추후 오픈 */}
       <SeminarSection />
 
-      {/* 7. 상담신청 (클릭 시 번호 노출, 클로징 섹션에 통합) */}
+      {/* 6. 상담신청 (클릭 시 번호 노출, 클로징 섹션에 통합) */}
       <ClosingSection />
 
       <SiteFooter />
