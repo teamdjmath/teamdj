@@ -18,11 +18,11 @@ type Schedule = { events: TimetableEvent[]; rows: TimetableRow[]; notes: string[
 // 현재 시간표 — 아래 SCHEDULED_PERIODS가 시작되기 전까지, 그리고 향후 기간이 새로 안 잡혀있는
 // 공백기에는 이게 기본값으로 보인다.
 const CURRENT_EVENTS: TimetableEvent[] = [
-  { day: 0, start: "9:00", end: "12:30", title: "2028 수능대비 고3 팀 스파르타 3기", sub: "월수금 주3회 · 24강 완성" },
+  { day: 0, start: "9:00", end: "12:30", title: "2028 수능대비\n고3 팀 스파르타 3기", sub: "월수금 주3회 · 24강 완성" },
   { day: 1, start: "9:00", end: "13:00", title: "고2,3 미적분2", sub: "특강 팀수업 기본+ · 화목 주2회 14강 완성" },
-  { day: 2, start: "9:00", end: "12:30", title: "2028 수능대비 고3 팀 스파르타 3기", sub: "월수금 주3회 · 24강 완성" },
+  { day: 2, start: "9:00", end: "12:30", title: "2028 수능대비\n고3 팀 스파르타 3기", sub: "월수금 주3회 · 24강 완성" },
   { day: 3, start: "9:00", end: "13:00", title: "고2,3 미적분2", sub: "특강 팀수업 기본+ · 화목 주2회 14강 완성" },
-  { day: 4, start: "9:00", end: "12:30", title: "2028 수능대비 고3 팀 스파르타 3기", sub: "월수금 주3회 · 24강 완성" },
+  { day: 4, start: "9:00", end: "12:30", title: "2028 수능대비\n고3 팀 스파르타 3기", sub: "월수금 주3회 · 24강 완성" },
   { day: 5, start: "9:00", end: "13:00", title: "고2 대수", sub: "내신 집중 팀수업 실력심화" },
   { day: 6, start: "9:00", end: "13:00", title: "고2 미적1", sub: "내신 집중 팀수업 실력심화" },
   { day: 0, start: "13:00", end: "17:00", title: "고1,2 대수", sub: "특강 팀수업 실력+ · 월목 주2회 14강 완성" },
@@ -37,7 +37,7 @@ const CURRENT_EVENTS: TimetableEvent[] = [
   { day: 3, start: "18:00", end: "22:00", title: "고1 공통수학", sub: "내신 집중 팀수업 심화" },
   { day: 4, start: "18:00", end: "22:00", title: "고1 공통수학", sub: "내신 집중 팀수업 심화+" },
   { day: 5, start: "18:00", end: "22:00", title: "고2,3 확통", sub: "내신 집중 팀수업 실력심화" },
-  { day: 6, start: "18:00", end: "22:00", title: "2028 수능대비 고3 팀 스파르타", sub: "전용 클리닉" },
+  { day: 6, start: "18:00", end: "22:00", title: "2028 수능대비\n고3 팀 스파르타", sub: "전용 클리닉" },
 ];
 
 const CURRENT_ROWS: TimetableRow[] = [
@@ -185,7 +185,9 @@ function TimetableGrid({ events }: { events: TimetableEvent[] }) {
                   className="absolute inset-x-0.5 flex flex-col items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-1 text-center overflow-hidden"
                   style={{ top, height }}
                 >
-                  <p className="text-[11px] font-bold text-zinc-900 break-keep leading-tight">{ev.title}</p>
+                  {ev.title.split("\n").map((line, li) => (
+                    <p key={li} className="text-[11px] font-bold text-zinc-900 break-keep leading-tight">{line}</p>
+                  ))}
                   {ev.sub && ev.sub.split(" · ").map((line, li) => (
                     <p key={li} className="text-[10px] text-emerald-700 break-keep leading-tight">{line}</p>
                   ))}

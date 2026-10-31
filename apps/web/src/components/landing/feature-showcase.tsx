@@ -458,7 +458,9 @@ export function FeatureShowcase() {
               </h2>
               <p className="text-zinc-400 text-base leading-[2] break-keep">
                 수업이 끝나면 선생님이 직접 작성한 학습 리포트가 발행됩니다.
+                <br />
                 테스트 점수, 과제 이행도, 등원·하원 시간, 선생님 피드백까지
+                <br />
                 한 장에 담겨 있어 별도로 연락하지 않아도 됩니다.
               </p>
               <ul className="space-y-4">
@@ -518,7 +520,9 @@ export function FeatureShowcase() {
               </h2>
               <p className="text-zinc-500 text-base leading-[2] break-keep">
                 문제 사진이나 파일을 올리면 담당 조교가 직접 답변합니다.
+                <br />
                 수식 풀이가 필요한 문제도 LaTeX 형식으로 깔끔하게 정리해 드립니다.
+                <br />
                 답변이 완료되면 알림이 오고, 도움이 됐는지 별점으로 남길 수 있습니다.
               </p>
               <ul className="space-y-4">
@@ -568,7 +572,9 @@ export function FeatureShowcase() {
               </h2>
               <p className="text-zinc-500 text-base leading-[2] break-keep">
                 강의 영상과 과제가 한 화면에서 관리됩니다.
+                <br />
                 Runner · ATO 모의 같은 카테고리 뱃지로 구분되어
+                <br />
                 어떤 유형 과제가 얼마나 남아 있는지 바로 보입니다.
               </p>
               <ul className="space-y-4">
@@ -601,7 +607,9 @@ export function FeatureShowcase() {
               </h2>
               <p className="text-zinc-500 text-base leading-[2] break-keep">
                 수업마다 치르는 테스트 점수가 차트로 쌓입니다.
+                <br />
                 ATO 전국 모의나 내신 시험 결과도 등급, 반 석차와 함께 기록되어
+                <br />
                 내가 지금 어느 위치에 있는지 객관적으로 볼 수 있습니다.
               </p>
               <ul className="space-y-4">
@@ -651,7 +659,9 @@ export function FeatureShowcase() {
               </h2>
               <p className="text-zinc-500 text-base leading-[2] break-keep">
                 수업이 끝나면 영상이 바로 올라옵니다.
+                <br />
                 이해가 덜 됐던 부분을 다시 보거나, 다음 수업 전 미리 예습하기에도 좋습니다.
+                <br />
                 과제 목록과 함께 있어서 진도 확인도 자연스럽게 됩니다.
               </p>
               <ul className="space-y-4">
