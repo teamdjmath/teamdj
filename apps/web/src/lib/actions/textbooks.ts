@@ -4,15 +4,30 @@ import { createClient } from '@/lib/supabase/server'
 import { getVerifiedUser } from '@/lib/supabase/verified-user'
 import { revalidatePath } from 'next/cache'
 
-export type Textbook = { id: string; name: string }
+export type Textbook = { id: string; name: string; isActive: boolean }
 
 export async function getTextbooks(): Promise<{ data?: Textbook[]; error?: string }> {
   const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any).from('textbooks').select('id, name').order('name')
+  const { data, error } = await (supabase as any).from('textbooks').select('id, name, is_active').order('name')
   if (error) return { error: '교재 목록 조회에 실패했습니다.' }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return { data: (data ?? []).map((t: any) => ({ id: t.id as string, name: t.name as string })) }
+  return { data: (data ?? []).map((t: any) => ({ id: t.id as string, name: t.name as string, isActive: (t.is_active ?? true) as boolean })) }
+}
+
+// 삭제 대신 보관 — 사용 중인 교재도 QnA 데이터를 건드리지 않고 학생 선택지에서만 숨길 수 있다.
+export async function setTextbookActive(id: string, isActive: boolean): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const user = await getVerifiedUser()
+  if (!user) return { error: '인증이 필요합니다.' }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).from('textbooks').update({ is_active: isActive }).eq('id', id)
+  if (error) return { error: '교재 상태 변경에 실패했습니다.' }
+
+  revalidatePath('/admin/lectures')
+  revalidatePath('/dashboard/qna/new')
+  return {}
 }
 
 export async function createTextbook(name: string): Promise<{ error?: string }> {

@@ -7,6 +7,7 @@ import { useState, useTransition } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { InputField } from '@/components/ui/form-field'
 import { DatePicker } from '@/components/ui/date-picker'
+import { ComboSelect } from '@/components/ui/combo-select'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
 import { materialDownloadUrl } from '@/lib/download-url'
 import {
@@ -31,11 +32,11 @@ import {
   type StudentAccessMode,
   type CourseAccessSummary,
 } from '@/lib/actions/lectures'
-import { createTextbook, deleteTextbook } from '@/lib/actions/textbooks'
+import { createTextbook, deleteTextbook, setTextbookActive } from '@/lib/actions/textbooks'
 import { createSubject, deleteSubject } from '@/lib/actions/subjects'
 
 type ClassOption = { id: string; name: string }
-type TextbookItem = { id: string; name: string }
+type TextbookItem = { id: string; name: string; isActive: boolean }
 type SubjectItem = { id: string; name: string }
 type CourseMaterial = { id: string; title: string; url: string }
 type LectureItem = {
@@ -100,6 +101,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
   const [textbooks, setTextbooks] = useState<TextbookItem[]>(initialTextbooks)
   const [newTextbookName, setNewTextbookName] = useState('')
   const [textbookErr, setTextbookErr] = useState('')
+  const [archivedTextbooksOpen, setArchivedTextbooksOpen] = useState(false)
 
   // 과목 관리
   const [subjects, setSubjects] = useState<SubjectItem[]>(initialSubjects)
@@ -144,6 +146,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
   const [exSummary, setExSummary] = useState<CourseAccessSummary[]>([])
   const [exLoading, setExLoading] = useState(false)
   const [exSaved, setExSaved] = useState(false)
+  const [exSearch, setExSearch] = useState('')
 
   // 개별 지급 — 일괄 모드: 여러 학생에게 강의 하나를 한 번에 지급/차단 (결석(차감) 학생 연동용)
   const [exMode, setExMode] = useState<'single' | 'bulk'>('single')
@@ -301,6 +304,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
     setExModes({})
     setExDirty(false)
     setExSaved(false)
+    setExSearch('')
     setBulkClassId('')
     setBulkStudents([])
     setBulkSelectedIds([])
@@ -501,20 +505,30 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
     startTransition(async () => {
       const res = await createTextbook(newTextbookName.trim())
       if (res.error) { setTextbookErr(res.error); return }
-      setTextbooks((prev) => [...prev, { id: crypto.randomUUID(), name: newTextbookName.trim() }])
+      setTextbooks((prev) => [...prev, { id: crypto.randomUUID(), name: newTextbookName.trim(), isActive: true }])
       setNewTextbookName('')
       router.refresh()
     })
   }
 
-  // ─ 교재 삭제
+  // ─ 교재 삭제 (완전 삭제 — 사용 중이면 서버에서 막힘)
   function handleDeleteTextbook(id: string, name: string) {
-    if (!confirm(`"${name}" 교재를 삭제하시겠습니까?`)) return
+    if (!confirm(`"${name}" 교재를 완전히 삭제하시겠습니까?`)) return
     setTextbookErr('')
     startTransition(async () => {
       const res = await deleteTextbook(id)
       if (res.error) { setTextbookErr(res.error); return }
       setTextbooks((prev) => prev.filter((t) => t.id !== id))
+    })
+  }
+
+  // ─ 교재 보관/재사용 — 기존 QnA 데이터는 건드리지 않고 학생 선택지에서만 숨긴다
+  function handleToggleTextbookActive(id: string, nextActive: boolean) {
+    setTextbookErr('')
+    startTransition(async () => {
+      const res = await setTextbookActive(id, nextActive)
+      if (res.error) { setTextbookErr(res.error); return }
+      setTextbooks((prev) => prev.map((t) => (t.id === id ? { ...t, isActive: nextActive } : t)))
     })
   }
 
@@ -792,29 +806,81 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
       <div className="mt-10 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
         <div className="px-5 py-4 border-b border-zinc-100 dark:border-zinc-900">
           <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">사용 교재 관리</h2>
-          <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-600">여기에 교재를 추가해야 학생의 Q&amp;A 등록 시 교재 선택이 가능합니다.</p>
+          <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-600">여기에 교재를 추가해야 학생의 Q&amp;A 등록 시 교재 선택이 가능합니다. 더 이상 안 쓰는 교재는 삭제 대신 &ldquo;보관&rdquo;하세요. 기존 질문 데이터는 그대로 남고 학생 선택지에서만 빠집니다.</p>
         </div>
         <div className="p-5 space-y-4">
-          {/* 교재 목록 */}
-          {textbooks.length === 0 ? (
-            <p className="text-xs text-zinc-400 dark:text-zinc-600">등록된 교재가 없습니다.</p>
-          ) : (
-            <div className="space-y-2">
-              {textbooks.map((t) => (
-                <div key={t.id} className="flex items-center justify-between rounded-xl bg-zinc-50 dark:bg-zinc-950 px-4 py-2.5">
-                  <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{t.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteTextbook(t.id, t.name)}
-                    disabled={pending}
-                    className="text-xs text-red-400 hover:text-red-600 transition-colors disabled:opacity-50"
-                  >
-                    삭제
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+          {(() => {
+            const activeTextbooks = textbooks.filter((t) => t.isActive)
+            const archivedTextbooks = textbooks.filter((t) => !t.isActive)
+            return (
+              <>
+                {/* 사용 중인 교재 */}
+                {activeTextbooks.length === 0 ? (
+                  <p className="text-xs text-zinc-400 dark:text-zinc-600">등록된 교재가 없습니다.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {activeTextbooks.map((t) => (
+                      <div key={t.id} className="flex items-center justify-between rounded-xl bg-zinc-50 dark:bg-zinc-950 px-4 py-2.5">
+                        <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{t.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleTextbookActive(t.id, false)}
+                          disabled={pending}
+                          className="text-xs text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors disabled:opacity-50"
+                        >
+                          보관
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* 보관된 교재 — 개편 등으로 안 쓰는 교재. 기존 QnA 데이터는 그대로 유지되고
+                    학생 질문 등록 선택지에서만 빠진다. 목록이 길어지는 걸 막기 위해 접어둠. */}
+                {archivedTextbooks.length > 0 && (
+                  <div className="rounded-xl border border-zinc-100 dark:border-zinc-900 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setArchivedTextbooksOpen((v) => !v)}
+                      className="flex w-full items-center justify-between px-4 py-2.5 text-xs font-semibold text-zinc-500 dark:text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-950"
+                    >
+                      <span>보관된 교재 ({archivedTextbooks.length})</span>
+                      <svg className={`h-3.5 w-3.5 transition-transform ${archivedTextbooksOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    {archivedTextbooksOpen && (
+                      <div className="space-y-2 border-t border-zinc-100 dark:border-zinc-900 p-3">
+                        {archivedTextbooks.map((t) => (
+                          <div key={t.id} className="flex items-center justify-between rounded-xl bg-zinc-50 dark:bg-zinc-950 px-4 py-2.5">
+                            <span className="text-sm font-medium text-zinc-500 dark:text-zinc-500">{t.name}</span>
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleTextbookActive(t.id, true)}
+                                disabled={pending}
+                                className="text-xs text-emerald-600 hover:text-emerald-700 transition-colors disabled:opacity-50"
+                              >
+                                다시 사용
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteTextbook(t.id, t.name)}
+                                disabled={pending}
+                                className="text-xs text-red-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                              >
+                                완전 삭제
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )
+          })()}
 
           {/* 교재 추가 */}
           <div className="flex gap-2 pt-1">
@@ -900,19 +966,13 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
             onChange={(e) => setNewCourseName(e.target.value)}
             placeholder="예: 수학 기초 강좌"
           />
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">과목 (QnA &ldquo;강&rdquo; 선택지 매칭용)</label>
-            <select
-              value={newCourseSubjectId}
-              onChange={(e) => setNewCourseSubjectId(e.target.value)}
-              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
-            >
-              <option value="">선택 안 함</option>
-              {subjects.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
+          <ComboSelect
+            label="과목 (QnA “강” 선택지 매칭용)"
+            placeholder="선택 안 함"
+            value={newCourseSubjectId}
+            onChange={setNewCourseSubjectId}
+            options={subjects.map((s) => ({ value: s.id, label: s.name }))}
+          />
           <div>
             <p className="mb-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">접근 허용 분반</p>
             <div className="grid grid-cols-2 gap-2">
@@ -974,19 +1034,13 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                     onKeyDown={(e) => e.key === 'Enter' && handleRenameCourse()}
                     placeholder="새 강좌 이름 입력"
                   />
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">과목 (QnA &ldquo;강&rdquo; 선택지 매칭용)</label>
-                    <select
-                      value={renameSubjectId}
-                      onChange={(e) => setRenameSubjectId(e.target.value)}
-                      className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
-                    >
-                      <option value="">선택 안 함</option>
-                      {subjects.map((s) => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <ComboSelect
+                    label="과목 (QnA “강” 선택지 매칭용)"
+                    placeholder="선택 안 함"
+                    value={renameSubjectId}
+                    onChange={setRenameSubjectId}
+                    options={subjects.map((s) => ({ value: s.id, label: s.name }))}
+                  />
                   {err && <p className="text-sm text-red-500">{err}</p>}
                   <div className="flex gap-2">
                     <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">취소</button>
@@ -1081,6 +1135,9 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
               {settingsTab === 'students' && (() => {
                 const lecs = [...(course?.lectures ?? [])].sort((a, b) => a.orderNum - b.orderNum)
                 const lecIds = lecs.map((l) => l.id)
+                const filteredSummary = exSummary.filter((s) =>
+                  s.studentName.toLowerCase().includes(exSearch.trim().toLowerCase()),
+                )
                 return (
                   <div className="space-y-4">
                     <div className="rounded-lg bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-xs text-zinc-500 dark:text-zinc-500 space-y-0.5">
@@ -1088,18 +1145,43 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                       <p>· <b className="text-red-600">차단</b>: 분반에 지급됐어도 이 강의는 안 보임 (차감) · <b className="text-emerald-600">지급</b>: 분반 미지급이어도 이 강의는 보임</p>
                     </div>
 
-                    {/* 개별 설정이 있는 학생 요약 */}
+                    {/* 개별 설정이 있는 학생 — 검색 + 클릭하면 바로 편집 */}
                     {exSummary.length > 0 && (
                       <div className="space-y-1.5">
                         <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">개별 설정된 학생 ({exSummary.length})</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {exSummary.map((s) => (
-                            <span key={s.studentId} className="inline-flex items-center gap-1 rounded-full bg-zinc-100 dark:bg-zinc-900 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                              {s.studentName}
-                              {s.grantCount > 0 && <span className="text-emerald-600">지급 {s.grantCount}</span>}
-                              {s.blockCount > 0 && <span className="text-red-500">차단 {s.blockCount}</span>}
-                            </span>
-                          ))}
+                        <input
+                          type="text"
+                          value={exSearch}
+                          onChange={(e) => setExSearch(e.target.value)}
+                          placeholder="이름으로 검색"
+                          className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
+                        />
+                        <div className="max-h-48 overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-800 divide-y divide-zinc-100 dark:divide-zinc-900">
+                          {filteredSummary.length === 0 ? (
+                            <p className="px-3.5 py-2.5 text-xs text-zinc-400 dark:text-zinc-600">검색 결과가 없습니다.</p>
+                          ) : (
+                            filteredSummary.map((s) => (
+                              <button
+                                key={s.studentId}
+                                type="button"
+                                onClick={() => {
+                                  setExMode('single')
+                                  if (modal?.kind === 'settings') void loadExStudent(modal.courseName, s.studentId)
+                                }}
+                                className={`flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-left text-sm transition-colors ${
+                                  exStudentId === s.studentId
+                                    ? 'bg-zinc-100 dark:bg-zinc-800 font-semibold text-zinc-900 dark:text-zinc-100'
+                                    : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-950'
+                                }`}
+                              >
+                                <span className="truncate">{s.studentName}</span>
+                                <span className="flex shrink-0 gap-2 text-xs font-medium">
+                                  {s.grantCount > 0 && <span className="text-emerald-600">지급 {s.grantCount}</span>}
+                                  {s.blockCount > 0 && <span className="text-red-500">차단 {s.blockCount}</span>}
+                                </span>
+                              </button>
+                            ))
+                          )}
                         </div>
                       </div>
                     )}
@@ -1229,7 +1311,8 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                       </div>
                     ) : (
                       <>
-                    {/* 1) 분반 → 2) 학생 선택 */}
+                    {/* 1) 분반 → 2) 학생 선택 (아직 개별 설정이 없는 학생 추가용) */}
+                    <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">새 학생 추가</p>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1.5">
                         <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">분반</label>

@@ -40,7 +40,7 @@ export default async function NewQuestionPage() {
       .select('class_id, class_groups(id, name, subject, grade)')
       .eq('student_id', user.id)
       .eq('is_active', true),
-    db.from('textbooks').select('id, name').order('name'),
+    db.from('textbooks').select('id, name').eq('is_active', true).order('name'),
     db.from('subjects').select('id, name').order('name'),
   ])
 

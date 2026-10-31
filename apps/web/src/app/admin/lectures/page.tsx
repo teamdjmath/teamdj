@@ -27,7 +27,7 @@ export default async function LecturesPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: textbookRows } = await (supabase as any)
     .from('textbooks')
-    .select('id, name')
+    .select('id, name, is_active')
     .order('name')
 
   // 과목 목록
@@ -111,7 +111,7 @@ export default async function LecturesPage() {
       classOptions={classes.map((c) => ({ id: c.id, name: c.name }))}
       courses={courses}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      textbooks={(textbookRows ?? []).map((t: any) => ({ id: t.id as string, name: t.name as string }))}
+      textbooks={(textbookRows ?? []).map((t: any) => ({ id: t.id as string, name: t.name as string, isActive: (t.is_active ?? true) as boolean }))}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       subjects={(subjectRows ?? []).map((s: any) => ({ id: s.id as string, name: s.name as string }))}
     />
