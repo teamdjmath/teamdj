@@ -785,7 +785,12 @@ async function attemptAiDraftForQuestion(questionId: string): Promise<{ attempte
     title: question.title as string,
     content: question.content as string,
   })
-  const bestMatch = related[0]
+  // 자동 연결(조교 검토 없이 바로 답변으로 올라감)은 "같은 과목+교재+권(강)+문항번호"가
+  // 전부 일치하는 same_problem 매칭일 때만 허용한다. 제목·내용 텍스트 유사도만으로 잡힌
+  // similar 매칭은 다른 문제일 가능성이 있어 자동 연결 대상에서 제외하고, 그 경우엔 AI가
+  // 이 질문 내용으로 새로 답을 생성한다 (유사 문항은 /admin/qna 상세 화면에서 조교가 직접
+  // 검토 후 채택하는 목록으로는 계속 보여준다).
+  const bestMatch = related.find((r) => r.matchType === 'same_problem')
 
   // 23503 = FK 위반 — 이 사이 질문이 삭제된 것(학생이 등록 직후 지웠거나, 재시도 cron이 먼저
   // 처리한 레이스)일 뿐 실제 버그가 아니므로 Slack까지 띄우지 않는다(severity: warn = DB 기록만).
