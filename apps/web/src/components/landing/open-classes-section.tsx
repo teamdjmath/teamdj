@@ -219,7 +219,9 @@ function GroupBlock({ group, idx }: { group: ClassGroup; idx: number }) {
                 </td>
                 <td className="px-5 py-4">
                   <p className="text-sm font-semibold text-zinc-800 tabular-nums">{c.startDate} 개강</p>
-                  <p className="mt-0.5 text-xs text-zinc-500 tabular-nums">{c.time}</p>
+                  {c.time.split(" · ").map((line, li) => (
+                    <p key={li} className="mt-0.5 text-xs text-zinc-500 tabular-nums">{line}</p>
+                  ))}
                 </td>
                 <td className="px-5 py-4">
                   <CourseBullets bullets={c.bullets} />
@@ -240,9 +242,10 @@ function GroupBlock({ group, idx }: { group: ClassGroup; idx: number }) {
                 {c.tag}
               </span>
             </div>
-            <p className="mt-2 text-xs font-semibold text-zinc-700 tabular-nums">
-              {c.startDate} 개강 · {c.time}
-            </p>
+            <p className="mt-2 text-xs font-semibold text-zinc-700 tabular-nums">{c.startDate} 개강</p>
+            {c.time.split(" · ").map((line, li) => (
+              <p key={li} className="mt-0.5 text-xs text-zinc-500 tabular-nums">{line}</p>
+            ))}
             <div className="mt-3 border-t border-zinc-100 pt-3">
               <CourseBullets bullets={c.bullets} />
             </div>
