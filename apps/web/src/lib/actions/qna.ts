@@ -14,6 +14,34 @@ import { sendKakaoText } from '@/lib/kakao'
 import { logAudit } from '@/lib/audit'
 import { reportError } from '@/lib/error-report'
 import { getOldestAiDraftQuestionId } from '@/lib/qna-status'
+import { getVisibleLecturesForStudent } from '@/lib/actions/lectures'
+
+// 질문 등록 폼의 "강" 선택지 — 학생에게 실제로 보이는 강의만 보여준다. 강좌(course_name)는
+// 관리자가 courses 테이블에서 직접 지정한 과목으로 매칭한다(admin/lectures에서 설정).
+// 같은 과목이라도 분반별로 강좌가 나뉘어 있을 수 있어(월목반/화금반 등), 과목이 일치하는
+// 강좌들을 모두 조회한 뒤 classId로 실제 접근 가능한 강좌 하나로 걸러진다.
+export async function getQnaLessonOptions(
+  subjectId: string,
+  classId: string,
+): Promise<{ options?: { orderNum: number; title: string }[]; error?: string }> {
+  const user = await getVerifiedUser()
+  if (!user) return { error: '인증이 필요합니다.' }
+
+  const admin = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: courseRows } = await (admin as any)
+    .from('courses')
+    .select('course_name')
+    .eq('subject_id', subjectId)
+  const courseNames = ((courseRows ?? []) as { course_name: string }[]).map((r) => r.course_name)
+  if (courseNames.length === 0) return { options: [] }
+
+  const lectureLists = await Promise.all(
+    courseNames.map((cn) => getVisibleLecturesForStudent(cn, user.id, classId ? [classId] : [])),
+  )
+  const options = lectureLists.flat().map((l) => ({ orderNum: l.orderNum, title: l.title }))
+  return { options }
+}
 
 export async function assignQuestion(questionId: string): Promise<{ error?: string }> {
   const supabase = await createClient()

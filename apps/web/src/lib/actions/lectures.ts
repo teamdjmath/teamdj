@@ -11,7 +11,73 @@ async function getStaffUser() {
   return user
 }
 
-export async function createCourse(courseName: string, classIds: string[]): Promise<ActionResult> {
+// 학생에게 실제로 보이는(=시청 가능한) 강의 목록. 분반 단위 기본 지급 +
+// 강의별 개별 지급/차단 override를 적용한다 — 학습 페이지(course/[courseName])와
+// 동일한 규칙이라 두 곳에서 어긋나지 않도록 여기 하나로 모아 공유한다.
+export async function getVisibleLecturesForStudent(
+  courseName: string,
+  studentId: string,
+  classIds: string[],
+): Promise<{ id: string; title: string; videoId: string; orderNum: number }[]> {
+  const admin = createAdminClient()
+
+  let hasClassAccess = false
+  if (classIds.length > 0) {
+    const { data: accessRows } = await admin
+      .from('lecture_class_access')
+      .select('id')
+      .eq('course_name', courseName)
+      .or(`class_id.in.(${classIds.join(',')}),class_id.is.null`)
+      .limit(1)
+    hasClassAccess = !!(accessRows && accessRows.length > 0)
+  } else {
+    const { data: accessRows } = await admin
+      .from('lecture_class_access')
+      .select('id')
+      .eq('course_name', courseName)
+      .is('class_id', null)
+      .limit(1)
+    hasClassAccess = !!(accessRows && accessRows.length > 0)
+  }
+
+  const { data: lectureRows } = await admin
+    .from('lectures')
+    .select('id, title, youtube_video_id, order_num')
+    .eq('course_name', courseName)
+    .order('order_num', { ascending: true })
+
+  const allLectures = (lectureRows ?? []).map((row) => ({
+    id: row.id as string,
+    title: row.title as string,
+    videoId: (row.youtube_video_id ?? '') as string,
+    orderNum: (row.order_num ?? 0) as number,
+  }))
+
+  const lectureIds = allLectures.map((l) => l.id)
+  const { data: overrideRows } = lectureIds.length > 0
+    ? await (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        admin as any
+      )
+        .from('lecture_student_access')
+        .select('lecture_id, mode')
+        .eq('student_id', studentId)
+        .in('lecture_id', lectureIds)
+    : { data: [] }
+
+  const modeByLecture: Record<string, 'grant' | 'block'> = {}
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const r of (overrideRows ?? []) as any[]) modeByLecture[r.lecture_id as string] = r.mode
+
+  return allLectures.filter((l) => {
+    const m = modeByLecture[l.id]
+    if (m === 'grant') return true
+    if (m === 'block') return false
+    return hasClassAccess
+  })
+}
+
+export async function createCourse(courseName: string, classIds: string[], subjectId: string | null = null): Promise<ActionResult> {
   const user = await getStaffUser()
 
   return withAction('createCourse', user?.id, async () => {
@@ -27,6 +93,34 @@ export async function createCourse(courseName: string, classIds: string[]): Prom
       )
       if (error) throw error
     }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: courseErr } = await (admin as any)
+      .from('courses')
+      .upsert({ course_name: courseName.trim(), subject_id: subjectId || null }, { onConflict: 'course_name' })
+    if (courseErr) throw courseErr
+
+    revalidatePath('/admin/lectures')
+    revalidateTag('lectures', {})
+    return { success: true }
+  })
+}
+
+// 강좌-과목 연결 — QnA "강" 선택지가 과목+분반으로 실제 강의를 찾을 수 있도록 한다.
+export async function updateCourseSubject(courseName: string, subjectId: string | null): Promise<ActionResult> {
+  const user = await getStaffUser()
+
+  return withAction('updateCourseSubject', user?.id, async () => {
+    if (!user) return { success: false, error: '인증이 필요합니다.' }
+    const role = user.user_metadata?.role as string | undefined
+    if (!['teacher', 'ta_desk'].includes(role ?? '')) return { success: false, error: '권한이 없습니다.' }
+
+    const admin = createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (admin as any)
+      .from('courses')
+      .upsert({ course_name: courseName.trim(), subject_id: subjectId || null }, { onConflict: 'course_name' })
+    if (error) throw error
 
     revalidatePath('/admin/lectures')
     revalidateTag('lectures', {})
@@ -82,6 +176,11 @@ export async function renameCourse(oldName: string, newName: string): Promise<Ac
       .eq('course_name', oldName)
     if (e2) throw e2
 
+    // courses.course_name이 PK라 이름이 바뀌면 그대로 옮길 수 없다 — 기존 행을 지우고
+    // 과목은 호출 측(updateCourseSubject)이 새 이름으로 다시 저장한다.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (admin as any).from('courses').delete().eq('course_name', oldName)
+
     revalidatePath('/admin/lectures')
     revalidatePath('/dashboard/learning')
     revalidateTag('lectures', {})
@@ -100,6 +199,8 @@ export async function deleteCourse(courseName: string): Promise<ActionResult> {
     const admin = createAdminClient()
     await admin.from('lectures').delete().eq('course_name', courseName)
     await admin.from('lecture_class_access').delete().eq('course_name', courseName)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (admin as any).from('courses').delete().eq('course_name', courseName)
 
     revalidatePath('/admin/lectures')
     revalidateTag('lectures', {})

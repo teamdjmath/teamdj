@@ -44,6 +44,12 @@ export default async function LecturesPage() {
     .select('id, course_name, title, url, created_at')
     .order('created_at')
 
+  // 강좌별 연결된 과목
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: courseRows } = await (admin as any)
+    .from('courses')
+    .select('course_name, subject_id')
+
   // 강좌명 목록 수집 (lecture_class_access + lectures 합집합)
   const courseNameSet = new Set<string>()
   for (const row of accessRows ?? []) courseNameSet.add(row.course_name as string)
@@ -88,11 +94,16 @@ export default async function LecturesPage() {
     materialMap[cn].push({ id: row.id as string, title: row.title as string, url: row.url as string })
   }
 
+  const subjectIdByCourse: Record<string, string | null> = {}
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const row of (courseRows as any[]) ?? []) subjectIdByCourse[row.course_name as string] = (row.subject_id ?? null) as string | null
+
   const courses = Array.from(courseNameSet).sort().map((cn) => ({
     courseName:     cn,
     allowedClassIds: accessMap[cn] ?? [],
     lectures:       lectureMap[cn] ?? [],
     materials:      materialMap[cn] ?? [],
+    subjectId:      subjectIdByCourse[cn] ?? null,
   }))
 
   return (

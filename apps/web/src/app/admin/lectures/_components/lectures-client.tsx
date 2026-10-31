@@ -12,6 +12,7 @@ import { materialDownloadUrl } from '@/lib/download-url'
 import {
   createCourse,
   renameCourse,
+  updateCourseSubject,
   updateCourseClasses,
   deleteCourse,
   createLecture,
@@ -43,6 +44,7 @@ type LectureItem = {
 }
 type Course = {
   courseName: string; allowedClassIds: string[]; lectures: LectureItem[]; materials: CourseMaterial[]
+  subjectId: string | null
 }
 
 interface Props {
@@ -107,9 +109,11 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
   // 강좌 생성 폼
   const [newCourseName, setNewCourseName] = useState('')
   const [newCourseClasses, setNewCourseClasses] = useState<string[]>([])
+  const [newCourseSubjectId, setNewCourseSubjectId] = useState('')
 
   // 강좌 이름 수정 폼
   const [renameValue, setRenameValue] = useState('')
+  const [renameSubjectId, setRenameSubjectId] = useState('')
 
   // 접근 분반 수정 폼
   const [editAccessClasses, setEditAccessClasses] = useState<string[]>([])
@@ -265,14 +269,14 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
 
   // ─ 강좌 생성
   function openCreateCourse() {
-    setNewCourseName(''); setNewCourseClasses([]); setErr('')
+    setNewCourseName(''); setNewCourseClasses([]); setNewCourseSubjectId(''); setErr('')
     setModal({ kind: 'createCourse' })
   }
   function handleCreateCourse() {
     if (!newCourseName.trim()) { setErr('강좌명을 입력하세요.'); return }
     setErr('')
     startTransition(async () => {
-      const res = await createCourse(newCourseName.trim(), newCourseClasses)
+      const res = await createCourse(newCourseName.trim(), newCourseClasses, newCourseSubjectId || null)
       if (!res.success) { setErr(res.error); return }
       setModal(null)
       router.refresh()
@@ -282,6 +286,7 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
   // ─ 강좌 설정 (이름 수정 / 학습 자료 / 분반 설정 통합)
   function openSettings(course: Course, tab: SettingsTab = 'rename') {
     setRenameValue(course.courseName)
+    setRenameSubjectId(course.subjectId ?? '')
     setEditAccessClasses([...course.allowedClassIds])
     setMaterialForm({ title: '', url: '' })
     setMaterialInputMode('file')
@@ -312,6 +317,8 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
     startTransition(async () => {
       const res = await renameCourse(modal.courseName, renameValue.trim())
       if (!res.success) { setErr(res.error); return }
+      const subjectRes = await updateCourseSubject(renameValue.trim(), renameSubjectId || null)
+      if (!subjectRes.success) { setErr(subjectRes.error); return }
       setModal(null)
       router.refresh()
     })
@@ -893,6 +900,19 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
             onChange={(e) => setNewCourseName(e.target.value)}
             placeholder="예: 수학 기초 강좌"
           />
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">과목 (QnA &ldquo;강&rdquo; 선택지 매칭용)</label>
+            <select
+              value={newCourseSubjectId}
+              onChange={(e) => setNewCourseSubjectId(e.target.value)}
+              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
+            >
+              <option value="">선택 안 함</option>
+              {subjects.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
           <div>
             <p className="mb-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">접근 허용 분반</p>
             <div className="grid grid-cols-2 gap-2">
@@ -954,6 +974,19 @@ export function LecturesClient({ classOptions, courses, textbooks: initialTextbo
                     onKeyDown={(e) => e.key === 'Enter' && handleRenameCourse()}
                     placeholder="새 강좌 이름 입력"
                   />
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">과목 (QnA &ldquo;강&rdquo; 선택지 매칭용)</label>
+                    <select
+                      value={renameSubjectId}
+                      onChange={(e) => setRenameSubjectId(e.target.value)}
+                      className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
+                    >
+                      <option value="">선택 안 함</option>
+                      {subjects.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
                   {err && <p className="text-sm text-red-500">{err}</p>}
                   <div className="flex gap-2">
                     <button type="button" onClick={() => setModal(null)} className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-950">취소</button>

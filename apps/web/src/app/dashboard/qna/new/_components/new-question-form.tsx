@@ -4,9 +4,10 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { createQuestion } from '@/lib/actions/qna'
+import { createQuestion, getQnaLessonOptions } from '@/lib/actions/qna'
 import { QNA_STATUS_LABEL } from '@/lib/qna-status'
-import { InputField, SelectField, TextareaField } from '@/components/ui/form-field'
+import { InputField, TextareaField } from '@/components/ui/form-field'
+import { ComboSelect } from '@/components/ui/combo-select'
 
 interface ClassGroup {
   id: string
@@ -65,6 +66,26 @@ export function NewQuestionForm({
 
   const [similarQuestions, setSimilarQuestions] = useState<SimilarQuestion[]>([])
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const [lessonOptions, setLessonOptions] = useState<{ orderNum: number; title: string }[]>([])
+  const [lessonOptionsLoading, setLessonOptionsLoading] = useState(false)
+
+  // "강" 선택 시 학생에게 실제로 보이는 강의 목록만 가져온다 (분반+과목이 정해져야 조회 가능,
+  // 교재는 무관 — 강좌는 과목명 기준으로 운영된다)
+  useEffect(() => {
+    if (unitType !== 'lesson' || !subjectId || !classId) {
+      setLessonOptions([])
+      return
+    }
+    let cancelled = false
+    setLessonOptionsLoading(true)
+    getQnaLessonOptions(subjectId, classId).then((res) => {
+      if (cancelled) return
+      setLessonOptions(res.options ?? [])
+      setLessonOptionsLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [unitType, subjectId, classId])
 
   // 고3 분반은 학원 자체 교재 대신 수능특강 등 외부 교재로 질문하는 경우가 많아 "외부교재"
   // 선택지를 추가로 보여준다 — 다른 학년에는 안 보이게 목록에서 제외.
@@ -224,56 +245,41 @@ export function NewQuestionForm({
         <div className="text-sm font-bold text-red-500 bg-red-50 p-4 rounded-2xl">{error}</div>
       )}
 
-      <SelectField
+      <ComboSelect
         label="분반"
+        required
+        placeholder="분반을 선택해주세요"
         value={classId}
-        onChange={(e) => {
-          const nextClassId = e.target.value
+        onChange={(nextClassId) => {
           setClassId(nextClassId)
           // 고3이 아닌 분반으로 바뀌면 이미 골라둔 "외부교재" 선택이 무효가 되니 초기화
           const nextIsGrade3 = classes.find((c) => c.id === nextClassId)?.grade?.replace(/\s/g, '') === '고3'
           const selectedTextbook = textbooks.find((t) => t.id === textbookId)
           if (!nextIsGrade3 && selectedTextbook?.name === EXTERNAL_TEXTBOOK_NAME) setTextbookId('')
+          setUnitNumber('')
         }}
-        required
-      >
-        <option value="">분반을 선택해주세요</option>
-        {classes.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name} ({c.subject})
-          </option>
-        ))}
-      </SelectField>
+        options={classes.map((c) => ({ value: c.id, label: `${c.name} (${c.subject})` }))}
+      />
 
       {/* 교재 선택 */}
-      <SelectField
+      <ComboSelect
         label="교재"
-        value={textbookId}
-        onChange={(e) => { setTextbookId(e.target.value); setProblemNumber('') }}
         required
-      >
-        <option value="">교재를 선택해주세요</option>
-        {visibleTextbooks.map((t) => (
-          <option key={t.id} value={t.id}>
-            {t.name}
-          </option>
-        ))}
-      </SelectField>
+        placeholder="교재를 선택해주세요"
+        value={textbookId}
+        onChange={(v) => { setTextbookId(v); setProblemNumber('') }}
+        options={visibleTextbooks.map((t) => ({ value: t.id, label: t.name }))}
+      />
 
       {/* 과목 선택 */}
-      <SelectField
+      <ComboSelect
         label="과목"
-        value={subjectId}
-        onChange={(e) => setSubjectId(e.target.value)}
         required
-      >
-        <option value="">과목을 선택해주세요</option>
-        {subjects.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.name}
-          </option>
-        ))}
-      </SelectField>
+        placeholder="과목을 선택해주세요"
+        value={subjectId}
+        onChange={(v) => { setSubjectId(v); setUnitNumber('') }}
+        options={subjects.map((s) => ({ value: s.id, label: s.name }))}
+      />
 
       {/* 몇 권(강) */}
       <div>
@@ -297,15 +303,36 @@ export function NewQuestionForm({
               </button>
             ))}
           </div>
-          <input
-            type="number"
-            min={1}
-            value={unitNumber}
-            onChange={(e) => setUnitNumber(e.target.value)}
-            placeholder="숫자만 입력"
-            required
-            className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400"
-          />
+          {unitType === 'lesson' ? (
+            <ComboSelect
+              value={unitNumber}
+              onChange={setUnitNumber}
+              placeholder={
+                !subjectId || !classId
+                  ? '분반·과목을 먼저 선택하세요'
+                  : lessonOptionsLoading
+                    ? '불러오는 중...'
+                    : '강 선택'
+              }
+              disabled={!subjectId || !classId || lessonOptionsLoading}
+              className="flex-1"
+              triggerClassName="w-full flex items-center justify-between gap-2 rounded-md border border-zinc-300 bg-white px-3 py-2 text-left text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400 disabled:opacity-50"
+              options={lessonOptions.map((l) => ({
+                value: String(l.orderNum),
+                label: l.title ? `${l.orderNum}강 - ${l.title}` : `${l.orderNum}강`,
+              }))}
+            />
+          ) : (
+            <input
+              type="number"
+              min={1}
+              value={unitNumber}
+              onChange={(e) => setUnitNumber(e.target.value)}
+              placeholder="숫자만 입력"
+              required
+              className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400"
+            />
+          )}
         </div>
       </div>
 
